@@ -153,6 +153,30 @@
   box-shadow: 0 0 20px rgba(0, 255, 195, 0.6);
 }
 
+.videoLabels {
+  display: flex;
+  flex-direction: row;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-top: 1rem;
+  width: 100%;
+}
+
+.videoLabel {
+  width: 150px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin: 0;
+  transition: all 0.3s ease;
+}
+
+.activeLabel {
+  color: var(--evvm-teal);
+  font-weight: 600;
+}
+
 .heroTitle {
   font-size: 3.5rem; /* Pantallas grandes */
   font-weight: 300;

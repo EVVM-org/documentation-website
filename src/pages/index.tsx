@@ -76,12 +76,12 @@ function HeroSection() {
   const videoButtons = [
     {
       thumbnail: "https://img.youtube.com/vi/uBjvoH5tpJk/mqdefault.jpg",
-      alt: "ETH Online 2025",
+      alt: "EVVM for Beginners",
       videoUrl: "https://www.youtube-nocookie.com/embed/uBjvoH5tpJk?si=hKAAqEABL7INATFx",
     },
     {
       thumbnail: "https://img.youtube.com/vi/b40vNFatHgg/mqdefault.jpg",
-      alt: "ETH Buenos Aires 2025",
+      alt: "EVVM from Scratch",
       videoUrl: "https://www.youtube-nocookie.com/embed/b40vNFatHgg",
     },
     
@@ -144,6 +144,7 @@ function HeroSection() {
 
         <div className={styles.videoSidebar}>
           {videoButtons.map((button, index) => (
+            <>
             <button
               key={index}
               className={`${styles.videoSidebarButton} ${currentVideoUrl === button.videoUrl ? styles.activeVideo : ''}`}
@@ -152,6 +153,18 @@ function HeroSection() {
             >
               <img src={button.thumbnail} alt={button.alt} />
             </button>
+            </>
+          ))}
+          
+        </div>
+        <div className={styles.videoLabels}>
+          {videoButtons.map((button, index) => (
+            <p 
+              key={index}
+              className={`${styles.videoLabel} ${currentVideoUrl === button.videoUrl ? styles.activeLabel : ''}`}
+            >
+              {button.alt}
+            </p>
           ))}
         </div>
       </div>
