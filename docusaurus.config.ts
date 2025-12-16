@@ -52,8 +52,8 @@ const config: Config = {
           rehypePlugins: [rehypeKatex],
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
-          //editUrl:
-            //"https://github.com/EVVM-org/tree/main/packages/create-docusaurus/templates/shared/",
+          editUrl:
+            "https://github.com/EVVM-org/documentation-website/tree/main/",
         },
         blog: {
           showReadingTime: true,
