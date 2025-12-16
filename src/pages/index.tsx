@@ -144,7 +144,7 @@ function HeroSection() {
 
         <div className={styles.videoSidebar}>
           {videoButtons.map((button, index) => (
-            <>
+            <div className={styles.containerVideoButton}>
             <button
               key={index}
               className={`${styles.videoSidebarButton} ${currentVideoUrl === button.videoUrl ? styles.activeVideo : ''}`}
@@ -153,7 +153,7 @@ function HeroSection() {
             >
               <img src={button.thumbnail} alt={button.alt} />
             </button>
-            </>
+            </div>
           ))}
           
         </div>
