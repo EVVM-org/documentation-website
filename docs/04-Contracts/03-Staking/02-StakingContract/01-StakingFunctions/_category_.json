@@ -1,0 +1,8 @@
+{
+  "label": "Staking Functions",
+  "position": 1,
+  "link": {
+    "type": "generated-index",
+    "description": "Individual documentation for each staking function in the Staking contract. Includes user staking (golden, presale, public) and service staking (prepare, confirm, unstake) functions."
+  }
+}

@@ -1,0 +1,66 @@
+@startuml
+
+<style>
+document {
+    BackGroundColor white
+}
+</style>
+
+actor "User or Service" as user
+participant "NameService" as nameService #00CEEE
+participant "EVVM" as evvm #00EE20
+
+title preRegistrationUsername Transaction Flow\n(Happy Path - Successful Execution)
+
+note right : User creates:\nkeccak256(username + randomNumber)\n\nCRITICAL: Prevents front-running\nUsername hidden until registration
+
+user -> nameService : preRegistrationUsername(···)
+
+activate nameService #00CEEE
+
+nameService -> nameService : verifyIfNonceIsAvailable(···)
+
+
+nameService -> nameService : verifyMessageSignedForPreRegistrationUsername(···)
+
+
+alt #white priorityFee_EVVM > 0
+    nameService -> nameService : makePay(···)
+
+    alt #white priorityFlag_EVVM == true
+
+        nameService -> evvm : payStaker_async(···)
+        activate evvm #00EE20
+    else #white priorityFlag_EVVM == false
+        nameService -> evvm : payStaker_sync(···)
+    end
+    
+
+    evvm -> evvm : Verify payment inputs\nand update balances
+    evvm -> nameService : Payment processed successfully
+    deactivate evvm
+    
+end
+
+nameService -> nameService : key = @<HashPreRegisteredUsername>
+
+nameService -> nameService : set waiting period (30 minutes)
+note right : 30-minute window:\nMust reveal and register\nwithin this timeframe
+
+nameService -> nameService : nameServiceNonce[user][nonce] = true
+
+
+alt #white isAddressStaker(msg.sender)
+    nameService -> nameService : makeCaPay(..)
+    
+    nameService -> evvm : caPay(···)
+    activate evvm #00EE20
+    evvm -> evvm : Update balances for\nstaker rewards
+    evvm -> nameService : Reward distributed successfully
+    deactivate nameService
+    deactivate evvm
+    
+    note right : Staker receives\nreward + priority fee
+end
+
+@enduml

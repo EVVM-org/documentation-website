@@ -1,0 +1,8 @@
+{
+  "label": "Signature Structures",
+  "position": 14,
+  "description": "Technical reference for cryptographic signature structures used across EVVM contracts",
+  "link": {
+    "type": "generated-index"
+  }
+}

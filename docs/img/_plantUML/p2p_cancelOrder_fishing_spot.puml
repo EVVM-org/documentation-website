@@ -1,0 +1,55 @@
+@startuml
+title cancelOrder Fishing Spot Flow
+
+actor "User" as User
+participant "Fishing Spot" as FishingSpot #72AFF6
+participant "Fisher" as Fisher #F6C472
+participant "P2P\nSwap" as P2PSwap #BEA1EC
+participant "EVVM" as Evvm #72F6AA
+
+User -> User: Sign cancel order using ERC-191
+User -> User: Sign payment using ERC-191
+
+User -> FishingSpot: Send payload
+activate FishingSpot #72AFF6
+FishingSpot -> Fisher: Catch payload
+deactivate FishingSpot
+
+activate Fisher #F6C472
+Fisher -> Fisher: Verify payload
+
+
+
+alt "Payload is valid"
+    Fisher -> P2PSwap: Send payload
+    activate P2PSwap #BEA1EC
+    P2PSwap -> P2PSwap: Verify input data
+    alt "Input data is valid"
+        alt #LightGray "The transaction has priority fee" 
+            P2PSwap -> Evvm: Execute payment
+            alt "Payment is valid"
+                Evvm -> P2PSwap: Reward ang give\npriority fee
+            else "Payment is invalid"
+                Evvm -> P2PSwap : revert
+                deactivate Evvm
+                P2PSwap -> Fisher: revert
+            end
+        end
+
+        P2PSwap -> P2PSwap: Cancel order
+
+        alt "Fisher has sMate"
+            P2PSwap -> Fisher: Reward with Mate\nand token\n(if user gives a priority fee)
+        end
+
+        P2PSwap -> P2PSwap: Update P2P nonce for\nuser
+            
+    else "Input data is invalid"
+        P2PSwap -> Fisher: revert
+    end
+
+else "Payload is invalid"
+    Fisher -> Fisher: Drop payload
+end
+
+@enduml

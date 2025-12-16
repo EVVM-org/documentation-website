@@ -1,0 +1,105 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+actor "User or Service" as user
+participant "NameService" as nameService #00CEEE
+participant "EVVM" as evvm #00EE20
+
+title withdrawOffer Transaction Flow\n(Failed Path - Error Handling)
+
+user -> nameService : withdrawOffer(···)
+activate nameService #00CEEE
+
+nameService -> nameService : verifyIfNonceIsAvailable(user, nonce)
+
+alt #f5b7b1 nameServiceNonce[user][nonce] == true
+    nameService -x user : Revert with\nNonceAlreadyUsed
+    
+else #white Nonce is available
+
+    nameService -> nameService : Verify ownership:\nusernameOffers[username][offerID].offerer == user
+
+    alt #f5b7b1 Ownership verification fails
+        nameService -x user : Revert with\nUserIsNotOwnerOfOffer
+        note right : User is not the original\nofferer of this offer
+        
+    else #white User is the offerer
+
+        nameService -> nameService : verifyMessageSignedForWithdrawOffer(···)
+
+        alt #f5b7b1 Signature verification fails
+            nameService -x user : Revert with\nInvalidSignatureOnNameService
+            note right : Invalid signature for:\n• user\n• username\n• offerID\n• nonce
+            
+        else #white Signature is valid
+
+            alt #white priorityFee_EVVM > 0
+                nameService -> nameService : makePay(user, 0, priorityFee_EVVM, ···)
+                
+                alt #white priorityFlag_EVVM == true
+                    nameService -> evvm : payStaker_async(···)
+                    activate evvm #00EE20
+                else #white priorityFlag_EVVM == false
+                    nameService -> evvm : payStaker_sync(···)
+                end
+                
+                evvm -> evvm : Verify payment inputs
+                
+                alt #f5b7b1 Priority fee payment fails
+                    evvm -x user : Revert with\npayment error
+                    note right : Could be:\n• Invalid EVVM nonce\n• Invalid EVVM signature
+                else #white Priority fee payment succeeds
+                    evvm -> evvm : Update balances
+                    evvm -> nameService : Payment processed
+                    deactivate evvm
+                end
+            end
+
+            nameService -> nameService : makeCaPay(user,\nusernameOffers[username][offerID].amount)
+
+            nameService -> evvm : caPay(user, amount)
+            activate evvm #00EE20
+
+            alt #f5b7b1 Refund caPay fails
+                evvm -x user : Revert with\ncaPay error
+                note right : Contract balance issues\nor other EVVM errors
+            else #white Refund succeeds
+                evvm -> evvm : Transfer amount back to user
+                evvm -> nameService : Refund completed
+                deactivate evvm
+
+                nameService -> nameService : Clear offer:\nusernameOffers[username][offerID].offerer = address(0)
+
+                nameService -> nameService : makeCaPay(msg.sender, reward)
+
+                nameService -> evvm : caPay(msg.sender, reward)
+                activate evvm #00EE20
+
+                alt #f5b7b1 Staker reward caPay fails
+                    evvm -x user : Revert with\ncaPay error
+                    note right : Contract balance issues\nor other EVVM errors
+                else #white Staker reward succeeds
+                    evvm -> evvm : Distribute staker rewards
+                    evvm -> nameService : Reward distributed
+                    deactivate evvm
+
+                    nameService -> nameService : Update locked tokens:\nmateTokenLockedForWithdrawOffers -= amount + ...
+
+                    nameService -> nameService : nameServiceNonce[user][nonce] = true
+
+                    nameService --> user : Offer withdrawn successfully\nTokens refunded
+                    deactivate nameService
+                end
+            end
+        end
+    end
+end
+
+
+
+@enduml

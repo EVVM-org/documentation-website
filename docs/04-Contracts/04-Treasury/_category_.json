@@ -1,0 +1,8 @@
+{
+  "label": "Treasury",
+  "position": 7,
+  "link": {
+    "type": "generated-index",
+    "description": "The Treasury system provides secure asset management between external blockchains and EVVM, offering both simple single-chain and advanced cross-chain solutions."
+  }
+}

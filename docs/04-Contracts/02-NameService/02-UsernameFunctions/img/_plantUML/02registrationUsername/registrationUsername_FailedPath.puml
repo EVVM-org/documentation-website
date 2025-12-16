@@ -1,0 +1,115 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+actor "User or Service" as user
+participant "NameService" as nameService #00CEEE
+participant "EVVM" as evvm #00EE20
+
+title registrationUsername Transaction Flow\n(Failed Path - Error Handling)
+
+user -> nameService : registrationUsername(···)
+activate nameService #00CEEE
+
+nameService -> nameService : verifyIfNonceIsAvailable(···)
+
+alt #f5b7b1 nameServiceNonce[user][nonce] == true
+    nameService -x user : Revert with\nNonceAlreadyUsed
+    
+else #white Nonce is available
+
+    alt #white user != admin.current
+        nameService -> nameService : isValidUsername(username)
+        
+        alt #f5b7b1 Invalid username characters or length
+            nameService -x user : Revert with\nInvalidUsername
+            note right : Username validation failed:\n• Invalid characters\n• Length out of bounds
+        end
+    end
+
+    nameService -> nameService : isUsernameAvailable(username)
+    
+    alt #f5b7b1 Username already registered
+        nameService -x user : Revert with\nUsernameAlreadyRegistered
+        note right : Username is already\ntaken by another user
+        
+        else #white Username is available
+
+        nameService -> nameService : verifyMessageSignedForRegistrationUsername(···)
+
+        alt #f5b7b1 Signature verification fails
+            nameService -x user : Revert with\nInvalidSignatureOnNameService
+            note right : Invalid signature for:\n• user\n• username\n• clowNumber\n• nonce
+            
+        else #white Signature is valid
+
+            nameService -> nameService : makePay(···)
+
+            alt #white priorityFlag_EVVM == true
+                nameService -> evvm : payStaker_async(···)
+                activate evvm #00EE20
+            else #white priorityFlag_EVVM == false
+                nameService -> evvm : payStaker_sync(···)
+            end
+
+            evvm -> evvm : Verify payment inputs
+
+            alt #f5b7b1 Payment verification fails
+                evvm -x user : Revert with\npayment error
+                note right : Could be:\n• Insufficient balance\n• Invalid EVVM nonce\n• Invalid EVVM signature
+            else #white Payment succeeds
+                evvm -> evvm : Update balances
+                evvm -> nameService : Payment processed
+                deactivate evvm
+
+                nameService -> nameService : key = @<HashPreRegisteredUsername>
+
+                nameService -> nameService : Verify pre-registration data
+
+                alt #f5b7b1 Pre-registration validation fails
+                    nameService -x user : Revert with\nPreRegistrationNotValid
+                    note right : Could be:\n• identityDetails[key].owner != user\n• Wait time (30 min) not passed\n• Pre-registration expired
+                    
+                else #white Pre-registration is valid
+
+                    nameService -> nameService : identityDetails[username] = {\n  owner: user,\n  expireDate: block.timestamp + 366 days,\n  ...\n}
+
+                    nameService -> nameService : nameServiceNonce[user][nonce] = true
+
+                    alt #white isAddressStaker(msg.sender)
+                        nameService -> nameService : makeCaPay(msg.sender,\n(50 * getRewardAmount()) + priorityFee_EVVM)
+
+                        nameService -> evvm : caPay(···)
+                        activate evvm #00EE20
+
+                        alt #f5b7b1 caPay fails
+                            evvm -x user : Revert with\ncaPay error
+                            note right : Contract balance issues\nor other EVVM errors
+                        else #white caPay succeeds
+                            evvm -> evvm : Update balances for rewards
+                            evvm -> nameService : Reward distributed
+                            deactivate evvm
+
+                            nameService -> nameService : delete identityDetails[key]
+
+                            nameService --> user : Username registration completed successfully
+                        end
+                        
+                    else #white Not a staker
+                        nameService -> nameService : delete identityDetails[key]
+                        nameService --> user : Username registration completed successfully
+                    end
+
+                end
+            end
+        end
+    end
+end
+
+deactivate nameService
+
+@enduml

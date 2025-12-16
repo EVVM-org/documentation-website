@@ -1,0 +1,9 @@
+{
+  "label": "EVVM Contract",
+  "description": "All signature structures on the EVVM contract",
+  "position": 1,
+  "link": {
+    "type": "generated-index",
+    "description": "All signature structures on the EVVM contract"  
+  }
+}

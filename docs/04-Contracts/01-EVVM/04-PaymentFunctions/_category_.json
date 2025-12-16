@@ -1,0 +1,8 @@
+{
+  "label": "Payment Functions",
+  "description": "Learn about EVVM payment functions",
+  "position": 4,
+  "link": {
+    "type": "generated-index"
+  }
+}

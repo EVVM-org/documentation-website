@@ -1,0 +1,57 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+participant "Service Contract" as service
+participant "Staking" as staking #FFD700
+participant "EVVM" as evvm #00EE20
+
+title confirmServiceStaking Transaction Flow\n(Happy Path - Successful Execution)
+
+note over service, evvm : This MUST be in same transaction\nas prepareServiceStaking + caPay
+
+activate service
+service -> staking : confirmServiceStaking()
+activate staking #FFD700
+
+staking -> staking : onlyCA modifier check
+
+staking -> staking : Verify timestamp == block.timestamp
+note right : CRITICAL: Ensures all 3 steps\n(prepare + pay + confirm)\nhappen in same transaction
+
+staking -> staking : Verify msg.sender == serviceStakingData.service
+note right : Authentication:\nOnly the service that\nprepared can confirm
+
+staking -> evvm : Query current service balance
+activate evvm #00EE20
+evvm --> staking : serviceBalanceAfter
+deactivate evvm
+
+staking -> evvm : Query current staking contract balance
+activate evvm #00EE20
+evvm --> staking : contractBalanceAfter
+deactivate evvm
+
+staking -> staking : Calculate expected payment:\ntotalRequired = amountOfStaking * PRICE_OF_STAKING
+
+staking -> staking : Verify payment correctness:\nserviceBefore - totalRequired == serviceAfter\ncontractBefore + totalRequired == contractAfter
+note right : VALIDATION: Exact amount\nmust have been transferred\nvia caPay()
+
+staking -> staking : stakingBaseProcess(\n  AccountMetadata{service, IsAService=true},\n  isStaking=true,\n  amountOfStaking,\n  0, 0, 0, false, address(0), 0x0\n)
+note right : Core staking logic:\n- Updates staking balance\n- Records history\n- Assigns staker status
+
+staking -> evvm : pointStaker(service, 0x01)
+activate evvm #00EE20
+note right : Grant staker status:\nService can now earn rewards\nfrom processing transactions
+evvm --> staking : Status updated
+deactivate evvm
+
+staking --> service : Staking completed successfully
+
+deactivate staking
+
+@enduml

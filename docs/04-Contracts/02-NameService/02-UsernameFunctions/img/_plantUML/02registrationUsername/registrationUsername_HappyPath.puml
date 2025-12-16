@@ -1,0 +1,73 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+actor "User or Service" as user
+participant "NameService" as nameService #00CEEE
+participant "EVVM" as evvm #00EE20
+
+title registrationUsername Transaction Flow\n(Happy Path - Successful Execution)
+
+activate user
+note right : User provides:\n• Actual username\n• Random number from pre-registration\n• All required signatures
+
+user -> nameService : registrationUsername(···)
+deactivate user
+activate nameService #00CEEE
+
+nameService -> nameService : verifyIfNonceIsAvailable(···)
+
+alt #white user != admin.current
+    nameService -> nameService : isValidUsername(username)
+    note right : Validates username\ncharacters and length\n\nAdmin can bypass validation
+end
+
+nameService -> nameService : isUsernameAvailable(username)
+
+nameService -> nameService : verifyMessageSignedForRegistrationUsername(···)
+
+nameService -> nameService : makePay(···)
+
+alt #white priorityFlag_EVVM == true
+    nameService -> evvm : payStaker_async(···)
+    activate evvm #00EE20
+else #white priorityFlag_EVVM == false
+    nameService -> evvm : payStaker_sync(···)
+end
+
+evvm -> evvm : Verify payment inputs\nand update balances
+evvm -> nameService : Payment processed successfully
+deactivate evvm
+
+nameService -> nameService : Verify pre-registration data:\n• identityDetails[key].owner == user\n• Wait time (30 min) has passed
+note right : CRITICAL: Links to\npre-registration hash\nProves user committed first
+
+nameService -> nameService : Create username registration:\nidentityDetails[username] = {\n  owner: user,\n  expireDate: block.timestamp + 366 days,\n  customMetadataMaxSlots: 0,\n  offerMaxSlots: 0,\n  flagNotAUsername: 0x00\n}
+note right : Initial registration:\n366 days validity\nMust renew annually
+
+nameService -> nameService : nameServiceNonce[user][nonce] = true
+
+alt #white isAddressStaker(msg.sender)
+    nameService -> nameService : makeCaPay(msg.sender,\n(50 * getRewardAmount()) + priorityFee_EVVM)
+    note right : 50x reward multiplier\nfor registration processing\nHighest reward in system
+    
+    nameService -> evvm : caPay(···)
+    activate evvm #00EE20
+    evvm -> evvm : Update balances for\nstaker rewards
+    evvm -> nameService : Reward distributed successfully
+    deactivate evvm
+    
+    note right : Staker receives\n50x reward + priority fee
+end
+
+nameService -> nameService : Clean up pre-registration data
+
+nameService --> user : Username registration\ncompleted successfully
+
+deactivate nameService
+
+@enduml

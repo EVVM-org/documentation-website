@@ -1,0 +1,71 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+actor "User or Service" as user
+participant "NameService" as nameService #00CEEE
+participant "EVVM" as evvm #00EE20
+
+title withdrawOffer Transaction Flow\n(Happy Path - Successful Execution)
+
+user -> nameService : withdrawOffer(···)
+
+activate nameService #00CEEE
+
+nameService -> nameService : verifyIfNonceIsAvailable(user, nonce)
+
+nameService -> nameService : Verify ownership:\nusernameOffers[username][offerID].offerer == user
+
+nameService -> nameService : verifyMessageSignedForWithdrawOffer(···)
+
+alt #white priorityFee_EVVM > 0
+    nameService -> nameService : makePay(user, 0, priorityFee_EVVM, ···)
+    
+    alt #white priorityFlag_EVVM == true
+        nameService -> evvm : payStaker_async(···)
+        activate evvm #00EE20
+    else #white priorityFlag_EVVM == false
+        nameService -> evvm : payStaker_sync(···)
+    end
+    
+    evvm -> evvm : Verify payment inputs\nand update balances
+    evvm -> nameService : Priority fee payment processed
+    deactivate evvm
+    
+    note right : Optional priority fee\nfor faster processing
+end
+
+nameService -> nameService : makeCaPay(user,\nusernameOffers[username][offerID].amount)
+
+nameService -> evvm : caPay(user, amount)
+activate evvm #00EE20
+evvm -> evvm : Transfer locked offer amount\nback to user
+evvm -> nameService : Refund completed
+deactivate evvm
+
+nameService -> nameService : Clear offer:\nusernameOffers[username][offerID].offerer = address(0)
+
+nameService -> nameService : makeCaPay(msg.sender,\ngetRewardAmount() +\n(amount * 1) / 796 +\npriorityFee_EVVM)
+
+nameService -> evvm : caPay(msg.sender, reward)
+activate evvm #00EE20
+evvm -> evvm : Distribute staker rewards
+note right : Staker receives:\n- Base reward\n- 0.125% processing fee\n- Priority fee (if any)
+evvm -> nameService : Reward distributed
+deactivate evvm
+
+nameService -> nameService : Update locked tokens:\nmateTokenLockedForWithdrawOffers -=\namount + ((amount * 1) / 199) / 4
+
+nameService -> nameService : nameServiceNonce[user][nonce] = true
+
+nameService --> user : Offer withdrawn successfully\nTokens refunded
+
+deactivate nameService
+
+note right : Offer is deleted and\nlocked tokens are released
+
+@enduml

@@ -1,0 +1,9 @@
+{
+  "label": "Staking.sol",
+  "position": 2,
+  "description": "The Staking Contract is designed to manage staking operations",
+  "link": {
+    "type": "generated-index",
+    "description": "The Staking contract provides a comprehensive staking system for MATE tokens, enabling users to receive rewards. The contract maintains staker status, processes staking operations, and distributes rewards according to predefined rules."
+  }
+}

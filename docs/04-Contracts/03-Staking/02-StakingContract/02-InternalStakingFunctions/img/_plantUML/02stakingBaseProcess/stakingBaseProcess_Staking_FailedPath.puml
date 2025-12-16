@@ -1,0 +1,67 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+title stakingBaseProcess() - Staking Flow\n(Failed Path - Staking Errors)
+
+participant "goldenStaking/\npresaleStaking/\npublicStaking" as caller
+participant "stakingBaseProcess" as base #FFD700
+participant "EVVM" as evvm #00EE20
+
+caller -> base : stakingBaseProcess(\n  AccountMetadata{Address, IsAService},\n  isStaking=true, (···)\n)
+activate base #FFD700
+
+base -> base : Check time lock
+
+alt #f5b7b1 getTimeToUserUnlockStakingTime > block.timestamp
+    base -x caller : Revert with AddressMustWaitToStakeAgain
+    note right : TIME LOCK:\nMust wait after unstaking\nbefore staking again
+    
+else #white Time lock passed
+
+    alt #white !account.IsAService
+        base -> base : makePay(···)
+        
+        base -> evvm : pay(···)
+        activate evvm #00EE20
+        
+        alt #f5b7b1 Payment fails
+            evvm -x base : Revert
+            base -x caller : Payment error
+            note right : Could be:\n• Invalid signature_EVVM\n• Insufficient balance\n• Nonce already used
+            
+        else #white Payment succeeds
+            evvm --> base : Success
+            deactivate evvm
+        end
+    end
+    
+    base -> evvm : pointStaker(account.Address, 0x01)
+    activate evvm #00EE20
+    deactivate evvm
+    
+    base -> base : Update userHistory
+    
+    alt #white msg.sender is staker && !account.IsAService
+        base -> base : makeCaPay(···)
+        
+        base -> evvm : caPay(···)
+        activate evvm #00EE20
+        
+        alt #f5b7b1 Reward distribution fails
+            evvm -x base : Error
+            base -x caller : Reward failed
+        else #white Rewards sent
+            evvm --> base : Success
+            deactivate evvm
+            base --> caller : Success
+            deactivate base
+        end
+    end
+end
+
+@enduml

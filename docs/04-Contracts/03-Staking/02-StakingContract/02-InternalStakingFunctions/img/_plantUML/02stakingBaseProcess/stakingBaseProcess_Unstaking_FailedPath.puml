@@ -1,0 +1,80 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+title stakingBaseProcess() - Unstaking Flow\n(Failed Path - Unstaking Errors)
+
+participant "goldenStaking/\npresaleStaking/\npublicStaking/\nserviceUnstaking" as caller
+participant "stakingBaseProcess" as base #FFD700
+participant "EVVM" as evvm #00EE20
+
+caller -> base : stakingBaseProcess(\n  AccountMetadata{Address, IsAService},\n  isStaking=false, (···)\n)
+activate base #FFD700
+
+alt #white Full unstaking attempt
+    base -> base : Check time lock
+    
+    alt #f5b7b1 getTimeToUserUnlockFullUnstakingTime > block.timestamp
+        base -x caller : Revert with AddressMustWaitToFullUnstake
+        note right : 21-DAY RESTRICTION:\nMust wait for full unstaking
+        
+    else #white Time lock passed
+        base -> evvm : pointStaker(account.Address, 0x00)
+        activate evvm #00EE20
+        deactivate evvm
+    end
+end
+
+alt #white priorityFee != 0 && !account.IsAService
+    base -> base : makePay(···)
+    
+    base -> evvm : pay(···)
+    activate evvm #00EE20
+    
+    alt #f5b7b1 Priority fee payment fails
+        evvm -x base : Revert
+        base -x caller : Payment error
+    else #white Payment succeeds
+        evvm --> base : Success
+        deactivate evvm
+    end
+end
+
+base -> base : Update userHistory
+
+base -> base : makeCaPay(···)
+
+base -> evvm : caPay(···)
+activate evvm #00EE20
+
+alt #f5b7b1 Refund transfer fails
+    evvm -x base : Error
+    base -x caller : Refund failed
+    note right : Contract balance issues\nor EVVM errors
+else #white Refund succeeds
+    evvm --> base : Success
+    deactivate evvm
+    
+    alt #white msg.sender is staker && !account.IsAService
+        base -> base : makeCaPay(···)
+        
+        base -> evvm : caPay(···)
+        activate evvm #00EE20
+        
+        alt #f5b7b1 Reward distribution fails
+            evvm -x base : Error
+            base -x caller : Reward failed
+        else #white Rewards sent
+            evvm --> base : Success
+            deactivate evvm
+            base --> caller : Success
+            deactivate base
+        end
+    end
+end
+
+@enduml

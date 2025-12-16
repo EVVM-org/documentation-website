@@ -1,0 +1,45 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+participant "Service Contract" as service
+participant "Staking" as staking #FFD700
+participant "EVVM" as evvm #00EE20
+
+title prepareServiceStaking Transaction Flow\n(Failed Path - Error Handling)
+
+service -> staking : prepareServiceStaking(amountOfStaking)
+activate staking #FFD700
+
+staking -> staking : onlyCA modifier check
+
+alt #f5b7b1 Caller is not a contract (EOA)
+    staking -x service : Revert with AddressIsNotAService
+    note right : SECURITY: Only smart contracts\ncan perform service staking\nProtects against misuse
+    
+else #white Caller is a contract
+
+    staking -> evvm : Query service balance\nbalances[service][PRINCIPAL_TOKEN]
+    activate evvm #00EE20
+    evvm --> staking : amountServiceBeforeStaking
+    deactivate evvm
+
+    staking -> evvm : Query staking contract balance\nbalances[address(this)][PRINCIPAL_TOKEN]
+    activate evvm #00EE20
+    evvm --> staking : amountStakingBeforeStaking
+    deactivate evvm
+
+    staking -> staking : Store serviceStakingData:\n{\n  service: msg.sender,\n  timestamp: block.timestamp,\n  amountOfStaking: amountOfStaking,\n  amountServiceBeforeStaking,\n  amountStakingBeforeStaking\n}
+    note right : WARNING: If next steps fail,\nthis data becomes stale\nAlways complete in same tx
+
+    staking --> service : Preparation completed
+
+    deactivate staking
+
+end
+
+@enduml

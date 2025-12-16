@@ -1,0 +1,9 @@
+{
+  "label": "Staking Contracts", 
+  "position": 2,
+  "description": "Dual-contract staking ecosystem with unified processing and service integration",
+  "link": {
+    "type": "generated-index",
+    "description": "The Staking Service combines operational staking management with mathematical reward precision through two specialized contracts: the Staking Contract for unified user/service operations and multi-tier access, and the Estimator Contract for epoch-based, time-weighted reward calculations. This ecosystem enables both MATE token holders and smart contracts to participate as network fishers while receiving proportional rewards based on their actual staking contribution over time."
+  }
+}

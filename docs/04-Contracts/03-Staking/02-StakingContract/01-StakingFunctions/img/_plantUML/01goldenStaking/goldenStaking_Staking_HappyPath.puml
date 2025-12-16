@@ -1,0 +1,58 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+title goldenStaking() Staking Flow\n(Happy Path - Successful Execution)
+
+actor "Golden Fisher" as goldenFisher
+participant "Staking" as staking #FFD700
+participant "EVVM" as evvm #00EE20
+
+activate goldenFisher
+
+goldenFisher -> staking : goldenStaking(\n  isStaking=true,\n  amountOfStaking,\n  signature_EVVM\n)
+
+deactivate goldenFisher
+
+activate staking #FFD700
+
+staking -> staking : Verify msg.sender == goldenFisher.actual
+note right : PRIVILEGE: Only the\nGolden Fisher address\ncan call this function
+
+staking -> staking : stakingBaseProcess(\n  AccountMetadata{goldenFisher.actual, false},\n  isStaking=true,\n  amountOfStaking,\n  0, getNextCurrentSyncNonce(msg.sender), false,\n  signature_EVVM\n)
+
+staking -> staking : Check time lock:\ngetTimeToUserUnlockStakingTime(goldenFisher.actual)\n<= block.timestamp
+note right : Must wait after unstaking\nbefore staking again
+
+staking -> staking : makePay(\n  goldenFisher.actual,\n  PRICE_OF_STAKING * amountOfStaking,\n  (···)\n)
+
+staking -> evvm : pay(···)
+activate evvm #00EE20
+evvm -> evvm : Verify signature and nonce\nTransfer tokens to Staking contract
+evvm --> staking : Payment successful
+deactivate evvm
+
+staking -> evvm : pointStaker(goldenFisher.actual, 0x01)
+activate evvm #00EE20
+evvm -> evvm : Grant staker status
+deactivate evvm
+
+staking -> staking : Update userHistory:\npush HistoryMetadata{\n  type=1 (staking),\n  amount=amountOfStaking,\n  timestamp=block.timestamp,\n  totalStaked=previous+amountOfStaking\n}
+
+alt #white msg.sender is staker
+    staking -> staking : makeCaPay(\n      PRINCIPAL_TOKEN_ADDRESS,\n      msg.sender,\n      (rewardAmount * 2) + priorityFee\n    )
+    note right : DOUBLE REWARD:\nStakers who help\nGolden Fisher stake\nearn 2x rewards
+    
+    staking -> evvm : caPay(···)
+    activate evvm #00EE20
+    evvm -> evvm : Transfer rewards\nto caller
+    evvm --> staking : Reward distributed
+    deactivate evvm
+    deactivate staking
+end
+
+@enduml

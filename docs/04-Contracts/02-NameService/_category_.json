@@ -1,0 +1,9 @@
+{
+  "label": "NameService.sol",
+  "position": 2,
+  "description": "Human-readable identity system with username registration and metadata management",
+  "link": {
+    "type": "generated-index",
+    "description": "The Name Service provides a comprehensive identity system for the EVVM ecosystem, enabling users to register human-readable usernames, manage custom metadata schemas, and participate in a decentralized marketplace for username trading. It integrates seamlessly with EVVM Core for username-based payments, implements time-delayed governance for administrative security, and supports extensible metadata systems for rich user profiles and application-specific data storage."
+  }
+}

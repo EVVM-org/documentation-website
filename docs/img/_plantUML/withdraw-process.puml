@@ -1,0 +1,52 @@
+@startuml
+title Withdrawal Process
+
+actor User
+participant "Fishing Spot" as FishingSpot #72AFF6
+participant "Fisher" as Fisher #F6C472
+participant "EVVM" as MateMetaprotocol #72F6AA
+participant "Ethereum Network" as EthereumNetwork #F6F6AA
+
+
+User -> User: Sign withdrawal using ERC-191
+User -> FishingSpot: Send signed withdrawal
+activate FishingSpot #72AFF6
+FishingSpot -> Fisher: Capture withdrawal
+deactivate FishingSpot
+activate Fisher #F6C472
+Fisher -> Fisher: Verify signature, nonce, amount, and executor
+alt valid signature, nonce, amount, and executor
+    Fisher -> Fisher: Verify withdrawal limit
+    alt amount within limit
+        Fisher -> MateMetaprotocol: Execute withdrawal
+        activate MateMetaprotocol #72F6AA
+        MateMetaprotocol -> MateMetaprotocol: Verify signature, nonce, and amount
+        alt valid signature, nonce, and amount
+            MateMetaprotocol -> MateMetaprotocol: Verify executor
+            alt valid executor
+                MateMetaprotocol -> EthereumNetwork: Send withdrawal message
+                activate EthereumNetwork #F6F6AA
+                EthereumNetwork --> User: Update balance
+                deactivate EthereumNetwork
+                MateMetaprotocol --> Fisher: Reward fisher
+                MateMetaprotocol --> MateMetaprotocol: Update nonce
+                deactivate MateMetaprotocol
+            else invalid executor
+                MateMetaprotocol --> Fisher: Revert withdrawal
+                deactivate MateMetaprotocol
+            end
+        else invalid signature, nonce, or amount
+            MateMetaprotocol --> Fisher: Revert withdrawal
+            deactivate MateMetaprotocol
+        end
+        deactivate Fisher
+    else amount exceeds limit
+        Fisher --> User: Revert withdrawal
+        deactivate Fisher
+    end
+else invalid signature, nonce, amount, or executor
+    MateMetaprotocol --> Fisher: Verification failed
+    deactivate Fisher
+end
+
+@enduml

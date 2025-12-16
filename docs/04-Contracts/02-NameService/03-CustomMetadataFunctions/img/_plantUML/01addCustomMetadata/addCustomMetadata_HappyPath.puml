@@ -1,0 +1,63 @@
+@startuml
+
+<style>
+document {
+    BackGroundColor white
+}
+</style>
+
+actor "User or Service" as user
+participant "NameService" as nameService #00CEEE
+participant "EVVM" as evvm #00EE20
+
+title addCustomMetadata Transaction Flow\n(Happy Path - Successful Execution)
+
+note right : Metadata format:\n[schema]:[subschema]>[value]\n\nFlexible key-value storage\nfor any on-chain data
+
+user -> nameService : addCustomMetadata(···)
+
+activate nameService #00CEEE
+
+nameService -> nameService : onlyOwnerOfIdentity(···)
+
+nameService -> nameService : verifyIfNonceIsAvailable(···)
+
+nameService -> nameService : verify bytes(value).length > 0
+
+nameService -> nameService : verifyMessageSignedForAddCustomMetadata(···)
+
+nameService -> nameService : makePay(···, getPriceToAddCustomMetadata(), ···)
+
+alt #white priorityFlag_EVVM == true
+    nameService -> evvm : payStaker_async(···)
+    activate evvm #00EE20
+else #white priorityFlag_EVVM == false
+    nameService -> evvm : payStaker_sync(···)
+end
+
+evvm -> evvm : Verify payment inputs\nand update balances
+evvm -> nameService : Payment processed successfully
+deactivate evvm
+
+alt #white isAddressStaker(msg.sender)
+    nameService -> nameService : makeCaPay(..)
+    
+    nameService -> evvm : caPay(···)
+    activate evvm #00EE20
+    evvm -> evvm : Update balances for\nstaker rewards
+    evvm -> nameService : Reward distributed successfully
+    deactivate evvm
+    
+    note right : Staker receives\n5x reward + 50% fee refund\n+ priority fee\n\nEncourages metadata adoption
+end
+
+nameService -> nameService : identityCustomMetadata[identity][slot] = value
+note right : Slot auto-assigned:\nincremental index
+
+nameService -> nameService : identityDetails[identity].customMetadataMaxSlots++
+
+nameService -> nameService : nameServiceNonce[user][nonce] = true
+
+deactivate nameService
+
+@enduml

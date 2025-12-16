@@ -1,0 +1,61 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+title goldenStaking() Unstaking Flow\n(Happy Path - Successful Execution)
+
+actor "Golden Fisher" as goldenFisher
+participant "Staking" as staking #FFD700
+participant "EVVM" as evvm #00EE20
+
+activate goldenFisher
+
+goldenFisher -> staking : goldenStaking(\n  isStaking=false,\n  amountOfStaking,\n  signature_EVVM\n)
+
+deactivate goldenFisher
+
+activate staking #FFD700
+
+staking -> staking : Verify msg.sender == goldenFisher.actual
+
+staking -> staking : stakingBaseProcess(\n  AccountMetadata{goldenFisher.actual, false},\n  isStaking=false,\n  amountOfStaking,\n  (···)\n)
+
+alt #white Full unstaking (amountOfStaking == getUserAmountStaked)
+    staking -> staking : Check time lock:\ngetTimeToUserUnlockFullUnstakingTime(goldenFisher.actual)\n<= block.timestamp
+    note right : RESTRICTION: Full unstaking\nrequires 21-day waiting period\n(secondsToUnllockFullUnstaking)
+    
+    staking -> evvm : pointStaker(goldenFisher.actual, 0x00)
+    activate evvm #00EE20
+    evvm -> evvm : Remove staker status
+    deactivate evvm
+else #white Partial unstaking
+    note right : No time lock for partial\nunstaking - flexible withdrawal
+end
+
+staking -> staking : Update userHistory:\npush HistoryMetadata{\n  type=2 (unstaking),\n  amount=amountOfStaking,\n  timestamp=block.timestamp,\n  totalStaked=previous-amountOfStaking\n}
+
+staking -> staking : makeCaPay(\n  PRINCIPAL_TOKEN_ADDRESS,\n  goldenFisher.actual,\n  PRICE_OF_STAKING * amountOfStaking\n)
+
+staking -> evvm : caPay(···)
+activate evvm #00EE20
+evvm -> evvm : Transfer refund\nto Golden Fisher
+evvm --> staking : Refund successful
+deactivate evvm
+
+alt #white msg.sender is staker
+    staking -> staking : makeCaPay(\n      PRINCIPAL_TOKEN_ADDRESS,\n      msg.sender,\n      (rewardAmount * 2) + priorityFee\n    )
+    note right : DOUBLE REWARD:\nStakers earn 2x rewards\nfor helping Golden Fisher
+    
+    staking -> evvm : caPay(···)
+    activate evvm #00EE20
+    evvm -> evvm : Transfer rewards
+    evvm --> staking : Success
+    deactivate evvm
+    deactivate staking
+end
+
+@enduml

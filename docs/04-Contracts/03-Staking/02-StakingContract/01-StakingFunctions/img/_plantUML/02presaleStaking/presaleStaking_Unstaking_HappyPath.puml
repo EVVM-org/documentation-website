@@ -1,0 +1,71 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+title presaleStaking() Unstaking Flow\n(Happy Path - Successful Execution)
+
+actor "Presale User" as user
+participant "Staking" as staking #FFD700
+participant "EVVM" as evvm #00EE20
+
+activate user
+
+user -> staking : presaleStaking(\n  user, isStaking=false, nonce,\n  signature, priorityFee_EVVM, (···)\n)
+
+deactivate user
+
+activate staking #FFD700
+
+staking -> staking : verifyMessageSignedForStake(\n  evvmID, user, isPublic=false,\n  isStaking=false, amount=1, nonce, signature\n)
+
+staking -> staking : checkIfStakeNonceUsed(user, nonce)
+
+staking -> staking : presaleClaims(isStaking=false, user)
+note right : DECREMENT:\nuserPresaleStaker[user].stakingAmount--\n(Allows re-staking later)
+
+staking -> staking : Verify allowPresaleStaking.flag == true
+
+staking -> staking : stakingBaseProcess(\n  AccountMetadata{user, false},\n  isStaking=false,\n  amountOfStaking=1,\n  priorityFee_EVVM, nonce_EVVM,\n  priorityFlag_EVVM, signature_EVVM\n)
+
+alt #white Full unstaking (amount == getUserAmountStaked)
+    staking -> staking : Check time lock:\ngetTimeToUserUnlockFullUnstakingTime(user) <= block.timestamp
+    note right : 21-DAY RESTRICTION:\nMust wait for full unstaking
+    
+    staking -> evvm : pointStaker(user, 0x00)
+    activate evvm #00EE20
+    evvm -> evvm : Remove staker status
+    deactivate evvm
+else #white Partial unstaking
+    note right : No time lock\nfor partial unstaking
+end
+
+staking -> staking : Update userHistory
+
+staking -> staking : makeCaPay(\n  PRINCIPAL_TOKEN_ADDRESS,\n  user,\n  PRICE_OF_STAKING * 1\n)
+
+staking -> evvm : caPay(···)
+activate evvm #00EE20
+evvm -> evvm : Transfer refund to user
+evvm --> staking : Refund successful
+deactivate evvm
+
+staking -> staking : stakingNonce[user][nonce] = true
+
+alt #white msg.sender is staker
+    staking -> staking : makeCaPay(···)
+    
+    staking -> evvm : caPay(···)
+    activate evvm #00EE20
+    evvm -> evvm : Transfer rewards
+    evvm --> staking : Success
+    deactivate evvm
+    
+    note right : DOUBLE REWARD
+    deactivate staking
+end
+
+@enduml

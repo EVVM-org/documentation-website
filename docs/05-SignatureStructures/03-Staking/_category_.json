@@ -1,0 +1,9 @@
+{
+  "label": "Staking Service Signature Structures",
+  "description": "Signature structures in the MNS service",
+  "position": 2,
+  "link": {
+    "type": "generated-index",
+    "description": "Signature structures in the Staking service"
+  }
+}

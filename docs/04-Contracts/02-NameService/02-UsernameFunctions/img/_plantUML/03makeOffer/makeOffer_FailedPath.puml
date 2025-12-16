@@ -1,0 +1,100 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+actor "User or Service" as user
+participant "NameService" as nameService #00CEEE
+participant "EVVM" as evvm #00EE20
+
+title makeOffer Transaction Flow\n(Failed Path - Error Handling)
+
+user -> nameService : makeOffer(···)
+activate nameService #00CEEE
+
+nameService -> nameService : verifyIfNonceIsAvailable(user, nonce)
+
+alt #f5b7b1 nameServiceNonce[user][nonce] == true
+    nameService -x user : Revert with NonceAlreadyUsed
+    
+else #white Nonce is available
+
+    nameService -> nameService : Validate offer conditions
+
+    alt #f5b7b1 Invalid offer conditions
+        note right : Any of:\n• flagNotAUsername == 0x01\n• !verifyIfIdentityExists(username)\n• amount == 0\n• expireDate <= block.timestamp
+        nameService -x user : Revert with PreRegistrationNotValid
+        
+    else #white Offer conditions are valid
+
+        nameService -> nameService : verifyMessageSignedForMakeOffer(···)
+
+        alt #f5b7b1 Signature verification fails
+            nameService -x user : Revert with InvalidSignatureOnNameService
+            note right : Invalid signature for:\n• user\n• username\n• expireDate\n• amount\n• nonce
+            
+        else #white Signature is valid
+
+            nameService -> nameService : makePay(user, amount, ···)
+
+            alt #white priorityFlag_EVVM == true
+                nameService -> evvm : payStaker_async(···)
+                activate evvm #00EE20
+            else #white priorityFlag_EVVM == false
+                nameService -> evvm : payStaker_sync(···)
+            end
+
+            evvm -> evvm : Verify payment inputs
+
+            alt #f5b7b1 Payment verification fails
+                evvm -x user : Revert with payment error
+                note right : Could be:\n• Insufficient balance\n• Invalid EVVM nonce\n• Invalid EVVM signature
+            else #white Payment succeeds
+                evvm -> evvm : Update balances
+                evvm -> nameService : Payment processed
+                deactivate evvm
+
+                nameService -> nameService : Find available offerID:\nwhile (usernameOffers[username][offerID].offerer != address(0))\n    offerID++
+
+                nameService -> nameService : Store offer details
+
+                alt #white isAddressStaker(msg.sender)
+                    nameService -> nameService : makeCaPay(msg.sender,\ngetRewardAmount() + priorityFee_EVVM)
+
+                    nameService -> evvm : caPay(···)
+                    activate evvm #00EE20
+
+                    alt #f5b7b1 caPay fails
+                        evvm -x user : Revert with caPay error
+                        note right : Contract balance issues\nor other EVVM errors
+                    else #white caPay succeeds
+                        evvm -> evvm : Update balances for rewards
+                        evvm -> nameService : Reward distributed
+                        deactivate evvm
+                        
+                        note right : Only stakers receive\nreward + priority fee
+                    end
+                    
+                end
+
+                nameService -> nameService : Update locked tokens:\nmateTokenLockedForWithdrawOffers +=\n((amount * 995) / 1000) + (amount / 800)
+
+                alt #white offerID > identityDetails[username].offerMaxSlots
+                    nameService -> nameService : identityDetails[username].offerMaxSlots++
+                else #white identityDetails[username].offerMaxSlots == 0
+                    nameService -> nameService : identityDetails[username].offerMaxSlots++
+                end
+
+                nameService -> nameService : nameServiceNonce[user][nonce] = true
+
+                nameService --> user : Offer created successfully\nwith offerID: {offerID}
+            end
+        end
+    end
+end
+deactivate nameService
+
+@enduml

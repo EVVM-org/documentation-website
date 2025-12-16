@@ -1,0 +1,9 @@
+{
+  "label": "Name Service Signature Structures",
+  "description": "Signature structures in the Name Service",
+  "position": 2,
+  "link": {
+    "type": "generated-index",
+    "description": "Signature structures in the Name Service"
+  }
+}

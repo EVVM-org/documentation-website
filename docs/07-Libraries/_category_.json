@@ -1,0 +1,9 @@
+{
+  "label": "Libraries",
+  "position": 7,
+  "description": "Utility libraries for EVVM development",
+  "link": {
+    "type": "generated-index",
+    "description": "The Libraries provide a collection of utility functions and components to facilitate EVVM development. They include commonly used algorithms, data structures, and helper functions that can be leveraged across various EVVM projects."
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "label": "Governance Functions",
+  "position": 3,
+  "description": "Time-delayed governance functions for superUser management and contract upgrades"
+}

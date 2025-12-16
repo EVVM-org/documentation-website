@@ -1,0 +1,91 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+title publicStaking() Unstaking Flow\n(Failed Path - Error Handling)
+
+actor "Public User" as user
+participant "Staking" as staking #FFD700
+participant "EVVM" as evvm #00EE20
+
+user -> staking : publicStaking(\n  user, isStaking=false, amountOfStaking,\n  nonce, signature, (···)\n)
+activate staking #FFD700
+
+staking -> staking : Verify allowPublicStaking.flag == true
+
+alt #f5b7b1 allowPublicStaking.flag == false
+    staking -x user : Revert (generic)
+    
+else #white Public staking enabled
+
+    staking -> staking : verifyMessageSignedForStake(···)
+    
+    alt #f5b7b1 Invalid signature
+        staking -x user : Revert with InvalidSignatureOnStaking
+        
+    else #white Signature valid
+
+        staking -> staking : checkIfStakeNonceUsed(user, nonce)
+        
+        alt #f5b7b1 Nonce already used
+            staking -x user : Revert with StakingNonceAlreadyUsed
+            
+        else #white Nonce available
+        
+            staking -> staking : stakingBaseProcess(···)
+
+            alt #white Full unstaking attempt
+                staking -> staking : Check time lock
+                
+                alt #f5b7b1 Time lock not expired
+                    staking -x user : Revert with AddressMustWaitToFullUnstake
+                    note right : 21-DAY RESTRICTION:\nMust wait for full unstaking
+                    
+                else #white Time lock passed
+                    staking -> evvm : pointStaker(user, 0x00)
+                    activate evvm #00EE20
+                    deactivate evvm
+                end
+            end
+
+            staking -> staking : Update userHistory
+
+            staking -> staking : makeCaPay(···)
+
+            staking -> evvm : caPay(···)
+            activate evvm #00EE20
+            
+            alt #f5b7b1 Refund transfer fails
+                evvm -x staking : Error
+                staking -x user : Refund failed
+            else #white Refund succeeds
+                evvm --> staking : Success
+                deactivate evvm
+                
+                staking -> staking : stakingNonce[user][nonce] = true
+                
+                alt #white msg.sender is staker
+                    staking -> staking : makeCaPay(···)
+                    
+                    staking -> evvm : caPay(···)
+                    activate evvm #00EE20
+                    
+                    alt #f5b7b1 Reward fails
+                        evvm -x staking : Error
+                        staking -x user : Reward failed
+                    else #white Rewards sent
+                        evvm --> staking : Success
+                        deactivate evvm
+                        deactivate staking
+                    end
+                end
+            end
+        end
+    end
+end
+
+@enduml

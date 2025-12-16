@@ -1,0 +1,89 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+actor "Fisher or User" as user 
+participant "EVVM" as evvm #00EE20
+participant "NameService" as mns #00CEEE
+
+title Pay Multiple Transaction Flow\n(Failed Path - Error Handling)
+
+user -> evvm : payMultiple(PayData[])
+activate evvm #00EE20
+
+== Begin For Loop ==
+
+evvm -> evvm : verifyMessageSignedForPay(PayData[i])
+
+alt #f5b7b1 Signature of PayData[i] is invalid
+    evvm -x user : Revert with InvalidSignature
+    note right : FATAL: Invalid signature\nreverts entire batch\nNO partial execution
+    
+else #white Signature is valid
+
+    alt #white payData[i].executor != address(0)
+        evvm -> evvm : verify if msg.sender == payData[i].executor
+        alt #f5b7b1 msg.sender != payData[i].executor
+            evvm -> evvm : failedTransactions++\nresults[i] = false\ncontinue to next iteration
+            note right : Non-fatal errors:\nMark as failed and\ncontinue processing
+        end
+    end
+
+    evvm -> evvm : verify nonce based on priorityFlag
+    alt #f5b7b1 nonce is invalid or already used
+        evvm -> evvm : failedTransactions++\nresults[i] = false\ncontinue to next iteration
+    
+    else #white nonce is valid
+        evvm -> evvm : update nonce mapping
+        
+        alt #white to_identity != ""
+            evvm -> mns : verifyStrictAndGetOwnerOfIdentity(to_identity)
+            alt #f5b7b1 Identity not found or invalid
+                evvm -> evvm : failedTransactions++\nresults[i] = false\ncontinue to next iteration
+            else #white Identity resolved successfully
+                mns --> evvm : return valid address
+            end
+        else #white to_identity == ""
+            evvm -> evvm : use to_address
+        end
+
+        evvm -> evvm : verify balance (amount + priorityFee)
+        alt #f5b7b1 not enough balance
+            evvm -> evvm : failedTransactions++\nresults[i] = false\ncontinue to next iteration
+        
+        else #white has enough balance
+            evvm -> evvm : _updateBalance(from, to, token, amount)
+            alt #f5b7b1 payment update fails
+                evvm -> evvm : failedTransactions++\nresults[i] = false\ncontinue to next iteration
+            
+            else #white payment update succeeds
+                alt #white priorityFee > 0 && isAddressStaker(msg.sender)
+                    evvm -> evvm : _updateBalance(from, msg.sender, token, priorityFee)
+                    alt #f5b7b1 priority fee update fails
+                        evvm -> evvm : failedTransactions++\nresults[i] = false\ncontinue to next iteration
+                    else #white priority fee succeeds
+                        evvm -> evvm : successfulTransactions++\nresults[i] = true
+                    end
+                else #white no priority fee or not a staker
+                    evvm -> evvm : successfulTransactions++\nresults[i] = true
+                end
+            end
+        end
+    end
+end
+
+== End For Loop ==
+
+alt #white isAddressStaker(msg.sender) && successfulTransactions > 0
+    evvm -> evvm : _giveReward(msg.sender, successfulTransactions)
+end
+
+evvm --> user : return (successfulTransactions, failedTransactions, results[])
+
+deactivate evvm
+
+@enduml

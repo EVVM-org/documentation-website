@@ -1,0 +1,64 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+actor "Fisher or User" as user 
+participant "EVVM" as evvm #00EE20
+participant "NameService" as mns #00CEEE
+
+title Pay Multiple Transaction Flow\n(Happy Path - Successful Execution)
+
+activate user
+user -> evvm : payMultiple(PayData[])
+activate evvm #00EE20
+
+note over evvm : Initialize:\nsuccessfulTransactions = 0\nfailedTransactions = 0\nresults = new bool[](payData.length)
+
+== Begin For Loop ==
+
+evvm -> evvm : verifyMessageSignedForPay(PayData[i])
+note right : CRITICAL: Each payment\nhas its own signature\nInvalid sig = full revert
+
+alt #white payData[i].executor != address(0)
+    evvm -> evvm : verify if msg.sender == payData[i].executor
+end
+
+evvm -> evvm : verify nonce based on priorityFlag
+
+evvm -> evvm : update nonce mapping\n(async or sync based on priorityFlag)
+
+alt #white to_identity != ""
+    evvm -> mns : verifyStrictAndGetOwnerOfIdentity(to_identity)
+    mns --> evvm : return valid address
+else #white to_identity == ""
+    evvm -> evvm : use to_address
+end
+
+evvm -> evvm : verify balance (amount + priorityFee)
+
+evvm -> evvm : _updateBalance(from, to, token, amount)
+
+alt #white priorityFee > 0 && isAddressStaker(msg.sender)
+    evvm -> evvm : _updateBalance(from, msg.sender, token, priorityFee)
+end
+
+evvm -> evvm : successfulTransactions++\nresults[i] = true
+
+== End For Loop ==
+
+note over evvm : Partial success allowed:\nSome payments can fail\nwhile others succeed
+
+alt #white isAddressStaker(msg.sender)
+    evvm -> evvm : _giveReward(msg.sender, successfulTransactions)
+    note right : Reward multiplied by\nsuccessful transaction count\nHigher efficiency = more rewards
+end
+
+evvm --> user : return (successfulTransactions, failedTransactions, results[])
+
+deactivate evvm
+
+@enduml

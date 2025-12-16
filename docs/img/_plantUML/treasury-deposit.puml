@@ -1,0 +1,50 @@
+@startuml
+title Deposit Process
+
+actor User
+participant "Treasury.sol" as Treasury #72AFF6
+participant "Token/ETH\nUniswap Pool" as UniswapPool #F672EF
+participant "Cross-Chain\nExecutor" as CrossChainExecutor #F6C472
+participant "EVVM" as MateMetaprotocol #72F6AA
+
+
+alt ERC20 scenario
+
+    User -> Treasury: getIfTokenIsWhitelisted
+    activate User
+    Treasury --> User: TokenWhitelistedStatus
+    User -> Treasury: approve
+    User -> Treasury: deposit
+    deactivate User
+    Treasury -> UniswapPool: getAmountInETH
+    activate UniswapPool #F672EF
+    UniswapPool --> Treasury: amountInETH
+    deactivate UniswapPool
+    alt amountInETH <= maxAmount
+        Treasury -> CrossChainExecutor: execute deposit
+        activate CrossChainExecutor #F6C472
+        CrossChainExecutor -> MateMetaprotocol: send message
+        deactivate CrossChainExecutor
+        activate MateMetaprotocol #72F6AA
+        MateMetaprotocol --> User: Tokens balance updated
+        deactivate MateMetaprotocol
+    else amountInETH > maxAmount
+        Treasury --> User: Revert transaction
+    end
+else ETH scenario
+    User -> Treasury: deposit
+    deactivate UniswapPool
+    alt amountInETH <= maxAmount
+        Treasury -> CrossChainExecutor: execute deposit
+        activate CrossChainExecutor #F6C472
+        CrossChainExecutor -> MateMetaprotocol: send message
+        deactivate CrossChainExecutor
+        activate MateMetaprotocol #72F6AA
+        MateMetaprotocol --> User: ETH balance updated
+        deactivate MateMetaprotocol
+    else amountInETH > maxAmount
+        Treasury --> User: Revert transaction
+    end
+end
+
+@enduml

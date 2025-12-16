@@ -1,0 +1,8 @@
+{
+  "label": "EVVM Contracts",
+  "position": 4,
+  "description": "Learn about EVVM smart contracts, including their structure, deployment, and interaction within the EVVM ecosystem.",
+  "link": {
+    "type": "generated-index"
+  }
+}

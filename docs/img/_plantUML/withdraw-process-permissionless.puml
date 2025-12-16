@@ -1,0 +1,50 @@
+@startuml
+title Permissionless Withdrawal Process
+
+actor User
+participant "EVVM" as MateMetaprotocol #72F6AA
+participant "Ethereum Network" as EthereumNetwork #F6F6AA
+
+
+User -> User: Sign withdrawal using ERC-191
+User -> MateMetaprotocol: Send variables for withdrawal
+activate MateMetaprotocol #72F6AA
+activate User #F6C472
+MateMetaprotocol -> MateMetaprotocol: Verify signature, nonce, amount, and executor
+alt valid signature, nonce, amount, and executor
+
+    MateMetaprotocol -> MateMetaprotocol: Verify withdrawal limit
+    alt amount within limit
+        
+        MateMetaprotocol -> MateMetaprotocol: Verify signature, nonce, and amount
+        alt valid signature, nonce, and amount
+            MateMetaprotocol -> MateMetaprotocol: Verify executor
+            alt valid executor
+                MateMetaprotocol -> EthereumNetwork: Send withdrawal message
+                activate EthereumNetwork #F6F6AA
+                EthereumNetwork --> User: Update balance
+                deactivate EthereumNetwork
+                alt user has sMate
+                MateMetaprotocol --> User: Reward User
+                end
+                MateMetaprotocol --> MateMetaprotocol: Update nonce
+                MateMetaprotocol --> User: Reimbursed priority fee
+                deactivate MateMetaprotocol
+            else invalid executor
+                MateMetaprotocol --> User: Revert withdrawal
+                deactivate MateMetaprotocol
+            end
+        else invalid signature, nonce, or amount
+            MateMetaprotocol --> User: Revert withdrawal
+        end
+
+    else amount exceeds limit
+        User --> User: Revert withdrawal
+
+    end
+else invalid signature, nonce, amount, or executor
+    MateMetaprotocol --> User: Verification failed
+
+end
+
+@enduml

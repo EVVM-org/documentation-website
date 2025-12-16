@@ -1,0 +1,65 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+title publicStaking() Staking Flow\n(Happy Path - Successful Execution)
+
+actor "Public User" as user
+participant "Staking" as staking #FFD700
+participant "EVVM" as evvm #00EE20
+
+activate user
+
+user -> staking : publicStaking(\n  user, isStaking=true, amountOfStaking,\n  nonce, signature, priorityFee_EVVM, (···)\n)
+
+deactivate user
+
+activate staking #FFD700
+
+staking -> staking : Verify allowPublicStaking.flag == true
+note right : PUBLIC PHASE:\nPublic staking must be\nenabled by governance
+
+staking -> staking : verifyMessageSignedForStake(\n  evvmID, user, isPublic=true,\n  isStaking=true, amountOfStaking,\n  nonce, signature\n)
+note right : FLEXIBLE AMOUNT:\nUnlike presale (fixed=1),\npublic can stake any amount\nwith EIP-712 signature
+
+staking -> staking : checkIfStakeNonceUsed(user, nonce)
+
+staking -> staking : stakingBaseProcess(\n  AccountMetadata{user, false},\n  isStaking=true,\n  amountOfStaking,\n  priorityFee_EVVM, nonce_EVVM,\n  priorityFlag_EVVM, signature_EVVM\n)
+
+staking -> staking : Check time lock:\ngetTimeToUserUnlockStakingTime(user) <= block.timestamp
+
+staking -> staking : makePay(\n  user,\n  PRICE_OF_STAKING * amountOfStaking,\n  (···)\n)
+
+staking -> evvm : pay(···)
+activate evvm #00EE20
+evvm -> evvm : Verify signature and nonce\nTransfer tokens to Staking
+evvm --> staking : Payment successful
+deactivate evvm
+
+staking -> evvm : pointStaker(user, 0x01)
+activate evvm #00EE20
+evvm -> evvm : Grant staker status
+deactivate evvm
+
+staking -> staking : Update userHistory
+
+staking -> staking : stakingNonce[user][nonce] = true
+
+alt #white msg.sender is staker
+    staking -> staking : makeCaPay(···)
+    
+    staking -> evvm : caPay(···)
+    activate evvm #00EE20
+    evvm -> evvm : Transfer rewards
+    evvm --> staking : Success
+    deactivate evvm
+    
+    note right : DOUBLE REWARD:\nStakers earn 2x rewards
+    deactivate staking
+end
+
+@enduml

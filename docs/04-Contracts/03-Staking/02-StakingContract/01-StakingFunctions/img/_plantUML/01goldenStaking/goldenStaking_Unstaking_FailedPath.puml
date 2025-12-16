@@ -1,0 +1,77 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+title goldenStaking() Unstaking Flow\n(Failed Path - Error Handling)
+
+actor "Golden Fisher" as goldenFisher
+participant "Staking" as staking #FFD700
+participant "EVVM" as evvm #00EE20
+
+goldenFisher -> staking : goldenStaking(\n  isStaking=false,\n  amountOfStaking,\n  signature_EVVM\n)
+activate staking #FFD700
+
+staking -> staking : Verify msg.sender == goldenFisher.actual
+
+alt #f5b7b1 msg.sender != goldenFisher.actual
+    staking -x goldenFisher : Revert with SenderIsNotGoldenFisher
+    
+else #white Caller is Golden Fisher
+
+    staking -> staking : stakingBaseProcess(···)
+
+    alt #white Full unstaking attempt
+        staking -> staking : Check time lock:\ngetTimeToUserUnlockFullUnstakingTime(goldenFisher.actual)
+        
+        alt #f5b7b1 Time lock not expired
+            staking -x goldenFisher : Revert with AddressMustWaitToFullUnstake
+            note right : RESTRICTION VIOLATION:\nMust wait 21 days\n(secondsToUnllockFullUnstaking)\nfor full unstaking
+            
+        else #white Time lock passed
+            staking -> evvm : pointStaker(goldenFisher.actual, 0x00)
+            activate evvm #00EE20
+            evvm -> evvm : Remove staker status
+            deactivate evvm
+        end
+    end
+
+    staking -> staking : Update userHistory
+
+    staking -> staking : makeCaPay(···)
+
+    staking -> evvm : caPay(···)
+    activate evvm #00EE20
+    
+    alt #f5b7b1 Refund transfer fails
+        evvm -x staking : caPay error
+        staking -x goldenFisher : Refund failed
+        note right : Contract balance issues\nor EVVM errors
+    else #white Refund succeeds
+        evvm -> evvm : Transfer refund
+        evvm --> staking : Success
+        deactivate evvm
+        
+        alt #white msg.sender is staker
+            staking -> staking : makeCaPay(···)
+            
+            staking -> evvm : caPay(···)
+            activate evvm #00EE20
+            
+            alt #f5b7b1 Reward distribution fails
+                evvm -x staking : caPay error
+                staking -x goldenFisher : Reward failed
+            else #white Rewards distributed
+                evvm -> evvm : Transfer rewards
+                evvm --> staking : Success
+                deactivate evvm
+                deactivate staking
+            end
+        end
+    end
+end
+
+@enduml

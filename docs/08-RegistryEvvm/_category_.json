@@ -1,0 +1,9 @@
+{
+  "label": "RegistryEvvm.sol",
+  "position": 8,
+  "description": "Registry system for EVVM deployments on testnets with time-delayed governance",
+  "link": {
+    "type": "generated-index",
+    "description": "The Registry EVVM Contract manages the registration and discovery of EVVM instances deployed on various testnets. It implements a dual-tier registration system with public auto-incrementing IDs (1000+) for community deployments and reserved IDs (1-999) for official whitelisted deployments. The contract features time-delayed governance for security, chain ID whitelisting to prevent mainnet registration, and comprehensive metadata tracking for all registered EVVM instances."
+  }
+}

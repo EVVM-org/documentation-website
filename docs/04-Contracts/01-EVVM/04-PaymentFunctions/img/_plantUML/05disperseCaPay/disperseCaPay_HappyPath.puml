@@ -1,0 +1,47 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+participant "Smart Contract" as contract
+participant "EVVM" as evvm #00EE20
+
+title Disperse Contract Address Pay Transaction Flow\n(Happy Path - Successful Execution)
+
+activate contract 
+contract -> evvm : disperseCaPay(···)
+activate evvm #00EE20
+
+evvm -> evvm : assembly {\n    size := extcodesize(msg.sender)\n}
+
+evvm -> evvm : verify balances[msg.sender][token] >= amount
+
+evvm -> evvm : balances[msg.sender][token] -= amount
+
+evvm -> evvm : acomulatedAmount = 0
+
+== Begin For Loop ==
+
+evvm -> evvm : acomulatedAmount += toData[i].amount
+note right : Accumulating totals\nto verify against\ndeclared amount
+
+evvm -> evvm : balances[toData[i].toAddress][token] += toData[i].amount
+
+== End For Loop ==
+
+evvm -> evvm : verify acomulatedAmount == amount
+note right : CRITICAL: Prevents\nover-distribution\nExact match required
+
+alt #white isAddressStaker(msg.sender)
+    evvm -> evvm : _giveReward(msg.sender, 1)
+end
+
+evvm --> contract : Distribution completed successfully
+
+deactivate evvm
+deactivate contract
+
+@enduml

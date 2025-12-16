@@ -1,0 +1,8 @@
+{
+  "label": "Crosschain Treasury",
+  "position": 2,
+  "link": {
+    "type": "generated-index",
+    "description": "Multi-chain treasury solution enabling cross-chain asset transfers between EVVM and external blockchains using Hyperlane, LayerZero, and Axelar protocols."
+  }
+}

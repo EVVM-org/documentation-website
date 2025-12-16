@@ -1,0 +1,8 @@
+{
+  "label": "Order Functions",
+  "description": "Core order management functions for creating, canceling, and fulfilling swap orders",
+  "position": 2,
+  "link": {
+    "type": "generated-index"
+  }
+}

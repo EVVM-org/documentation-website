@@ -1,0 +1,68 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+actor "User or Service" as user
+participant "NameService" as nameService #00CEEE
+participant "EVVM" as evvm #00EE20
+
+title renewUsername Transaction Flow\n(Happy Path - Successful Execution)
+
+
+user -> nameService : renewUsername(···)
+
+activate nameService #00CEEE
+
+nameService -> nameService : onlyOwnerOfIdentity(user, username)
+note right : Verify user owns the username
+
+nameService -> nameService : verifyIfNonceIsAvailable(user, nonce)
+
+nameService -> nameService : Validate renewal conditions:\n• flagNotAUsername != 0x01\n• expireDate <= block.timestamp + 36500 days\n(max 100 years in advance)
+
+nameService -> nameService : verifyMessageSignedForRenewUsername(···)
+
+nameService -> nameService : priceOfRenew = seePriceToRenew(username)
+note right : Pricing Rules:\n• Free if within 1 year of expiration\n• Based on highest active offer (min 500 MATE)\n• Fixed 500,000 MATE if >1 year early\n\nDynamic pricing based on demand
+
+nameService -> nameService : makePay(user, priceOfRenew, ···)
+
+alt #white priorityFlag_EVVM == true
+    nameService -> evvm : payStaker_async(···)
+    activate evvm #00EE20
+else #white priorityFlag_EVVM == false
+    nameService -> evvm : payStaker_sync(···)
+end
+
+evvm -> evvm : Verify payment inputs\nand update balances
+evvm -> nameService : Renewal payment processed
+deactivate evvm
+
+alt #white isAddressStaker(msg.sender)
+    nameService -> nameService : makeCaPay(msg.sender,\ngetRewardAmount() +\n(priceOfRenew * 50) / 100 +\npriorityFee_EVVM)
+
+    nameService -> evvm : caPay(msg.sender, reward)
+    activate evvm #00EE20
+    evvm -> evvm : Distribute staker rewards\n(50% of renewal price!)
+    note right : Stakers get 50% of\nrenewal cost as reward\nIncentive for processing
+    evvm -> nameService : Reward distributed
+    deactivate evvm
+    
+    note right : Stakers get base reward +\n50% of renewal price +\npriority fee
+end
+
+nameService -> nameService : Extend expiration:\nidentityDetails[username].expireDate += 366 days
+
+nameService -> nameService : nameServiceNonce[user][nonce] = true
+
+nameService --> user : Username renewed successfully\nExtended by 366 days
+
+deactivate nameService
+
+note right : Username is now valid\nfor another year
+
+@enduml

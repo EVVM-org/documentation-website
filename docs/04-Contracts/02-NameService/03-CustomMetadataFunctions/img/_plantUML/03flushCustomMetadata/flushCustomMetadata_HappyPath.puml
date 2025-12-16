@@ -1,0 +1,63 @@
+@startuml
+
+<style>
+document {
+    BackGroundColor white
+}
+</style>
+
+actor "User or Service" as user
+participant "NameService" as nameService #00CEEE
+participant "EVVM" as evvm #00EE20
+
+title flushCustomMetadata Transaction Flow\n(Happy Path - Successful Execution)
+
+note right : Remove ALL metadata entries\nMore gas-efficient than individual removal\n\nBulk delete operation
+
+user -> nameService : flushCustomMetadata(···)
+
+activate nameService #00CEEE
+
+nameService -> nameService : onlyOwnerOfIdentity(···)
+
+nameService -> nameService : verifyIfNonceIsAvailable(···)
+
+nameService -> nameService : verifyMessageSignedForFlushCustomMetadata(···)
+
+nameService -> nameService : verify customMetadataMaxSlots > 0
+
+nameService -> nameService : makePay(···, getPriceToFlushCustomMetadata(identity), ···)
+
+alt #white priorityFlag_EVVM == true
+    nameService -> evvm : payStaker_async(···)
+    activate evvm #00EE20
+else #white priorityFlag_EVVM == false
+    nameService -> evvm : payStaker_sync(···)
+end
+
+evvm -> evvm : Verify payment inputs\nand update balances
+evvm -> nameService : Payment processed successfully
+deactivate evvm
+
+nameService -> nameService : for loop: delete all metadata entries\nfor (i = 0; i < maxSlots; i++)\n{ delete identityCustomMetadata[identity][i] }
+note right : Batch delete:\nMore gas efficient\nthan individual removals
+
+alt #white isAddressStaker(msg.sender)
+    nameService -> nameService : makeCaPay(..)
+    
+    nameService -> evvm : caPay(···)
+    activate evvm #00EE20
+    evvm -> evvm : Update balances for\nstaker rewards
+    evvm -> nameService : Reward distributed successfully
+    deactivate evvm
+    
+    note right : Staker receives\n(5x reward * entries count)\n+ priority fee\n\nReward scales with work
+end
+
+nameService -> nameService : identityDetails[identity].customMetadataMaxSlots = 0
+
+nameService -> nameService : nameServiceNonce[user][nonce] = true
+
+deactivate nameService
+
+@enduml

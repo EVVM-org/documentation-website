@@ -1,0 +1,59 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+title stakingBaseProcess() - Staking Flow\n(Happy Path - Successful Staking)
+
+participant "goldenStaking/\npresaleStaking/\npublicStaking" as caller
+participant "stakingBaseProcess" as base #FFD700
+participant "EVVM" as evvm #00EE20
+
+activate caller
+
+caller -> base : stakingBaseProcess(\n  AccountMetadata{Address, IsAService},\n  isStaking=true,\n  amountOfStaking, (···)\n)
+
+activate base #FFD700
+
+base -> base : Check time lock:\ngetTimeToUserUnlockStakingTime(account.Address) <= block.timestamp
+note right : ANTI-GAMING:\nMust wait after unstaking\nbefore staking again
+
+alt #white !account.IsAService
+    base -> base : makePay(\n      account.Address,\n      PRICE_OF_STAKING * amountOfStaking,\n      (···)\n    )
+    note right : PAYMENT:\nServices don't pay\n(handled separately)
+    
+    base -> evvm : pay(···)
+    activate evvm #00EE20
+    evvm -> evvm : Verify signature & nonce\nTransfer tokens
+    evvm --> base : Success
+    deactivate evvm
+end
+
+base -> evvm : pointStaker(account.Address, 0x01)
+activate evvm #00EE20
+evvm -> evvm : Grant staker status
+deactivate evvm
+
+base -> base : Calculate auxSMsteBalance:\n= previous totalStaked + amountOfStaking
+
+base -> base : Update userHistory:\npush HistoryMetadata{\n  type=1 (staking),\n  amount, timestamp,\n  totalStaked=auxSMsteBalance\n}
+
+alt #white msg.sender is staker && !account.IsAService
+    base -> base : makeCaPay(\n      PRINCIPAL_TOKEN_ADDRESS,\n      msg.sender,\n      (rewardAmount * 2) + priorityFee\n    )
+    note right : DOUBLE REWARD:\nStakers who help others\nearn 2x rewards
+    
+    base -> evvm : caPay(···)
+    activate evvm #00EE20
+    evvm --> base : Success
+    deactivate evvm
+end
+
+base --> caller : Staking completed
+
+deactivate base
+deactivate caller
+
+@enduml

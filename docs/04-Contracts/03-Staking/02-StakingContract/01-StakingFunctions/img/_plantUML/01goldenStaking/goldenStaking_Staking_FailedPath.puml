@@ -1,0 +1,78 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+title goldenStaking() Staking Flow\n(Failed Path - Error Handling)
+
+actor "Golden Fisher" as goldenFisher
+participant "Staking" as staking #FFD700
+participant "EVVM" as evvm #00EE20
+
+goldenFisher -> staking : goldenStaking(\n  isStaking=true,\n  amountOfStaking,\n  signature_EVVM\n)
+activate staking #FFD700
+
+staking -> staking : Verify msg.sender == goldenFisher.actual
+
+alt #f5b7b1 msg.sender != goldenFisher.actual
+    staking -x goldenFisher : Revert with SenderIsNotGoldenFisher
+    note right : SECURITY: Only\nauthorized Golden Fisher\ncan stake with this function
+    
+else #white Caller is Golden Fisher
+
+    staking -> staking : stakingBaseProcess(···)
+    
+    staking -> staking : Check time lock:\ngetTimeToUserUnlockStakingTime(goldenFisher.actual)
+    
+    alt #f5b7b1 Time lock not expired
+        staking -x goldenFisher : Revert with AddressMustWaitToStakeAgain
+        note right : Must wait after unstaking\nbefore staking again\n(Prevents gaming the system)
+        
+    else #white Time lock passed
+        
+        staking -> staking : makePay(···)
+        
+        staking -> evvm : pay(···)
+        activate evvm #00EE20
+        
+        alt #f5b7b1 Payment fails
+            evvm -x staking : Revert
+            staking -x goldenFisher : Payment error
+            note right : Could be:\n• Invalid signature\n• Nonce already used\n• Insufficient balance
+            
+        else #white Payment succeeds
+            evvm -> evvm : Transfer tokens
+            evvm --> staking : Payment successful
+            deactivate evvm
+            
+            staking -> evvm : pointStaker(goldenFisher.actual, 0x01)
+            activate evvm #00EE20
+            evvm -> evvm : Grant staker status
+            deactivate evvm
+            
+            staking -> staking : Update userHistory
+
+            alt #white msg.sender is staker
+                staking -> staking : makeCaPay(···)
+                
+                staking -> evvm : caPay(···)
+                activate evvm #00EE20
+                
+                alt #f5b7b1 Reward distribution fails
+                    evvm -x staking : caPay error
+                    staking -x goldenFisher : Reward failed
+                else #white Rewards distributed
+                    evvm -> evvm : Transfer rewards
+                    evvm --> staking : Success
+                    deactivate evvm
+                    deactivate staking
+                end
+            end
+        end
+    end
+end
+
+@enduml

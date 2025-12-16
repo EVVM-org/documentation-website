@@ -1,0 +1,42 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+participant "Smart Contract" as contract
+participant "EVVM" as evvm #00EE20
+
+title Contract Address Pay Transaction Flow\n(Failed Path - Error Handling)
+
+activate contract
+contract -> evvm : caPay(···)
+activate evvm #00EE20
+
+evvm -> evvm : assembly {\n    size := extcodesize(msg.sender)\n}
+
+alt #f5b7b1 size == 0 (EOA address)
+    evvm -x contract : Revert with NotAnCA
+    
+else #white size > 0 (Contract address)
+    
+    evvm -> evvm : _updateBalance(msg.sender, to, token, amount)
+    
+    alt #f5b7b1 _updateBalance returns false
+        evvm -x contract : Revert with UpdateBalanceFailed
+        
+    else #white _updateBalance succeeds
+        
+        alt #white isAddressStaker(msg.sender)
+            evvm -> evvm : _giveReward(msg.sender, 1)
+        end
+        
+        evvm --> contract : Payment completed successfully
+        deactivate evvm
+        deactivate contract
+    end
+end
+
+@enduml

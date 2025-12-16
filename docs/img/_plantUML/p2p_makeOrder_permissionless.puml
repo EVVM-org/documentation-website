@@ -1,0 +1,38 @@
+@startuml
+title makeOrder Permissionless Flow
+
+actor "User" as User
+participant "P2P\nSwap" as P2PSwap #BEA1EC
+participant "EVVM" as Evvm #72F6AA
+
+activate User #72AFF6
+User -> User: Sign order using ERC-191
+User -> User: Sign payment using ERC-191
+User -> P2PSwap: Send payload
+deactivate User
+
+activate P2PSwap #BEA1EC
+P2PSwap -> P2PSwap: Verify input data
+alt "Input data is valid"
+    
+    P2PSwap -> Evvm: Execute payment
+    activate Evvm #72F6AA
+    alt "Payment is valid"
+        Evvm -> P2PSwap: Reward and give\npriority fee
+        Evvm -> Evvm: Update nonce for User
+        P2PSwap -> P2PSwap: Make order
+        alt "User has sMate"
+            P2PSwap -> User: Reward with Mate\nand reclaim token\n(if user gives a priority fee)
+        end
+        P2PSwap -> P2PSwap: Update P2P nonce
+        deactivate Evvm
+    else "Payment is invalid"
+        Evvm -> P2PSwap: Revert
+        P2PSwap -> User: Revert
+        deactivate Evvm
+    end
+else "Input data is invalid"
+    P2PSwap -> User: Revert
+end
+
+@enduml

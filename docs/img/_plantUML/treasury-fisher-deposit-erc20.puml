@@ -1,0 +1,56 @@
+@startuml
+title FisherDepositERC20 Process
+
+actor User
+participant "Treasury.sol" as Treasury #8472F6
+participant "Token\nContract" as TokenContract #72AFF6
+participant "Token/ETH\nUniswap Pool" as UniswapPool #F672EF
+participant "Fisher" as Fisher #F6C472
+participant "EVVM" as MateMetaprotocol #72F6AA
+
+User -> Treasury: fisherDepositERC20
+activate User
+    User -> Treasury: getIfTokenIsWhitelisted
+    Treasury --> User: TokenWhitelistedStatus
+    User -> TokenContract: approve
+    User -> Treasury: deposit
+    deactivate User
+    activate Treasury #8472F6
+    Treasury -> Treasury: verify signature
+    alt valid signature
+        Treasury -> Treasury: verify if token is whitelisted
+        alt tokenWhitelistedStatus == true
+            Treasury -> UniswapPool: get amount of token in ETH
+            activate UniswapPool #F672EF
+            UniswapPool --> Treasury: amount of token in ETH
+            deactivate UniswapPool
+            Treasury -> Treasury: verifyMaxAmount
+            alt amount <= maxAmount
+                Treasury -> TokenContract: get tokens to Treasury
+                alt tokens transfered
+                    TokenContract --> Treasury: Tokens transfered
+                    Treasury --> Treasury: Deposit ERC20 Event
+                    Fisher -> Treasury: Get the event
+                    activate Fisher #F6C472
+                    Fisher -> MateMetaprotocol: Execute deposit
+                    deactivate Fisher
+                    activate MateMetaprotocol #72F6AA
+                    MateMetaprotocol --> User: Tokens balance updated
+                    MateMetaprotocol --> Fisher: Tokens balance reward updated
+                    deactivate MateMetaprotocol
+                else tokens not transfered
+                    Treasury --> User: Revert transaction
+                end
+            else msg.value > maxAmount
+                Treasury --> User: Revert transaction
+            end
+        else tokenWhitelistedStatus == false
+            Treasury --> User: Revert transaction
+        end
+       
+    else invalid signature
+        Treasury --> User: Revert transaction
+        deactivate Treasury
+    end
+
+@enduml

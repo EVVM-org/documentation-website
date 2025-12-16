@@ -1,0 +1,39 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+title presaleClaims() - Staking Flow\n(Failed Path - Staking Errors)
+
+participant "presaleStaking" as caller
+participant "presaleClaims" as presale #FFD700
+
+caller -> presale : presaleClaims(_isStaking=true, _user)
+activate presale #FFD700
+
+alt #f5b7b1 allowPublicStaking.flag == true
+    presale -x caller : Revert with PresaleStakingDisabled
+    note right : PHASE ENDED:\nPresale closed when\npublic staking opens
+
+else #white allowPublicStaking == false
+    alt #f5b7b1 userPresaleStaker[_user].isAllow == false
+        presale -x caller : Revert with UserIsNotPresaleStaker
+        note right : NOT WHITELISTED:\nUser not in approved\npresale staker list
+    
+    else #white User is whitelisted
+        alt #f5b7b1 userPresaleStaker[_user].stakingAmount >= 2
+            presale -x caller : Revert with UserPresaleStakerLimitExceeded
+            note right : LIMIT REACHED:\nUser already staked\nmaximum 2 tokens
+        
+        else #white Limit not exceeded
+            presale -> presale : userPresaleStaker[_user].stakingAmount++
+            presale --> caller : Success
+            deactivate presale
+        end
+    end
+end
+
+@enduml

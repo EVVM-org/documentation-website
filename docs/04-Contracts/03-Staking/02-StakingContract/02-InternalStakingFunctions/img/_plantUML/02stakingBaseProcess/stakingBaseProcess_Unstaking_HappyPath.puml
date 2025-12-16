@@ -1,0 +1,71 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+title stakingBaseProcess() - Unstaking Flow\n(Happy Path - Successful Unstaking)
+
+participant "goldenStaking/\npresaleStaking/\npublicStaking/\nserviceUnstaking" as caller
+participant "stakingBaseProcess" as base #FFD700
+participant "EVVM" as evvm #00EE20
+
+activate caller
+
+caller -> base : stakingBaseProcess(\n  AccountMetadata{Address, IsAService},\n  isStaking=false,\n  amountOfStaking, (···)\n)
+
+activate base #FFD700
+
+alt #white Full unstaking (amount == getUserAmountStaked)
+    base -> base : Check time lock:\ngetTimeToUserUnlockFullUnstakingTime(account.Address) <= block.timestamp
+    note right : 21-DAY RESTRICTION:\nFull unstaking requires\nwaiting period
+    
+    base -> evvm : pointStaker(account.Address, 0x00)
+    activate evvm #00EE20
+    evvm -> evvm : Remove staker status
+    deactivate evvm
+else #white Partial unstaking
+    note right : No time lock for\npartial unstaking
+end
+
+alt #white priorityFee != 0 && !account.IsAService
+    base -> base : makePay(···)
+    note right : OPTIONAL:\nPriority fee payment
+    
+    base -> evvm : pay(···)
+    activate evvm #00EE20
+    evvm --> base : Success
+    deactivate evvm
+end
+
+base -> base : Calculate auxSMsteBalance:\n= previous totalStaked - amountOfStaking
+
+base -> base : makeCaPay(\n  PRINCIPAL_TOKEN_ADDRESS,\n  account.Address,\n  PRICE_OF_STAKING * amountOfStaking\n)
+
+base -> evvm : caPay(···)
+activate evvm #00EE20
+evvm -> evvm : Transfer refund to user
+evvm --> base : Success
+deactivate evvm
+
+base -> base : Update userHistory:\npush HistoryMetadata{\n  type=2 (unstaking),\n  amount, timestamp,\n  totalStaked=auxSMsteBalance\n}
+
+alt #white msg.sender is staker && !account.IsAService
+    base -> base : makeCaPay(···)
+    
+    base -> evvm : caPay(···)
+    activate evvm #00EE20
+    evvm --> base : Success
+    deactivate evvm
+    
+    note right : DOUBLE REWARD
+end
+
+base --> caller : Unstaking completed
+
+deactivate base
+deactivate caller
+
+@enduml

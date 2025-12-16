@@ -1,0 +1,68 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+title publicStaking() Unstaking Flow\n(Happy Path - Successful Execution)
+
+actor "Public User" as user
+participant "Staking" as staking #FFD700
+participant "EVVM" as evvm #00EE20
+
+activate user
+
+user -> staking : publicStaking(\n  user, isStaking=false, amountOfStaking,\n  nonce, signature, priorityFee_EVVM, (···)\n)
+
+deactivate user
+
+activate staking #FFD700
+
+staking -> staking : Verify allowPublicStaking.flag == true
+
+staking -> staking : verifyMessageSignedForStake(\n  evvmID, user, isPublic=true,\n  isStaking=false, amountOfStaking,\n  nonce, signature\n)
+
+staking -> staking : checkIfStakeNonceUsed(user, nonce)
+
+staking -> staking : stakingBaseProcess(\n  AccountMetadata{user, false},\n  isStaking=false,\n  amountOfStaking,\n  priorityFee_EVVM, nonce_EVVM,\n  priorityFlag_EVVM, signature_EVVM\n)
+
+alt #white Full unstaking (amountOfStaking == getUserAmountStaked)
+    staking -> staking : Check time lock:\ngetTimeToUserUnlockFullUnstakingTime(user) <= block.timestamp
+    note right : 21-DAY RESTRICTION:\nMust wait for full unstaking
+    
+    staking -> evvm : pointStaker(user, 0x00)
+    activate evvm #00EE20
+    evvm -> evvm : Remove staker status
+    deactivate evvm
+else #white Partial unstaking
+    note right : No time lock\nfor partial unstaking
+end
+
+staking -> staking : Update userHistory
+
+staking -> staking : makeCaPay(\n  PRINCIPAL_TOKEN_ADDRESS,\n  user,\n  PRICE_OF_STAKING * amountOfStaking\n)
+
+staking -> evvm : caPay(···)
+activate evvm #00EE20
+evvm -> evvm : Transfer refund to user
+evvm --> staking : Refund successful
+deactivate evvm
+
+staking -> staking : stakingNonce[user][nonce] = true
+
+alt #white msg.sender is staker
+    staking -> staking : makeCaPay(···)
+    
+    staking -> evvm : caPay(···)
+    activate evvm #00EE20
+    evvm -> evvm : Transfer rewards
+    evvm --> staking : Success
+    deactivate evvm
+    
+    note right : DOUBLE REWARD
+    deactivate staking
+end
+
+@enduml

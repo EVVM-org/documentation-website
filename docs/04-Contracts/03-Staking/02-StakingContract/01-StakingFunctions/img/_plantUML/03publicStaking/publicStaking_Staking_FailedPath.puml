@@ -1,0 +1,95 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+title publicStaking() Staking Flow\n(Failed Path - Error Handling)
+
+actor "Public User" as user
+participant "Staking" as staking #FFD700
+participant "EVVM" as evvm #00EE20
+
+user -> staking : publicStaking(\n  user, isStaking=true, amountOfStaking,\n  nonce, signature, (···)\n)
+activate staking #FFD700
+
+staking -> staking : Verify allowPublicStaking.flag == true
+
+alt #f5b7b1 allowPublicStaking.flag == false
+    staking -x user : Revert (generic)
+    note right : PUBLIC PHASE NOT STARTED:\nGovernance has not yet\nenabled public staking
+    
+else #white Public staking enabled
+
+    staking -> staking : verifyMessageSignedForStake(···)
+    
+    alt #f5b7b1 Invalid signature
+        staking -x user : Revert with InvalidSignatureOnStaking
+        note right : SECURITY: EIP-712\nsignature must match\nuser, amountOfStaking, nonce
+        
+    else #white Signature valid
+
+        staking -> staking : checkIfStakeNonceUsed(user, nonce)
+        
+        alt #f5b7b1 Nonce already used
+            staking -x user : Revert with StakingNonceAlreadyUsed
+            note right : ANTI-REPLAY:\nEach nonce can only\nbe used once
+            
+        else #white Nonce available
+        
+            staking -> staking : stakingBaseProcess(···)
+            
+            staking -> staking : Check time lock
+            
+            alt #f5b7b1 Time lock not expired
+                staking -x user : Revert with AddressMustWaitToStakeAgain
+                note right : Must wait after unstaking\nbefore staking again\n(Prevents gaming rewards)
+                
+            else #white Time lock passed
+                
+                staking -> staking : makePay(···)
+                
+                staking -> evvm : pay(···)
+                activate evvm #00EE20
+                
+                alt #f5b7b1 Payment fails
+                    evvm -x staking : Revert
+                    staking -x user : Payment error
+                    note right : Could be:\n• Invalid signature_EVVM\n• Nonce_EVVM already used\n• Insufficient balance
+                    
+                else #white Payment succeeds
+                    evvm --> staking : Success
+                    deactivate evvm
+                    
+                    staking -> evvm : pointStaker(user, 0x01)
+                    activate evvm #00EE20
+                    deactivate evvm
+                    
+                    staking -> staking : Update userHistory
+                    
+                    staking -> staking : stakingNonce[user][nonce] = true
+                    
+                    alt #white msg.sender is staker
+                        staking -> staking : makeCaPay(···)
+                        
+                        staking -> evvm : caPay(···)
+                        activate evvm #00EE20
+                        
+                        alt #f5b7b1 Reward fails
+                            evvm -x staking : Error
+                            staking -x user : Reward failed
+                        else #white Rewards sent
+                            evvm --> staking : Success
+                            deactivate evvm
+                            deactivate staking
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+@enduml

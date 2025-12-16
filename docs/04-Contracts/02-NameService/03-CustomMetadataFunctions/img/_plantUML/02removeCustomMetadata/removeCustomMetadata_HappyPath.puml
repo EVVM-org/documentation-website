@@ -1,0 +1,69 @@
+@startuml
+
+<style>
+document {
+    BackGroundColor white
+}
+</style>
+
+actor "User or Service" as user
+participant "NameService" as nameService #00CEEE
+participant "EVVM" as evvm #00EE20
+
+title removeCustomMetadata Transaction Flow\n(Happy Path - Successful Execution)
+
+note right : Remove metadata by key index\nReorders array automatically\n\nGas cost varies by position
+
+user -> nameService : removeCustomMetadata(···)
+
+activate nameService #00CEEE
+
+nameService -> nameService : onlyOwnerOfIdentity(···)
+
+nameService -> nameService : verifyIfNonceIsAvailable(···)
+
+nameService -> nameService : verifyMessageSignedForRemoveCustomMetadata(···)
+
+nameService -> nameService : verify key < customMetadataMaxSlots
+
+nameService -> nameService : makePay(···, getPriceToRemoveCustomMetadata(), ···)
+
+alt #white priorityFlag_EVVM == true
+    nameService -> evvm : payStaker_async(···)
+    activate evvm #00EE20
+else #white priorityFlag_EVVM == false
+    nameService -> evvm : payStaker_sync(···)
+end
+
+evvm -> evvm : Verify payment inputs\nand update balances
+evvm -> nameService : Payment processed successfully
+deactivate evvm
+
+alt #white key == customMetadataMaxSlots - 1
+    nameService -> nameService : delete identityCustomMetadata[identity][key]
+    note right : Last element - simple delete\nO(1) operation
+else #white key < customMetadataMaxSlots - 1
+    nameService -> nameService : for loop: shift all elements left\nfrom key position to fill gap
+    nameService -> nameService : delete identityCustomMetadata[identity][maxSlots]
+    note right : Reorder array - shift elements\nO(n) operation - more expensive
+end
+
+nameService -> nameService : identityDetails[identity].customMetadataMaxSlots--
+
+nameService -> nameService : nameServiceNonce[user][nonce] = true
+
+alt #white isAddressStaker(msg.sender)
+    nameService -> nameService : makeCaPay(..)
+    
+    nameService -> evvm : caPay(···)
+    activate evvm #00EE20
+    evvm -> evvm : Update balances for\nstaker rewards
+    evvm -> nameService : Reward distributed successfully
+    deactivate evvm
+    
+    note right : Staker receives\n5x reward + priority fee
+end
+
+deactivate nameService
+
+@enduml

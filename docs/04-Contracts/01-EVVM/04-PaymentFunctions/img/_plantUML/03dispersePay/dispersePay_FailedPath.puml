@@ -1,0 +1,98 @@
+@startuml
+
+<style>
+document {
+    BackGroundColor white
+}
+</style>
+
+actor "Fisher or User" as executor 
+participant "EVVM" as evvm #00EE20
+participant "NameService" as mns #00CEEE
+
+title Disperse Pay Transaction Flow\n(Failed Path - Error Handling)
+
+activate executor
+executor -> evvm : dispersePay(···)
+activate evvm #00EE20
+
+evvm -> evvm : verifyMessageSignedForDispersePay()
+
+alt #f5b7b1 Signature is invalid
+    evvm -x executor : Revert with InvalidSignature
+
+else #white Signature is valid
+
+    alt #white executor != address(0)
+        evvm -> evvm : verify if msg.sender == executor
+        alt #f5b7b1 msg.sender != executor
+            evvm -x executor : Revert with SenderIsNotTheExecutor
+        end
+    end
+
+    alt #white priorityFlag == true
+        evvm -> evvm : verify async nonce not used
+        alt #f5b7b1 nonce already used
+            evvm -x executor : Revert with InvalidAsyncNonce
+        end
+    end
+
+    evvm -> evvm : verify balance (amount + priorityFee)
+    alt #f5b7b1 not enough balance
+        evvm -x executor : Revert with InsufficientBalance
+
+    else #white has enough balance
+
+        evvm -> evvm : balances[from][token] -= (amount + priorityFee)
+        evvm -> evvm : acomulatedAmount = 0
+
+        == Begin For Loop ==
+
+        evvm -> evvm : acomulatedAmount += toData[i].amount
+
+        alt #white toData[i].to_identity != ""
+            evvm -> mns : strictVerifyIfIdentityExist(to_identity)
+            alt #f5b7b1 Identity does not exist
+                note right : Identity validation fails\nbut loop continues
+                evvm -> evvm : to_aux remains undefined
+            else #white Identity exists
+                evvm -> mns : getOwnerOfIdentity(to_identity)
+                mns --> evvm : return owner address
+            end
+        else #white toData[i].to_identity == ""
+            evvm -> evvm : use toData[i].to_address
+        end
+
+        evvm -> evvm : balances[to_aux][token] += toData[i].amount
+
+        == End For Loop ==
+
+        evvm -> evvm : verify acomulatedAmount == amount
+        alt #f5b7b1 acomulatedAmount != amount
+            evvm -x executor : Revert with\nInvalidAmount(acomulatedAmount, amount)
+
+        else #white amounts match
+
+            alt #white isAddressStaker(msg.sender)
+                evvm -> evvm : _giveReward(msg.sender, 1)
+                evvm -> evvm : balances[msg.sender][token] += priorityFee
+            else #white not a staker
+                evvm -> evvm : balances[from][token] += priorityFee
+            end
+
+            alt #white priorityFlag == true
+                evvm -> evvm : asyncUsedNonce[from][nonce] = true
+            else #white priorityFlag == false
+                evvm -> evvm : nextSyncUsedNonce[from]++
+            end
+
+            evvm --> executor : Transaction completed successfully
+            deactivate evvm
+            deactivate executor
+        end
+    end
+end
+
+
+
+@enduml

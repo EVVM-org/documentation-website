@@ -1,0 +1,36 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+title presaleClaims() - Unstaking Flow\n(Happy Path - Successful Unstaking)
+
+participant "presaleStaking" as caller
+participant "presaleClaims" as presale #FFD700
+
+activate caller
+
+caller -> presale : presaleClaims(_isStaking=false, _user)
+
+activate presale #FFD700
+
+presale -> presale : Verify allowPublicStaking.flag == false
+note right : PRESALE PERIOD:\nMust not be in public phase
+
+presale -> presale : Verify userPresaleStaker[_user].isAllow == true
+
+presale -> presale : Verify userPresaleStaker[_user].stakingAmount > 0
+note right : VALIDATION:\nUser must have tokens\nstaked to unstake
+
+presale -> presale : userPresaleStaker[_user].stakingAmount--
+note right : DECREMENT:\nAllows user to stake\nagain later (up to 2 total)
+
+presale --> caller : Validation successful
+
+deactivate presale
+deactivate caller
+
+@enduml

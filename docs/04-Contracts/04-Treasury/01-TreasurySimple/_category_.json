@@ -1,0 +1,8 @@
+{
+  "label": "Treasury.sol (same host chain)",
+  "position": 1,
+  "link": {
+    "type": "generated-index",
+    "description": "Single-chain treasury solution for direct asset management within EVVM when operating on the same blockchain as user assets."
+  }
+}

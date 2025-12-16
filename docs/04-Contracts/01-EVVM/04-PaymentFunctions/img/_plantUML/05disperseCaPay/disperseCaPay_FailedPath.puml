@@ -1,0 +1,68 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+participant "Smart Contract" as contract
+participant "EVVM" as evvm #00EE20
+
+title Disperse Contract Address Pay Transaction Flow\n(Failed Path - Error Handling)
+
+activate contract 
+contract -> evvm : disperseCaPay(···)
+activate evvm #00EE20
+
+evvm -> evvm : assembly {\n    size := extcodesize(msg.sender)\n}
+
+alt #f5b7b1 size == 0 (EOA address)
+    evvm -x contract : Revert with NotAnCA
+
+else #white size > 0 (Contract address)
+    
+    evvm -> evvm : verify balances[msg.sender][token] >= amount
+    
+    alt #f5b7b1 insufficient balance
+        evvm -x contract : Revert with InsufficientBalance
+        
+    else #white sufficient balance
+        
+        evvm -> evvm : balances[msg.sender][token] -= amount
+        evvm -> evvm : acomulatedAmount = 0
+
+        == Begin For Loop ==
+        
+        evvm -> evvm : acomulatedAmount += toData[i].amount
+        
+        alt #f5b7b1 acomulatedAmount > amount
+            evvm -x contract : Revert with InvalidAmount\n(acomulatedAmount, amount)
+            
+        else #white amount valid so far
+            evvm -> evvm : balances[toData[i].toAddress][token] += toData[i].amount
+            
+        end
+
+        == End For Loop ==
+
+        evvm -> evvm : verify acomulatedAmount == amount
+        
+        alt #f5b7b1 acomulatedAmount != amount
+            evvm -x contract : Revert with InvalidAmount\n(acomulatedAmount, amount)
+            
+        else #white amounts match exactly
+            
+            alt #white isAddressStaker(msg.sender)
+                evvm -> evvm : _giveReward(msg.sender, 1)
+            end
+            
+            evvm --> contract : Distribution completed successfully
+            deactivate evvm
+            deactivate contract
+        
+        end
+    end
+end
+
+@enduml

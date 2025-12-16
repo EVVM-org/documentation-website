@@ -1,0 +1,58 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+participant "Service Contract" as service
+participant "Staking" as staking #FFD700
+participant "EVVM" as evvm #00EE20
+
+title serviceUnstaking Transaction Flow\n(Happy Path - Successful Execution)
+
+activate service
+service -> staking : serviceUnstaking(\n  amountOfStaking\n)
+activate staking #FFD700
+
+staking -> staking : onlyCA modifier check
+
+staking -> staking : Retrieve AccountMetadata{\n  account: msg.sender,\n  IsAService: true\n}
+
+staking -> staking : Calculate token return:\namountOfTokenToReturn = amountOfStaking * PRICE_OF_STAKING
+
+alt #white Full unstaking (amountOfStaking == stakingData.stakingBalance)
+    staking -> staking : Check time lock:\nblock.timestamp >= (stakingTimestamp + 21 days)
+    note right : RESTRICTION: Full unstaking\nrequires 21-day lock period\nto prevent abuse
+    
+    staking -> staking : stakingBaseProcess(\n  accountMetadata,\n  isStaking=false,\n  amountOfStaking,\n  0, 0, 0, false, address(0), 0x0\n)
+    note right : Core unstaking logic:\n- Updates staking balance\n- Records history\n- Updates staker status if needed
+
+    staking -> evvm : caPay(\n  to: service,\n  amount: amountOfTokenToReturn,\n  (···)\n)
+    activate evvm #00EE20
+    note right : Return tokens:\nNo signatures needed\nfor service unstaking
+    evvm --> staking : Transfer completed
+    deactivate evvm
+
+    staking -> evvm : pointStaker(service, 0x00)
+    activate evvm #00EE20
+    note right : Remove staker status:\nService loses reward\nearning capability
+    evvm --> staking : Status removed
+    deactivate evvm
+    
+else #white Partial unstaking
+    staking -> staking : stakingBaseProcess(\n  accountMetadata,\n  isStaking=false,\n  amountOfStaking,\n  0, 0, 0, false, address(0), 0x0\n)
+    note right : Partial unstaking:\n- No time lock restriction\n- Maintains staker status\n- Flexible withdrawal
+
+    staking -> evvm : caPay(\n  to: service,\n  amount: amountOfTokenToReturn,\n  (···)\n)
+    activate evvm #00EE20
+    evvm --> staking : Transfer completed
+    deactivate evvm
+end
+
+staking --> service : Unstaking completed successfully
+
+deactivate staking
+
+@enduml

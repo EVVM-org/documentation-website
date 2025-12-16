@@ -1,0 +1,68 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+title presaleStaking() Staking Flow\n(Happy Path - Successful Execution)
+
+actor "Presale User" as user
+participant "Staking" as staking #FFD700
+participant "EVVM" as evvm #00EE20
+
+activate user
+
+user -> staking : presaleStaking(\n  user, isStaking=true, nonce,\n  signature, priorityFee_EVVM, (···)\n)
+
+deactivate user
+
+activate staking #FFD700
+
+staking -> staking : verifyMessageSignedForStake(\n  evvmID, user, isPublic=false,\n  isStaking=true, amount=1, nonce, signature\n)
+note right : SIGNATURE VERIFICATION:\nFixed amount=1 for presale\nUser must sign with EIP-712
+
+staking -> staking : checkIfStakeNonceUsed(user, nonce)
+
+staking -> staking : presaleClaims(isStaking=true, user)
+note right : PRESALE VALIDATION:\n- Verify allowPublicStaking=false\n- Verify userPresaleStaker[user].isAllow\n- Check stakingAmount < 2\n- Increment stakingAmount++
+
+staking -> staking : Verify allowPresaleStaking.flag == true
+
+staking -> staking : stakingBaseProcess(\n  AccountMetadata{user, false},\n  isStaking=true,\n  amountOfStaking=1,\n  priorityFee_EVVM, nonce_EVVM,\n  priorityFlag_EVVM, signature_EVVM\n)
+note right : FIXED AMOUNT:\nPresale users can only\nstake 1 token at a time\n(max 2 tokens total)
+
+staking -> staking : Check time lock:\ngetTimeToUserUnlockStakingTime(user) <= block.timestamp
+
+staking -> staking : makePay(\n  user,\n  PRICE_OF_STAKING * 1,\n  (···)\n)
+
+staking -> evvm : pay(···)
+activate evvm #00EE20
+evvm -> evvm : Verify signature and nonce\nTransfer tokens to Staking
+evvm --> staking : Payment successful
+deactivate evvm
+
+staking -> evvm : pointStaker(user, 0x01)
+activate evvm #00EE20
+evvm -> evvm : Grant staker status
+deactivate evvm
+
+staking -> staking : Update userHistory
+
+staking -> staking : stakingNonce[user][nonce] = true
+
+alt #white msg.sender is staker
+    staking -> staking : makeCaPay(···)
+    
+    staking -> evvm : caPay(···)
+    activate evvm #00EE20
+    evvm -> evvm : Transfer rewards
+    evvm --> staking : Success
+    deactivate evvm
+    
+    note right : DOUBLE REWARD:\nStakers earn 2x rewards
+    deactivate staking
+end
+
+@enduml

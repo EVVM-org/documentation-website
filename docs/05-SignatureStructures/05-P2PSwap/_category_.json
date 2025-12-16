@@ -1,0 +1,8 @@
+{
+  "label": "P2P Swap Signatures",
+  "description": "Signature structures for P2P Swap contract operations",
+  "position": 1,
+  "link": {
+    "type": "generated-index"
+  }
+}

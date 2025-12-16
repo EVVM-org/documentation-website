@@ -1,0 +1,100 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+actor "User or Service" as user
+participant "NameService" as nameService #00CEEE
+participant "EVVM" as evvm #00EE20
+
+title renewUsername Transaction Flow\n(Failed Path - Error Handling)
+
+user -> nameService : renewUsername(···)
+activate nameService #00CEEE
+
+nameService -> nameService : onlyOwnerOfIdentity(user, username)
+
+alt #f5b7b1 User is not the owner of the username
+    nameService -x user : Revert with\nOwnershipVerificationFailed
+    note right : Only the current username\nowner can renew it
+    
+else #white User owns the username
+
+    nameService -> nameService : verifyIfNonceIsAvailable(user, nonce)
+
+    alt #f5b7b1 nameServiceNonce[user][nonce] == true
+        nameService -x user : Revert with\nNonceAlreadyUsed
+        
+    else #white Nonce is available
+
+        nameService -> nameService : Validate renewal conditions
+
+        alt #f5b7b1 Renewal validation fails
+            nameService -x user : Revert with\nRenewUsernameVerificationFailed
+            note right : Could be:\n• flagNotAUsername == 0x01 (not a username)\n• expireDate > block.timestamp + 36500 days\n  (trying to renew >100 years in advance)
+            
+        else #white Renewal conditions are valid
+
+            nameService -> nameService : verifyMessageSignedForRenewUsername(···)
+
+            alt #f5b7b1 Signature verification fails
+                nameService -x user : Revert with\nInvalidSignatureOnNameService
+                note right : Invalid signature for:\n• user\n• username\n• nonce
+                
+            else #white Signature is valid
+
+                nameService -> nameService : priceOfRenew = seePriceToRenew(username)
+
+                nameService -> nameService : makePay(user, priceOfRenew, ···)
+
+                alt #white priorityFlag_EVVM == true
+                    nameService -> evvm : payStaker_async(···)
+                    activate evvm #00EE20
+                else #white priorityFlag_EVVM == false
+                    nameService -> evvm : payStaker_sync(···)
+                end
+
+                evvm -> evvm : Verify payment inputs
+
+                alt #f5b7b1 Renewal payment fails
+                    evvm -x user : Revert with\npayment error
+                    note right : Could be:\n• Insufficient balance for renewal\n• Invalid EVVM nonce\n• Invalid EVVM signature
+                else #white Renewal payment succeeds
+                    evvm -> evvm : Update balances
+                    evvm -> nameService : Payment processed
+                    deactivate evvm
+
+                    alt #white isAddressStaker(msg.sender)
+                        nameService -> nameService : makeCaPay(msg.sender,\ngetRewardAmount() + (priceOfRenew * 50) / 100 + priorityFee_EVVM)
+
+                        nameService -> evvm : caPay(msg.sender, reward)
+                        activate evvm #00EE20
+
+                        alt #f5b7b1 Staker reward caPay fails
+                            evvm -x user : Revert with\ncaPay error
+                            note right : Contract balance issues\nor other EVVM errors
+                        else #white Staker reward succeeds
+                            evvm -> evvm : Distribute staker rewards
+                            evvm -> nameService : Reward distributed
+                            deactivate evvm
+                        end
+                        
+                    end
+
+                    nameService -> nameService : Extend expiration:\nidentityDetails[username].expireDate += 366 days
+
+                    nameService -> nameService : nameServiceNonce[user][nonce] = true
+
+                    nameService --> user : Username renewed successfully\nExtended by 366 days
+                end
+            end
+        end
+    end
+end
+
+deactivate nameService
+
+@enduml

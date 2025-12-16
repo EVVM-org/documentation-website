@@ -1,0 +1,40 @@
+@startuml
+title FisherDepositETH Process
+
+actor User
+participant "Treasury.sol" as Treasury #8472F6
+participant "Fisher" as Fisher #F6C472
+participant "EVVM" as MateMetaprotocol #72F6AA
+
+User -> Treasury: fisherDepositETH
+activate Treasury #8472F6
+    Treasury -> Treasury: verify signature
+    alt valid signature
+        Treasury -> Treasury: verify amount to deposit
+        alt msg.value == amountETH + priorityFee
+            Treasury -> Treasury: verifyMaxAmount
+            alt msg.value <= maxAmount
+                Treasury --> Treasury: Deposit ETH Event
+                deactivate Treasury
+                Fisher -> Treasury: get the event
+                activate Fisher #F6C472
+                Fisher -> MateMetaprotocol: execute deposit
+                deactivate Fisher
+                activate MateMetaprotocol #72F6AA
+                MateMetaprotocol --> User: ETH balance updated
+                MateMetaprotocol --> Fisher: ETH balance reward updated
+                deactivate MateMetaprotocol
+            else msg.value > maxAmount
+                Treasury --> User: Revert transaction
+                deactivate Treasury
+            end
+        else msg.value!= amountETH + priorityFee
+            Treasury --> User: Revert transaction
+            deactivate Treasury
+        end
+    else invalid signature
+        Treasury --> User: Revert transaction
+        deactivate Treasury
+    end
+
+@enduml

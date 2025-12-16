@@ -1,0 +1,12 @@
+{
+  "label": "NPM Libraries",
+  "position": 1,
+  "description": "Collection of NPM libraries for interacting with EVVM services and contracts",
+  "link": {
+    "type": "generated-index",
+    "title": "EVVM NPM Libraries",
+    "description": "Explore the official NPM libraries designed for seamless integration with EVVM services and contracts.",
+    "slug": "/npm-libraries"
+    
+  }
+}

@@ -1,0 +1,75 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+actor "User or Service" as user
+participant "NameService" as nameService #00CEEE
+participant "EVVM" as evvm #00EE20
+
+title makeOffer Transaction Flow\n(Happy Path - Successful Execution)
+
+activate user
+note right : User provides:\n• Target username\n• Offer amount\n• Expiry date\n• All required signatures
+
+user -> nameService : makeOffer(···)
+deactivate user
+activate nameService #00CEEE
+
+nameService -> nameService : verifyIfNonceIsAvailable(···)
+
+nameService -> nameService : Validate offer conditions:\n• flagNotAUsername != 0x01\n• verifyIfIdentityExists(username)\n• amount > 0\n• expireDate > block.timestamp
+
+nameService -> nameService : verifyMessageSignedForMakeOffer(···)
+
+nameService -> nameService : makePay(user, amount, ···)
+
+alt #white priorityFlag_EVVM == true
+    nameService -> evvm : payStaker_async(···)
+    activate evvm #00EE20
+else #white priorityFlag_EVVM == false
+    nameService -> evvm : payStaker_sync(···)
+end
+
+evvm -> evvm : Verify payment inputs\nand update balances
+evvm -> nameService : Payment processed successfully
+deactivate evvm
+
+nameService -> nameService : Find available offerID:\nwhile (\n usernameOffers[username][offerID].offerer != address(0)\n)\n    offerID++
+
+nameService -> nameService : Store offer:\nusernameOffers[username][offerID] = {\n  offerer: user,\n  expireDate: expireDate,\n  amount: (amount * 995) / 1000\n}
+note right : 0.5% marketplace fee\ndeducted upfront\nAmount locked until\naccepted or withdrawn
+
+alt #white isAddressStaker(msg.sender)
+    nameService -> nameService : makeCaPay(msg.sender,\ngetRewardAmount() + priorityFee_EVVM)
+
+    nameService -> evvm : caPay(···)
+    activate evvm #00EE20
+    evvm -> evvm : Update balances for\nstaker rewards
+    evvm -> nameService : Reward distributed successfully
+    deactivate evvm
+    
+    note right : Only stakers receive\nreward + priority fee
+end
+
+nameService -> nameService : Update locked tokens:\nmateTokenLockedForWithdrawOffers +=\n((amount * 995) / 1000) + (amount / 800)
+note right : Global lock tracking:\nPrevents NameService\nfrom running out of funds
+
+alt #white offerID > identityDetails[username].offerMaxSlots
+    nameService -> nameService : identityDetails[username].offerMaxSlots++
+else #white identityDetails[username].offerMaxSlots == 0
+    nameService -> nameService : identityDetails[username].offerMaxSlots++
+end
+
+nameService -> nameService : nameServiceNonce[user][nonce] = true
+
+nameService --> user : Offer created successfully\nwith offerID: {offerID}
+
+deactivate nameService
+
+note right : Offer amount is locked\nuntil accepted or withdrawn
+
+@enduml

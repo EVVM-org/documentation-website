@@ -1,0 +1,9 @@
+{
+  "label": "Estimator.sol",
+  "position": 3,
+  "description": "Epoch-based reward calculation and distribution system for stakers",
+  "link": {
+    "type": "generated-index",
+    "description": "The Estimator contract calculates and distributes time-weighted staking rewards based on epoch periods. It implements mathematical algorithms to fairly distribute rewards proportional to users' staking participation over time, manages epoch transitions, and provides administrative governance with time-delayed proposals for system security."
+  }
+}

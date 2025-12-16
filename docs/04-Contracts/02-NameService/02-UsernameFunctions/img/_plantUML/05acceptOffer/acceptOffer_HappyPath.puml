@@ -1,0 +1,80 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+actor "User or Service" as user
+participant "NameService" as nameService #00CEEE
+participant "EVVM" as evvm #00EE20
+
+title acceptOffer Transaction Flow\n(Happy Path - Successful Execution)
+
+
+user -> nameService : acceptOffer(···)
+
+activate nameService #00CEEE
+
+nameService -> nameService : onlyOwnerOfIdentity(user, username)
+
+nameService -> nameService : verifyIfNonceIsAvailable(user, nonce)
+
+nameService -> nameService : Validate offer:\n• Is the offer still valid?\n• the offer does not expire
+
+nameService -> nameService : verifyMessageSignedForAcceptOffer(···)
+
+alt #white priorityFee_EVVM > 0
+    nameService -> nameService : makePay(user, 0, priorityFee_EVVM, ···)
+    
+    alt #white priorityFlag_EVVM == true
+        nameService -> evvm : payStaker_async(···)
+        activate evvm #00EE20
+    else #white priorityFlag_EVVM == false
+        nameService -> evvm : payStaker_sync(···)
+    end
+    
+    evvm -> evvm : Verify payment inputs\nand update balances
+    evvm -> nameService : Priority fee payment processed
+    deactivate evvm
+    
+    note right : Optional priority fee\nfor faster processing
+end
+
+nameService -> nameService : makeCaPay(···)
+
+nameService -> evvm : caPay(user, amount)
+activate evvm #00EE20
+evvm -> evvm : Transfer offer amount\nto username seller
+evvm -> nameService : Payment to seller completed
+deactivate evvm
+
+nameService -> nameService : Transfer ownership
+
+nameService -> nameService : Clear offer
+note right : CRITICAL: Atomic transfer\nPayment + ownership change\nNo partial state possible
+
+alt #white isAddressStaker(msg.sender)
+    nameService -> nameService : makeCaPay(msg.sender,\ngetRewardAmount() +\n((amount * 1) / 199) / 4 +\npriorityFee_EVVM)
+
+    nameService -> evvm : caPay(msg.sender, reward)
+    activate evvm #00EE20
+    evvm -> evvm : Distribute staker rewards
+    evvm -> nameService : Reward distributed
+    deactivate evvm
+    
+    note right : Only stakers receive\nreward + commission + priority fee
+end
+
+nameService -> nameService : Update locked tokens:\nmateTokenLockedForWithdrawOffers -=\namount + ((amount * 1) / 199) / 4
+
+nameService -> nameService : nameServiceNonce[user][nonce] = true
+
+nameService --> user : Offer accepted successfully\nUsername ownership transferred
+
+deactivate nameService
+
+note right : Username now belongs\nto the offer creator
+
+@enduml

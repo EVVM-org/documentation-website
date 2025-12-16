@@ -1,0 +1,8 @@
+{
+  "label": "Internal Staking Functions",
+  "position": 2,
+  "link": {
+    "type": "generated-index",
+    "description": "Individual documentation for internal staking functions: presaleClaims for presale validation and stakingBaseProcess for core staking logic."
+  }
+}

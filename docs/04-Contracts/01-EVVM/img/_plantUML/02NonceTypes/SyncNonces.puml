@@ -1,0 +1,32 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+
+</style>
+
+actor "Fisher or User" as executor
+participant "EVVM" as evvm #00EE20
+
+
+title Sync Nonce Transaction\nGeneric Flow Example
+
+
+executor -> evvm : Execute transaction
+
+evvm -> evvm : Read nonce state using\nnextSyncUsedNonce[userAddress]
+
+alt #f5b7b1 transaction nonce does not equal to\nnextSyncUsedNonce[userAddress]
+
+    evvm --> executor : Revert transaction
+
+else #white else
+    hnote over evvm : payment process
+    evvm -> evvm : nextSyncUsedNonce[userAddress]++
+end
+
+
+
+@enduml

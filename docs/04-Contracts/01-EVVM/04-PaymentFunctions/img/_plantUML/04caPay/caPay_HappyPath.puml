@@ -1,0 +1,33 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+participant "Smart Contract" as contract
+participant "EVVM" as evvm #00EE20
+
+title Contract Address Pay Transaction Flow\n(Happy Path - Successful Execution)
+
+activate contract
+contract -> evvm : caPay(···)
+activate evvm #00EE20
+
+evvm -> evvm : assembly {\n    size := extcodesize(msg.sender)\n}
+note right : SECURITY: Only contracts\ncan call caPay\nEOAs are rejected
+
+evvm -> evvm : _updateBalance(msg.sender, to, token, amount)
+note right : No signature required:\nContract itself authorizes\nMust have sufficient balance
+
+alt #white isAddressStaker(msg.sender)
+    evvm -> evvm : _giveReward(msg.sender, 1)
+end
+
+evvm --> contract : Payment completed successfully
+
+deactivate evvm
+deactivate contract
+
+@enduml

@@ -1,0 +1,90 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+participant "Service Contract" as service
+participant "Staking" as staking #FFD700
+participant "EVVM" as evvm #00EE20
+
+title serviceUnstaking Transaction Flow\n(Failed Path - Error Handling)
+
+service -> staking : serviceUnstaking(\n  amountOfStaking\n)
+activate staking #FFD700
+
+staking -> staking : onlyCA modifier check
+
+alt #f5b7b1 Caller is not a contract
+    staking -x service : Revert with AddressIsNotAService
+    
+else #white Caller is a contract
+
+    staking -> staking : Retrieve AccountMetadata{\n  account: msg.sender,\n  IsAService: true\n}
+
+    staking -> staking : Verify service has sufficient staking balance
+
+    alt #f5b7b1 amountOfStaking > stakingData.stakingBalance
+        staking -x service : Revert with InsufficientStakingBalance
+        note right : Cannot unstake more\nthan current staked amount
+        
+    else #white Sufficient balance
+
+        staking -> staking : Calculate token return:\namountOfTokenToReturn = amountOfStaking * PRICE_OF_STAKING
+
+        alt #white Full unstaking (amountOfStaking == stakingData.stakingBalance)
+            staking -> staking : Check time lock:\nblock.timestamp >= (stakingTimestamp + 21 days)
+            
+            alt #f5b7b1 Time lock not expired
+                staking -x service : Revert with TimeLockNotExpired
+                note right : RESTRICTION VIOLATION:\nFull unstaking requires\n21-day waiting period\nUse partial unstaking instead
+                
+            else #white Time lock passed
+
+                staking -> staking : stakingBaseProcess(\n  accountMetadata,\n  isStaking=false,\n  amountOfStaking,\n  0, 0, 0, false, address(0), 0x0\n)
+
+                staking -> evvm : caPay(···)
+                activate evvm #00EE20
+                
+                alt #f5b7b1 caPay reverts
+                    evvm -x staking : Transfer failed
+                    staking -x service : Revert with TransferFailed
+                    
+                else #white Transfer successful
+                    evvm --> staking : Transfer completed
+                    deactivate evvm
+
+                    staking -> evvm : pointStaker(service, 0x00)
+                    activate evvm #00EE20
+                    evvm --> staking : Status removed
+                    deactivate evvm
+
+                    staking --> service : Unstaking completed successfully
+                    deactivate staking
+                end
+            end
+            
+        else #white Partial unstaking
+            staking -> staking : stakingBaseProcess(\n  accountMetadata,\n  isStaking=false,\n  amountOfStaking,\n  0, 0, 0, false, address(0), 0x0\n)
+
+            staking -> evvm : caPay(···)
+            activate evvm #00EE20
+            
+            alt #f5b7b1 caPay reverts
+                evvm -x staking : Transfer failed
+                staking -x service : Revert with TransferFailed
+                
+            else #white Transfer successful
+                evvm --> staking : Transfer completed
+                deactivate evvm
+
+                staking --> service : Unstaking completed successfully
+                deactivate staking
+            end
+        end
+    end
+end
+
+@enduml

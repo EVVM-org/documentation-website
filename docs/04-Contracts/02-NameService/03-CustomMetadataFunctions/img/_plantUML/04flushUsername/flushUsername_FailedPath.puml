@@ -1,0 +1,96 @@
+@startuml
+
+<style>
+document {
+    BackGroundColor white
+}
+</style>
+
+actor "User or Service" as user
+participant "NameService" as nameService #00CEEE
+participant "EVVM" as evvm #00EE20
+
+title flushUsername Transaction Flow\n(Failed Path - Error Handling)
+
+user -> nameService : flushUsername(···)
+activate nameService #00CEEE
+
+nameService -> nameService : verifyIfNonceIsAvailable(···)
+
+alt #f5b7b1 nameServiceNonce[user][nonce] == true
+    nameService -x user : Revert with\nNonceAlreadyUsed
+    
+else #white Nonce is available
+
+    nameService -> nameService : onlyOwnerOfIdentity(···)
+    
+    alt #f5b7b1 User does not own the username
+        nameService -x user : Revert with\nNotOwnerOfIdentity
+        
+    else #white User owns the username
+
+        nameService -> nameService : verify username is active
+
+        alt #f5b7b1 username expired OR flagNotAUsername == 0x01
+            nameService -x user : Revert with\nFlushUsernameVerificationFailed
+            note right : Cannot flush:\n• Expired username\n• Pre-registration hash\n• Invalid username state
+            
+        else #white Username is active
+
+            nameService -> nameService : verifyMessageSignedForFlushUsername(···)
+            
+            alt #f5b7b1 Signature verification fails
+                nameService -x user : Revert with\nInvalidSignatureOnNameService
+                
+            else #white Signature is valid
+
+                nameService -> nameService : makePay(···, getPriceToFlushUsername(username), ···)
+
+                alt #white priorityFlag_EVVM == true
+                    nameService -> evvm : payStaker_async(···)
+                    activate evvm #00EE20
+                else #white priorityFlag_EVVM == false
+                    nameService -> evvm : payStaker_sync(···)
+                end
+                
+                evvm -> evvm : Verify payment inputs
+                
+                alt #f5b7b1 Payment verification fails
+                    evvm -x user : Revert with\npayment error
+                    note right : Could be:\n• Insufficient balance\n• Invalid EVVM nonce\n• Invalid EVVM signature
+                else #white Payment succeeds
+                    evvm -> evvm : Update balances
+                    evvm -> nameService : Payment processed
+                    deactivate evvm
+                end
+
+                nameService -> nameService : makeCaPay(msg.sender,\n(5x reward * metadata) + priorityFee_EVVM)
+                
+                nameService -> evvm : caPay(···)
+                activate evvm #00EE20
+                
+                alt #f5b7b1 caPay fails
+                    evvm -x user : Revert with\ncaPay error
+                    note right : Contract balance issues\nor other EVVM errors
+                else #white caPay succeeds
+                    evvm -> evvm : Update balances for rewards
+                    evvm -> nameService : Reward distributed
+                    deactivate evvm
+                    
+                    nameService -> nameService : for loop: delete all custom metadata
+
+                    nameService -> nameService : Reset identityDetails[username]
+
+                    nameService -> nameService : nameServiceNonce[user][nonce] = true
+
+                    deactivate nameService
+                end
+
+            end
+        end
+    end
+end
+
+deactivate nameService
+
+@enduml

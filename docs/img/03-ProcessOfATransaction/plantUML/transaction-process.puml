@@ -1,0 +1,65 @@
+@startuml
+
+
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+actor "User" as user 
+participant "Fishing Spot" as fishingSpot #FFAC62
+participant "Fisher" as executor
+participant "EVVM\nor\nService" as evvm #00EE20
+
+title Generic Flow of a Transaction in EVVM
+
+activate fishingSpot #FFAC62
+
+== Transaction Creation & Signing ==
+activate user 
+user -> user: Prepare input values
+user -> user: Sign Transaction
+
+== Broadcast Transaction ==
+
+user -> fishingSpot: Send Transaction
+note left of fishingSpot: User sends\ninput values\nand signature
+deactivate user 
+
+
+== Fisher Capture & Validation ==
+
+
+
+executor -> fishingSpot: Get Transaction
+activate executor
+executor -> executor: Check Transaction
+alt #f5b7b1 Transaction is invalid
+    executor -x executor: Drop Transaction
+end
+
+executor -> evvm: Execute Transaction
+
+deactivate executor
+
+activate evvm #00EE20
+
+== Execution & Rewards ==
+
+evvm -> evvm: Verify Transaction
+alt #f5b7b1 Transaction is invalid
+    evvm -x executor: Reject Transaction
+end
+evvm -> evvm: Execute Transaction
+
+alt #6495ED Fisher is a staker
+    evvm -> executor: Send Reward
+    deactivate evvm 
+end
+
+
+
+
+@enduml

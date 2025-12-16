@@ -1,0 +1,76 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+participant "Service Contract" as service
+participant "Staking" as staking #FFD700
+participant "EVVM" as evvm #00EE20
+
+title confirmServiceStaking Transaction Flow\n(Failed Path - Error Handling)
+
+service -> staking : confirmServiceStaking()
+activate staking #FFD700
+
+staking -> staking : onlyCA modifier check
+
+alt #f5b7b1 Caller is not a contract
+    staking -x service : Revert with AddressIsNotAService
+    
+else #white Caller is a contract
+
+    staking -> staking : Verify timestamp == block.timestamp
+    
+    alt #f5b7b1 timestamp != block.timestamp
+        staking -x service : Revert with ServiceDoesNotStakeInSameTx
+        note right : FATAL: Must call all 3 steps\nin same transaction\nTokens may be lost
+        
+    else #white Same transaction verified
+
+        staking -> staking : Verify msg.sender == serviceStakingData.service
+        
+        alt #f5b7b1 msg.sender != prepared service
+            staking -x service : Revert with AddressMismatch
+            note right : Wrong service trying\nto confirm another's\nstaking preparation
+            
+        else #white Service authenticated
+
+            staking -> evvm : Query current service balance
+            activate evvm #00EE20
+            evvm --> staking : serviceBalanceAfter
+            deactivate evvm
+
+            staking -> evvm : Query current staking contract balance
+            activate evvm #00EE20
+            evvm --> staking : contractBalanceAfter
+            deactivate evvm
+
+            staking -> staking : Calculate expected payment:\ntotalRequired = amountOfStaking * PRICE_OF_STAKING
+
+            staking -> staking : Verify payment:\nserviceBefore - totalRequired == serviceAfter\ncontractBefore + totalRequired == contractAfter
+            
+            alt #f5b7b1 Payment amounts don't match
+                staking -x service : Revert with ServiceDoesNotFulfillCorrectStakingAmount
+                note right : CRITICAL ERROR:\n- Wrong amount paid\n- caPay not called\n- Tokens lost if not in same tx
+                
+            else #white Payment verified
+
+                staking -> staking : stakingBaseProcess(\n  AccountMetadata{service, IsAService=true},\n  isStaking=true,\n  amountOfStaking,\n  0, 0, 0, false, address(0), 0x0\n)
+
+                staking -> evvm : pointStaker(service, 0x01)
+                activate evvm #00EE20
+                evvm --> staking : Status updated
+                deactivate evvm
+
+                staking --> service : Staking completed successfully
+                
+                deactivate staking
+            end
+        end
+    end
+end
+
+@enduml

@@ -1,0 +1,80 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+actor "Fisher or User" as user 
+participant "EVVM" as evvm #00EE20
+participant "NameService" as mns #00CEEE
+
+title Pay Transaction Flow\n(Failed Path - Error Handling)
+
+user -> evvm : pay(···)
+activate evvm #00EE20
+
+evvm -> evvm : verifyMessageSignedForPay(signature)
+
+alt #f5b7b1 Signature is invalid
+    evvm -x user : Revert with InvalidSignature
+    
+else #white Signature is valid
+
+    alt #white executor != address(0)
+        evvm -> evvm : verify if msg.sender == executor
+        alt #f5b7b1 msg.sender != executor
+            evvm -x user : Revert with SenderIsNotTheExecutor
+        end
+    end
+
+    alt #white priorityFlag == true
+        evvm -> evvm : check asyncUsedNonce[from][nonce]
+        alt #f5b7b1 asyncUsedNonce[from][nonce] == true
+            evvm -x user : Revert with InvalidAsyncNonce
+            note right : Prevents replay attacks:\nEach async nonce can only\nbe used once
+        end
+    end
+
+    alt #white to_identity != ""
+        evvm -> mns : verifyStrictAndGetOwnerOfIdentity(to_identity)
+        alt #f5b7b1 Identity not found or invalid
+            evvm -x user : Revert from NameService
+        else #white Identity resolved successfully
+            mns --> evvm : return valid address
+        end
+    else #white to_identity == ""
+        evvm -> evvm : use to_address
+    end
+
+    evvm -> evvm : _updateBalance(from, to, token, amount)
+    note right : Must verify:\nbalances[from][token] >=\namount + priorityFee
+    alt #f5b7b1 Update balance fails (insufficient balance or other)
+        evvm -x user : Revert with UpdateBalanceFailed
+    
+    else #white Update balance succeeds
+
+        alt #white isAddressStaker(msg.sender)
+            alt #white priorityFee > 0
+                evvm -> evvm : _updateBalance(from, msg.sender, token, priorityFee)
+                alt #f5b7b1 Priority fee update fails
+                    evvm -x user : Revert with UpdateBalanceFailed
+                end
+            end
+            evvm -> evvm : _giveReward(msg.sender, 1)
+        end
+
+        alt #white priorityFlag == true
+            evvm -> evvm : asyncUsedNonce[from][nonce] = true
+        else #white priorityFlag == false
+            evvm -> evvm : nextSyncUsedNonce[from]++
+        end
+
+        evvm --> user : Transaction completed successfully
+    end
+end
+
+deactivate evvm
+
+@enduml

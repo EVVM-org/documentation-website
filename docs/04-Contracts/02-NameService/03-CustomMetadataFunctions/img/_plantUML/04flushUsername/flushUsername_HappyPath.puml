@@ -1,0 +1,61 @@
+@startuml
+
+<style>
+document {
+    BackGroundColor white
+}
+</style>
+
+actor "User or Service" as user
+participant "NameService" as nameService #00CEEE
+participant "EVVM" as evvm #00EE20
+
+title flushUsername Transaction Flow\n(Happy Path - Successful Execution)
+
+note right : Complete username deletion\nRemoves ALL data and makes username\navailable for re-registration\n\nIRREVERSIBLE operation
+
+user -> nameService : flushUsername(···)
+
+activate nameService #00CEEE
+
+nameService -> nameService : verifyIfNonceIsAvailable(···)
+
+nameService -> nameService : onlyOwnerOfIdentity(···)
+
+nameService -> nameService : verify username is active\n(not expired & flagNotAUsername != 0x01)
+
+nameService -> nameService : verifyMessageSignedForFlushUsername(···)
+
+nameService -> nameService : makePay(···, getPriceToFlushUsername(username), ···)
+
+alt #white priorityFlag_EVVM == true
+    nameService -> evvm : payStaker_async(···)
+    activate evvm #00EE20
+else #white priorityFlag_EVVM == false
+    nameService -> evvm : payStaker_sync(···)
+end
+
+evvm -> evvm : Verify payment inputs\nand update balances
+evvm -> nameService : Payment processed successfully
+deactivate evvm
+
+nameService -> nameService : for loop: delete all custom metadata\nfor (i = 0; i < customMetadataMaxSlots; i++)\n{ delete identityCustomMetadata[username][i] }
+
+nameService -> nameService : makeCaPay(..)
+
+nameService -> evvm : caPay(···)
+activate evvm #00EE20
+evvm -> evvm : Update balances for\nstaker rewards
+evvm -> nameService : Reward distributed successfully
+deactivate evvm
+
+note right : Reward: (5x reward * metadata count)\n+ priority fee
+
+nameService -> nameService : Reset identityDetails[username]:\nowner = address(0), expireDate = 0,\ncustomMetadataMaxSlots = 0,\nflagNotAUsername = 0x00\n(keep offerMaxSlots)
+note right : CRITICAL: Username becomes\navailable for re-registration\nOffers remain to honor bids
+
+nameService -> nameService : nameServiceNonce[user][nonce] = true
+
+deactivate nameService
+
+@enduml
