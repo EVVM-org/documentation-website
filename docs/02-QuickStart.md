@@ -10,6 +10,10 @@ Deploy your EVVM virtual blockchain in minutes.
 Want to build dApps on existing EVVM? Go to **[How to Create an EVVM Service](./06-HowToMakeAEVVMService.md)**.
 :::
 
+:::info[Want to experiment with a EVVM?]
+You can start with the **[scaffold-evvm](https://github.com/EVVM-org/scaffold-evvm)**.
+:::
+
 ---
 
 ## Prerequisites
