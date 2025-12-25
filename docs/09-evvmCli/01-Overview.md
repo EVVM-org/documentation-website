@@ -33,7 +33,7 @@ Clone the repository and install dependencies:
 **Option 1: Using CLI install command (recommended)**
 
 ```bash
-git clone https://github.com/EVVM-org/Testnet-Contracts
+git clone --recursive https://github.com/EVVM-org/Testnet-Contracts
 cd Testnet-Contracts
 ./evvm install
 ```
@@ -41,7 +41,7 @@ cd Testnet-Contracts
 **Option 2: Manual installation**
 
 ```bash
-git clone https://github.com/EVVM-org/Testnet-Contracts
+git clone --recursive https://github.com/EVVM-org/Testnet-Contracts
 cd Testnet-Contracts
 bun install
 forge install
@@ -53,11 +53,12 @@ The EVVM CLI is organized into several commands:
 
 | Command | Purpose |
 |---------|---------|
-| [`deploy`](./02-Deploy.md) | Deploy a new EVVM instance to a blockchain |
+| [`deploy`](./02-Deploy.md) | Deploy a new EVVM instance (single or cross-chain) |
 | [`register`](./03-Register.md) | Register an existing EVVM instance in the registry |
-| [`install`](./04-Install.md) | Install all project dependencies |
-| [`help`](./05-HelpAndVersion.md) | Display CLI help information |
-| [`version`](./05-HelpAndVersion.md) | Show the current CLI version |
+| [`setUpCrossChainTreasuries`](./05-SetUpCrossChainTreasuries.md) | Configure cross-chain treasury stations |
+| [`developer`](./06-Developer.md) | Developer utilities and helpers |
+| [`help`](./04-HelpAndVersion.md) | Display CLI help information |
+| [`version`](./04-HelpAndVersion.md) | Show the current CLI version |
 
 ## Basic Usage
 
@@ -68,14 +69,23 @@ The EVVM CLI is organized into several commands:
 # Check version
 ./evvm version
 
-# Deploy a new EVVM instance
+# Deploy a single-chain EVVM instance
 ./evvm deploy
+
+# Deploy a cross-chain EVVM instance
+./evvm deploy --crossChain
 
 # Register an existing EVVM
 ./evvm register --evvmAddress 0x...
 
-# Install dependencies
-./evvm install
+# Register a cross-chain EVVM
+./evvm register --crossChain --evvmAddress 0x...
+
+# Configure cross-chain treasuries
+./evvm setUpCrossChainTreasuries
+
+# Generate contract interfaces (for developers)
+./evvm developer --makeInterface
 ```
 
 ## Environment Configuration

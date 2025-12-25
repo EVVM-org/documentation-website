@@ -1,5 +1,5 @@
 ---
-sidebar_position: 5
+sidebar_position: 4
 ---
 
 # Help and Version Commands
@@ -38,14 +38,18 @@ USAGE:
   evvm <command> [options]
 
 COMMANDS:
-  deploy              Deploy a new EVVM instance to a blockchain
-                      Includes configuration, deployment, and optional registration
+  deploy              Deploy a new EVVM instance
+                      Interactive wizard or use existing inputs (-s)
 
-  register            Register an existing EVVM instance
-                      Links your EVVM to the EVVM Registry
+  register            Register an EVVM instance with the registry
+                      Supports single- and cross-chain registration
 
-  install             Install all project dependencies
-                      Runs bun install and forge install
+  setUpCrossChainTreasuries
+                      Configure cross-chain treasury stations (host ↔ external)
+
+  fulltest            Run the complete test suite
+
+  developer           Developer helpers and utilities
 
   help                Display this help message
 
@@ -53,28 +57,37 @@ COMMANDS:
 
 DEPLOY OPTIONS:
   --skipInputConfig, -s
-                      Skip interactive configuration and use existing ./input/Inputs.sol
-  
-  --walletName <name>
-                      Specify wallet name for deployment (default: defaultKey)
+                      Skip interactive prompts and use existing ./input/BaseInputs.sol
 
-  Note: RPC URL is read from RPC_URL in .env file
-        If not found, you will be prompted to enter it
+  --walletName <name>
+                      Wallet name imported with cast (default: defaultKey)
+
+  --crossChain, -c
+                      Deploy a cross-chain EVVM instance
+
+  Tip: Import keys securely with cast wallet import <name> --interactive
+        Never store private keys in .env
 
 REGISTER OPTIONS:
   --evvmAddress <address>
                       EVVM contract address to register
-  
+
   --walletName <name>
-                      Specify wallet name for registration (default: defaultKey)
+                      Wallet name for registry transactions
 
   --useCustomEthRpc
-                      Use custom Ethereum Sepolia RPC for registry contract calls
-                      Read from ETH_SEPOLIA_RPC in .env or prompts if not found
-                      Default: Uses public RPC
+                      Use a custom Ethereum Sepolia RPC for registry calls
+                      Reads EVVM_REGISTRATION_RPC_URL from .env or prompts if missing
 
-  Note: Host chain RPC URL is read from RPC_URL in .env file
-        If not found, you will be prompted to enter it
+  --crossChain, -c
+                      Register a cross-chain EVVM (uses cross-chain registration flow)
+
+SETUP CROSS-CHAIN OPTIONS:
+  --treasuryHostStationAddress <address>
+  --treasuryExternalStationAddress <address>
+  --walletNameHost <name>
+  --walletNameExternal <name>
+                      Configure treasury station connections between chains
 
 GLOBAL OPTIONS:
   -h, --help          Show help
@@ -83,28 +96,6 @@ GLOBAL OPTIONS:
 EXAMPLES:
   # Deploy with interactive configuration
   evvm deploy
-
-  # Deploy using existing config
-  evvm deploy --skipInputConfig
-
-  # Register an EVVM instance
-  evvm register --evvmAddress 0x123...
-
-  # Register with custom wallet
-  evvm register --evvmAddress 0x123... --walletName myWallet
-
-  # Register with custom Ethereum Sepolia RPC
-  evvm register --evvmAddress 0x123... --useCustomEthRpc
-
-  # Install dependencies
-  evvm install
-
-DOCUMENTATION:
-  https://www.evvm.info/docs
-
-SUPPORT:
-  https://github.com/EVVM-org/Playgrounnd-Contracts/issues
-```
 
 ### When to Use
 
@@ -139,6 +130,29 @@ Displays the current version of the EVVM CLI tool.
 ### Output
 
 ```
+EVVM CLI v2.2.0
+```
+
+The version number follows semantic versioning (MAJOR.MINOR.PATCH):
+- **MAJOR**: Incompatible API changes
+- **MINOR**: Backwards-compatible functionality additions
+- **PATCH**: Backwards-compatible bug fixes
+
+### When to Use
+
+Use the version command when:
+
+- Reporting issues on GitHub
+- Checking for updates
+- Verifying installation
+- Following documentation for specific versions
+
+## Related Commands
+
+- [`deploy`](./02-Deploy.md) - Deploy EVVM instances
+- [`register`](./03-Register.md) - Register EVVM instances
+- [`setUpCrossChainTreasuries`](./05-SetUpCrossChainTreasuries.md) - Configure cross-chain treasuries
+- [`developer`](./06-Developer.md) - Developer utilities
 v2.2.0
 ```
 
@@ -173,9 +187,9 @@ git pull
 Or clone a fresh copy:
 
 ```bash
-git clone https://github.com/EVVM-org/Testnet-Contracts
+git clone --recursive https://github.com/EVVM-org/Testnet-Contracts
 cd Testnet-Contracts
-./evvm install
+bun install
 ```
 
 ---
@@ -209,5 +223,6 @@ All display the CLI version before executing any command.
 - **[Overview](./01-Overview.md)** - CLI introduction and setup
 - **[Deploy Command](./02-Deploy.md)** - Deploy EVVM instances
 - **[Register Command](./03-Register.md)** - Register in EVVM Registry
-- **[Install Command](./04-Install.md)** - Install dependencies
+- **[SetUp Cross-Chain Treasuries](./05-SetUpCrossChainTreasuries.md)** - Configure cross-chain treasuries
+- **[Developer Command](./06-Developer.md)** - Developer utilities
 - **[QuickStart Guide](../02-QuickStart.md)** - Complete tutorial

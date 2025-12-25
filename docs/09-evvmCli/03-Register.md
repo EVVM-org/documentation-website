@@ -14,7 +14,9 @@ Register an existing EVVM instance in the official EVVM Registry to receive a un
 
 ## Description
 
-The `register` command integrates your deployed EVVM instance with the EVVM Registry contract on Ethereum Sepolia. Registration provides:
+The `register` command integrates your deployed EVVM instance with the EVVM Registry contract on Ethereum Sepolia. It supports both single-chain and cross-chain EVVM registrations.
+
+Registration provides:
 
 - **Unique EVVM ID** - Official identification number (≥ 1000)
 - **Chain validation** - Verification of host chain support
@@ -66,31 +68,93 @@ Use a custom Ethereum Sepolia RPC endpoint instead of the public default.
 - **Usage**: `./evvm register --evvmAddress 0x... --useCustomEthRpc`
 
 When enabled:
-1. CLI reads `ETH_SEPOLIA_RPC` from `.env`
+1. CLI reads `EVVM_REGISTRATION_RPC_URL` from `.env`
 2. If not found, prompts for RPC URL
 3. Uses custom RPC for all Ethereum Sepolia operations
 
 **Default RPC**: `https://gateway.tenderly.co/public/sepolia`
 
+### `--crossChain`, `-c`
+
+Register a cross-chain EVVM instance.
+
+- **Type**: `boolean`
+- **Default**: `false`
+- **Usage**: `./evvm register --crossChain --evvmAddress 0x...`
+
+When enabled:
+- Prompts for Treasury External Station address
+- Reads both `HOST_RPC_URL` and `EXTERNAL_RPC_URL` from `.env`
+- Validates both host and external chain support
+- Registers cross-chain configuration in the registry
+
+:::tip
+Cross-chain registration requires additional configuration compared to single-chain registration.
+:::
+
+### `--treasuryExternalStationAddress <address>` (Cross-Chain Only)
+
+The address of the Treasury External Station contract (required for cross-chain registration).
+
+- **Type**: `0x${string}` (Ethereum address)
+- **Required**: Yes for cross-chain (or will prompt)
+- **Usage**: `./evvm register --crossChain --evvmAddress 0x... --treasuryExternalStationAddress 0x...`
+
 ## Required Environment Variables
 
-### `RPC_URL` (Required)
-
-The RPC endpoint for the blockchain where your EVVM is deployed.
+### Single-Chain Registration
 
 ```bash
+# RPC URL for the blockchain where your EVVM is deployed
 RPC_URL="https://sepolia-rollup.arbitrum.io/rpc"
+
+# Optional: Custom Ethereum Sepolia RPC (only with --useCustomEthRpc)
+EVVM_REGISTRATION_RPC_URL="https://eth-sepolia.g.alchemy.com/v2/your-api-key"
 ```
 
-If not found in `.env`, the CLI will prompt you to enter it.
-
-### `ETH_SEPOLIA_RPC` (Optional)
-
-Custom Ethereum Sepolia RPC endpoint (only used with `--useCustomEthRpc`).
+### Cross-Chain Registration
 
 ```bash
-ETH_SEPOLIA_RPC="https://eth-sepolia.g.alchemy.com/v2/your-api-key"
+# Host chain RPC (where EVVM core contracts are deployed)
+HOST_RPC_URL="https://sepolia-rollup.arbitrum.io/rpc"
+
+# External chain RPC (where Treasury External Station is deployed)
+EXTERNAL_RPC_URL="https://sepolia.base.org"
+
+# Optional: Custom Ethereum Sepolia RPC (only with --useCustomEthRpc)
+EVVM_REGISTRATION_RPC_URL="https://eth-sepolia.g.alchemy.com/v2/your-api-key"
 ```
+
+If RPC URLs are not found in `.env`, the CLI will prompt you to enter them.
+
+## Registration Types
+
+### Single-Chain Registration
+
+Register a standard EVVM instance deployed on a single blockchain.
+
+```bash
+./evvm register --evvmAddress 0x3e562a2e932afd6c1630d5f3b8eb3d88a4b058c2
+```
+
+### Cross-Chain Registration
+
+Register an EVVM instance with cross-chain treasury support.
+
+```bash
+./evvm register --crossChain \
+  --evvmAddress 0x3e562a2e932afd6c1630d5f3b8eb3d88a4b058c2 \
+  --treasuryExternalStationAddress 0x1234... \
+  --walletName myWallet
+```
+
+Or use interactive mode:
+
+```bash
+./evvm register --crossChain
+```
+
+The CLI will prompt for missing addresses.
 
 ## Registration Flow
 

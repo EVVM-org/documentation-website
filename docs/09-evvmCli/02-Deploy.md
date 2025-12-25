@@ -14,7 +14,7 @@ Deploy a complete EVVM instance to any supported blockchain network with interac
 
 ## Description
 
-The `deploy` command is an interactive wizard that guides you through the entire EVVM deployment process. It handles configuration collection, input validation, contract deployment, block explorer verification, and optional registry registration.
+The `deploy` command is an interactive wizard that guides you through the entire EVVM deployment process. It supports both single-chain and cross-chain deployments, handling configuration collection, input validation, contract deployment, block explorer verification, and optional registry registration.
 
 ## Options
 
@@ -26,13 +26,17 @@ Skip the interactive configuration wizard and use the existing configuration fil
 - **Default**: `false`
 - **Usage**: `./evvm deploy --skipInputConfig`
 
-When enabled, the CLI reads configuration from `./input/Inputs.sol` instead of prompting for user input. Useful for:
+When enabled, the CLI reads configuration from:
+- Single-chain: `./input/BaseInputs.sol`
+- Cross-chain: `./input/BaseInputs.sol` + `./input/CrossChainInputs.sol`
+
+Useful for:
 - Re-deploying with the same configuration
 - Automated deployments
 - Testing and development workflows
 
 :::warning
-Ensure `./input/Inputs.sol` exists and contains valid configuration before using this flag.
+Ensure configuration files exist and contain valid data before using this flag.
 :::
 
 ### `--walletName <name>`, `-w <name>`
@@ -49,27 +53,95 @@ The wallet must be previously imported into Foundry's keystore:
 cast wallet import myWallet --interactive
 ```
 
+### `--crossChain`, `-c`
+
+Deploy a cross-chain EVVM instance with treasury support on two different blockchains.
+
+- **Type**: `boolean`
+- **Default**: `false`
+- **Usage**: `./evvm deploy --crossChain`
+
+When enabled:
+- Deploys EVVM contracts on the **host chain**
+- Deploys Treasury External Station on the **external chain**
+- Configures cross-chain communication between treasuries
+
+:::info
+Cross-chain deployments require additional configuration for both host and external chains.
+:::
+
 ## Required Environment Variables
 
-The CLI reads the following from your `.env` file:
-
-### `RPC_URL` (Required)
-
-The RPC endpoint for the blockchain where you want to deploy EVVM.
+### Single-Chain Deployment
 
 ```bash
+# RPC URL for the blockchain where you want to deploy EVVM
 RPC_URL="https://sepolia-rollup.arbitrum.io/rpc"
-```
 
-If not found in `.env`, the CLI will prompt you to enter it.
-
-### `ETHERSCAN_API` (Optional)
-
-Required only if using Etherscan v2 verification.
-
-```bash
+# Optional: Etherscan API key for contract verification
 ETHERSCAN_API="your_etherscan_api_key"
 ```
+
+### Cross-Chain Deployment
+
+```bash
+# Host chain RPC (where EVVM core contracts will be deployed)
+HOST_RPC_URL="https://sepolia-rollup.arbitrum.io/rpc"
+
+# External chain RPC (where Treasury External Station will be deployed)
+EXTERNAL_RPC_URL="https://sepolia.base.org"
+
+# Optional: Ethereum Sepolia RPC for registry operations
+EVVM_REGISTRATION_RPC_URL="https://gateway.tenderly.co/public/sepolia"
+
+# Optional: Etherscan API key for contract verification
+ETHERSCAN_API="your_etherscan_api_key"
+```
+
+If RPC URLs are not found in `.env`, the CLI will prompt you to enter them.
+
+## Deployment Types
+
+### Single-Chain Deployment
+
+Standard EVVM deployment on a single blockchain.
+
+```bash
+./evvm deploy
+```
+
+**Deployed Contracts:**
+- Evvm (Core virtual machine)
+- NameService (Domain system)
+- Staking (Staking and rewards)
+- Estimator (Reward calculation)
+- Treasury (Asset management)
+- P2PSwap (Token exchange)
+
+### Cross-Chain Deployment
+
+EVVM deployment with cross-chain treasury support.
+
+```bash
+./evvm deploy --crossChain
+```
+
+**Deployed Contracts:**
+
+**Host Chain:**
+- Evvm (Core virtual machine)
+- NameService (Domain system)
+- Staking (Staking and rewards)
+- Estimator (Reward calculation)
+- Treasury Host Station (Host-side treasury)
+- P2PSwap (Token exchange)
+
+**External Chain:**
+- Treasury External Station (External-side treasury)
+
+:::tip
+After cross-chain deployment, you'll need to run `./evvm setUpCrossChainTreasuries` to connect both treasury stations.
+:::
 
 ## Deployment Flow
 

@@ -214,7 +214,7 @@ contract HybridService is AsyncNonceService, SyncNonceService {
 
 ```bash
 # Clone repository
-git clone https://github.com/EVVM-org/Testnet-Contracts.git
+git clone --recursive https://github.com/EVVM-org/Testnet-Contracts.git
 
 # Install via Forge
 forge install EVVM-org/Testnet-Contracts
