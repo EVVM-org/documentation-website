@@ -86,19 +86,57 @@ const config: Config = {
         docsDir: 'docs',
         excludeImports: true,
         removeDuplicateHeadings: true,
-        title: 'EVVM',
-        description: 'Infraless EVM Virtualization solving Scalability and Chain Fragmentation',
+        title: 'EVVM Documentation',
+        description: 'Complete technical documentation for EVVM (Ethereum Virtual Virtual Machine) - Infraless EVM Virtualization solving Scalability and Chain Fragmentation',
+        version: '1.0.0',
+        rootContent: `EVVM enables virtual blockchains on top of host blockchains without physical infrastructure management.
+
+Key concepts:
+- Virtual Blockchain Infrastructure: Deploy blockchains without managing validators or nodes
+- Gasless Transactions: Users sign messages, Fishers execute on-chain
+- Fisher Network: Operators who execute transactions and earn MATE token rewards
+- EIP-191 Signatures: All operations use cryptographic signatures for authorization
+
+Production URL: https://www.evvm.info
+Full documentation for AI agents: https://www.evvm.info/llms-full.txt`,
+        fullRootContent: `This document contains the complete EVVM technical documentation optimized for AI agents and LLMs.
+
+EVVM (Ethereum Virtual Virtual Machine) enables virtual blockchains on top of host blockchains without physical infrastructure management.
+
+## Key Concepts
+
+- **Virtual Blockchain**: Blockchain logic decoupled from physical infrastructure
+- **Fishers**: Network operators who execute signed transactions and earn MATE rewards
+- **Gasless UX**: Users never pay gas fees - they sign messages, Fishers execute on-chain
+- **EIP-191 Signatures**: All operations are authorized via cryptographic signatures
+- **MATE Token**: Native principal token for payments and staking rewards
+- **Staking System**: Era-based rewards with golden, presale, public, and service staking tiers
+
+## Documentation Structure
+
+1. **QuickStart** - Deploy your own EVVM in minutes
+2. **Transaction Process** - How transactions flow through EVVM
+3. **Contracts** - Core smart contract documentation (EVVM, NameService, Staking, Treasury, P2PSwap)
+4. **Signature Structures** - EIP-191 signature formats for all operations
+5. **Libraries** - TypeScript and Solidity libraries for EVVM development
+6. **Registry** - EVVM registration and governance
+7. **CLI** - Command-line deployment tools
+
+Production URL: https://www.evvm.info`,
         includeOrder: [
-          'intro',
+          '01-intro',
           '02-QuickStart',
           '03-ProcessOfATransaction',
-          '04-Contracts/**/*',
-          '05-SignatureStructures/**/*',
+          '04-Contracts/**',
+          '05-SignatureStructures/**',
           '06-HowToMakeAEVVMService',
-          '07-Libraries/**/*',
-          '08-RegistryEvvm/**/*',
-          '09-evvmCli/**/*'
-        ]
+          '07-Libraries/**',
+          '08-RegistryEvvm/**',
+          '09-evvmCli/**',
+          '99-EVVMNoncommercialLicense'
+        ],
+        includeUnmatchedLast: true,
+        keepFrontMatter: ['title', 'description', 'sidebar_position']
       }
     ],
     require.resolve('docusaurus-lunr-search')

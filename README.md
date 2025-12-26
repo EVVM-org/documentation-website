@@ -80,17 +80,23 @@ Access the site at `http://localhost:3000` to verify production behavior.
 ## Project Structure
 
 ```
-mate-docs/
+documentation-website/
 ├── docs/                      # Documentation content (Markdown)
-│   ├── intro.md              # Introduction page
+│   ├── 01-intro.md           # Introduction page
 │   ├── 02-QuickStart.md      # Quick start guide
-│   ├── 04-Contracts/01-EVVM/              # EVVM Core Contract docs
-│   ├── 04-Contracts/03-Staking/           # Staking system docs
-│   ├── 04-Contracts/02-NameService/       # Name service docs
-│   ├── 04-Contracts/04-Treasury/          # Treasury and bridge docs
-│   ├── 05-SignatureStructures/ # Signature format docs
+│   ├── 03-ProcessOfATransaction.md  # Transaction flow
+│   ├── 04-Contracts/         # Smart contract documentation
+│   │   ├── 01-EVVM/          # EVVM Core Contract docs
+│   │   ├── 02-NameService/   # Name service docs
+│   │   ├── 03-Staking/       # Staking system docs
+│   │   ├── 04-Treasury/      # Treasury and bridge docs
+│   │   └── 05-P2PSwap/       # P2P swap docs
+│   ├── 05-SignatureStructures/  # EIP-191 signature format docs
+│   ├── 06-HowToMakeAEVVMService.md  # Service building guide
+│   ├── 07-Libraries/         # Library documentation
 │   ├── 08-RegistryEvvm/      # Registry contract docs
-│   └── 07-Libraries/01-npmLibraries/      # Library documentation
+│   ├── 09-evvmCli/           # CLI documentation
+│   └── 99-EVVMNoncommercialLicense.md  # License
 ├── src/                       # Custom React components
 │   ├── components/           # Reusable components
 │   ├── css/                  # Custom styling
@@ -133,16 +139,25 @@ The site supports KaTeX for mathematical notation:
 
 ## LLM-Friendly Documentation
 
-This repository automatically generates LLM-optimized documentation:
+This repository automatically generates AI-optimized documentation for feeding AI agents and LLMs:
 
-- **`/llms.txt`**: Index with links to all documentation sections (131 lines)
-- **`/llms-full.txt`**: Complete documentation in single file (19,825 lines)
+- **`/llms.txt`**: Index with links to all 137 documentation sections
+- **`/llms-full.txt`**: Complete documentation in a single file (~25,000+ lines)
+
+### Features
+
+The generated files include:
+- **Key Concepts Overview**: Virtual Blockchain, Fishers, Gasless UX, EIP-191 Signatures, MATE Token, Staking System
+- **Structured Documentation**: Follows sidebar order (Introduction → QuickStart → Contracts → Signatures → Libraries → CLI → License)
+- **Production URLs**: Direct links to https://www.evvm.info
+
+### Access
 
 These files follow the [llmstxt.org](https://llmstxt.org) standard and are accessible at:
-- https://evvm.info/llms.txt
-- https://evvm.info/llms-full.txt
+- https://www.evvm.info/llms.txt
+- https://www.evvm.info/llms-full.txt
 
-Files are automatically generated during `npm run build` via the `docusaurus-plugin-llms` plugin.
+Files are automatically generated during `npm run build` via the `docusaurus-plugin-llms` plugin with custom `rootContent` and `fullRootContent` for AI agent context.
 
 ## Development Workflow
 
@@ -258,4 +273,4 @@ For questions, issues, or contributions:
 
 ---
 
-Built with ❤️ for Ethereum
+Built with ❤️ 🧉 for EVVM
