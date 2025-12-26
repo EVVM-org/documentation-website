@@ -273,4 +273,4 @@ For questions, issues, or contributions:
 
 ---
 
-Built with ❤️ 🧉 for EVVM
+Built with ❤️ 🧉 by EVVM
