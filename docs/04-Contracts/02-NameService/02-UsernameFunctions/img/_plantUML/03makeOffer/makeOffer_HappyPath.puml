@@ -64,7 +64,7 @@ else #white identityDetails[username].offerMaxSlots == 0
     nameService -> nameService : identityDetails[username].offerMaxSlots++
 end
 
-nameService -> nameService : nameServiceNonce[user][nonce] = true
+nameService -> nameService : markAsyncNonceAsUsed(user, nonce)
 
 nameService --> user : Offer created successfully\nwith offerID: {offerID}
 

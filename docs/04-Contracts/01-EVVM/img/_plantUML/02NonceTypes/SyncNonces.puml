@@ -14,18 +14,23 @@ participant "EVVM" as evvm #00EE20
 title Sync Nonce Transaction\nGeneric Flow Example
 
 
+activate executor
 executor -> evvm : Execute transaction
+activate evvm
 
 evvm -> evvm : Read nonce state using\nnextSyncUsedNonce[userAddress]
 
 alt #f5b7b1 transaction nonce does not equal to\nnextSyncUsedNonce[userAddress]
 
-    evvm --> executor : Revert transaction
+    evvm -x executor : Revert with SyncNonceMismatch()
 
-else #white else
-    hnote over evvm : payment process
+else #white
+    note right : Payment processing (illustrative)
     evvm -> evvm : nextSyncUsedNonce[userAddress]++
 end
+
+deactivate evvm
+deactivate executor
 
 
 

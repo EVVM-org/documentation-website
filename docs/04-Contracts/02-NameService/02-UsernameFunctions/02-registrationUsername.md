@@ -59,7 +59,7 @@ When the executor is the user or a service:
 
 ## Workflow
 
-1. **NameService Nonce Verification**: Checks if the provided `nonce` is unused for the `user` using the `verifyIfNonceIsAvailable` modifier. Reverts if used.
+1. **NameService Nonce Verification**: Calls internal `verifyAsyncNonce(user, nonce)` which reverts with `AsyncNonceAlreadyUsed()` if the nonce was already used.
 
 2. **Username Validation**: Unless `user` is the admin address, calls `isValidUsername` to validate the `username` against character set and length rules. Reverts if invalid.
 
@@ -88,7 +88,7 @@ When the executor is the user or a service:
    - Expiration: `block.timestamp + 366 days`
    - Flags: Marked as username (`flagNotAUsername = 0x00`)
 
-8. **Nonce Management**: Marks the `nonce` as used for the `user` in the `nameServiceNonce` mapping.
+8. **Nonce Management**: Calls internal `markAsyncNonceAsUsed(user, nonce)` to mark the provided `nonce` as used and prevent replays.
 
 9. **Staker Rewards**: If the executor is a staker, distributes rewards via `makeCaPay`:
 

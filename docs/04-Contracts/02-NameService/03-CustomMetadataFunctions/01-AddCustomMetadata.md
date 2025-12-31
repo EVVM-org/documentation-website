@@ -76,7 +76,7 @@ While not enforced on-chain, adhering to this format for the `value` string is h
 Failure at validation steps typically reverts the transaction. The steps execute **in the specified order**.
 
 1.  **Identity Ownership Verification**: Checks if the provided `identity` is owned by the `user`. Reverts if not.
-2.  **Name Service Nonce Verification**: Checks if the provided `nonce` is unused for the `user` using the `verifyIfNonceIsAvailable` modifier. Reverts if used.
+2.  **Name Service Nonce Verification**: Calls internal `verifyAsyncNonce(user, nonce)` which reverts with `AsyncNonceAlreadyUsed()` if the nonce was already used.
 3.  **Custom Metadata Length Validation**: Checks that the provided `value` string has a length greater than 0. Reverts if the value is empty.
 4.  **Add Custom Metadata Signature Validation**: Verifies the `signature` provided by `user` (authorizing this Name Service action) using `verifyMessageSignedForAddCustomMetadata`. Reverts if invalid according to the [Add Custom Metadata Signature Structure](../../../05-SignatureStructures/02-NameService/07-addCustomMetadataStructure.md).
 5.  **Payment execution**: Calls `makePay` to transfer the payment using the `getPriceToAddCustomMetadata` function and `priorityFee_EVVM` of principal tokens from `user` to the service via the EVVM contract. Reverts if the payment fails.

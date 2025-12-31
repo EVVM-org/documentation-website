@@ -22,7 +22,8 @@ alt #f5b7b1 Invalid signature
     
 else #white Signature valid
 
-    staking -> staking : checkIfStakeNonceUsed(user, nonce)
+    staking -> staking : verifyAsyncNonce(user, nonce)
+    note right : Reverts with AsyncNonceAlreadyUsed() if nonce already used
     
     alt #f5b7b1 Nonce already used
         staking -x user : Revert with StakingNonceAlreadyUsed
@@ -84,7 +85,7 @@ else #white Signature valid
                             evvm --> staking : Success
                             deactivate evvm
                             
-                            staking -> staking : stakingNonce[user][nonce] = true
+                            staking -> staking : markAsyncNonceAsUsed(user, nonce)
                             
                             alt #white msg.sender is staker
                                 staking -> staking : makeCaPay(···)

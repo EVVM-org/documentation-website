@@ -25,7 +25,7 @@ alt #white !account.IsAService
     base -> base : makePay(\n      account.Address,\n      PRICE_OF_STAKING * amountOfStaking,\n      (···)\n    )
     note right : PAYMENT:\nServices don't pay\n(handled separately)
     
-    base -> evvm : pay(···)
+    base -> evvm : IEvvm.pay(...) (async/sync)
     activate evvm #00EE20
     evvm -> evvm : Verify signature & nonce\nTransfer tokens
     evvm --> base : Success
@@ -45,7 +45,7 @@ alt #white msg.sender is staker && !account.IsAService
     base -> base : makeCaPay(\n      PRINCIPAL_TOKEN_ADDRESS,\n      msg.sender,\n      (rewardAmount * 2) + priorityFee\n    )
     note right : DOUBLE REWARD:\nStakers who help others\nearn 2x rewards
     
-    base -> evvm : caPay(···)
+    base -> evvm : IEvvm.caPay(...) (async/sync)
     activate evvm #00EE20
     evvm --> base : Success
     deactivate evvm

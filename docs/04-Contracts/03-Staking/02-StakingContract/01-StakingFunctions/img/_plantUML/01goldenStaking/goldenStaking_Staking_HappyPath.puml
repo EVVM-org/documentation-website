@@ -30,7 +30,7 @@ note right : Must wait after unstaking\nbefore staking again
 
 staking -> staking : makePay(\n  goldenFisher.actual,\n  PRICE_OF_STAKING * amountOfStaking,\n  (···)\n)
 
-staking -> evvm : pay(···)
+staking -> evvm : IEvvm.pay(...) (async/sync)
 activate evvm #00EE20
 evvm -> evvm : Verify signature and nonce\nTransfer tokens to Staking contract
 evvm --> staking : Payment successful
@@ -47,7 +47,7 @@ alt #white msg.sender is staker
     staking -> staking : makeCaPay(\n      PRINCIPAL_TOKEN_ADDRESS,\n      msg.sender,\n      (rewardAmount * 2) + priorityFee\n    )
     note right : DOUBLE REWARD:\nStakers who help\nGolden Fisher stake\nearn 2x rewards
     
-    staking -> evvm : caPay(···)
+    staking -> evvm : IEvvm.caPay(...) (async/sync)
     activate evvm #00EE20
     evvm -> evvm : Transfer rewards\nto caller
     evvm --> staking : Reward distributed

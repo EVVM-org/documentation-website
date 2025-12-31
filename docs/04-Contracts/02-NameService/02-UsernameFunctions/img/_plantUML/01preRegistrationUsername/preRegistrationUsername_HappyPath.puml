@@ -18,8 +18,8 @@ user -> nameService : preRegistrationUsername(···)
 
 activate nameService #00CEEE
 
-nameService -> nameService : verifyIfNonceIsAvailable(···)
-
+nameService -> nameService : verifyAsyncNonce(user, nonce)
+note right : Reverts with AsyncNonceAlreadyUsed() if nonce already used
 
 nameService -> nameService : verifyMessageSignedForPreRegistrationUsername(···)
 
@@ -47,7 +47,7 @@ nameService -> nameService : key = @<HashPreRegisteredUsername>
 nameService -> nameService : set waiting period (30 minutes)
 note right : 30-minute window:\nMust reveal and register\nwithin this timeframe
 
-nameService -> nameService : nameServiceNonce[user][nonce] = true
+nameService -> nameService : markAsyncNonceAsUsed(user, nonce)
 
 
 alt #white isAddressStaker(msg.sender)

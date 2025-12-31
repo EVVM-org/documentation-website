@@ -18,7 +18,8 @@ user -> nameService : flushUsername(···)
 
 activate nameService #00CEEE
 
-nameService -> nameService : verifyIfNonceIsAvailable(···)
+nameService -> nameService : verifyAsyncNonce(user, nonce)
+    note right : Reverts with AsyncNonceAlreadyUsed() if nonce already used
 
 nameService -> nameService : onlyOwnerOfIdentity(···)
 

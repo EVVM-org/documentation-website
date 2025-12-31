@@ -1,0 +1,31 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+title External Station: fisherBridgeSendERC20() Flow (Happy Path)
+
+actor "Fisher Executor" as fisher
+participant "ExternalStation" as ext #66CCFF
+participant "EVVM" as evvm #00EE20
+
+activate fisher
+fisher -> ext : fisherBridgeSendERC20(from, addressToReceive, tokenAddress, priorityFee, amount, signature)
+deactivate fisher
+
+activate ext
+ext -> ext : SignatureUtils.verifyMessageSignedForFisherBridge(...)
+alt #white Signature valid
+    ext -> ext : verifyAndDepositERC20(tokenAddress, amount)
+    ext -> ext : nextFisherExecutionNonce[from]++
+    ext -> ext : emit FisherBridgeSend(...)
+else #f5b7b1 Invalid signature
+    ext -x fisher : Revert with InvalidSignature()
+end
+
+deactivate ext
+
+@enduml

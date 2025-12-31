@@ -20,7 +20,8 @@ activate nameService #00CEEE
 
 nameService -> nameService : onlyOwnerOfIdentity(···)
 
-nameService -> nameService : verifyIfNonceIsAvailable(···)
+nameService -> nameService : verifyAsyncNonce(user, nonce)
+    note right : Reverts with AsyncNonceAlreadyUsed() if nonce already used
 
 nameService -> nameService : verify bytes(value).length > 0
 

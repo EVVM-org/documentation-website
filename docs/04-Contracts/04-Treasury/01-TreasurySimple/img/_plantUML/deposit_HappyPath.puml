@@ -1,0 +1,35 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+title deposit() Flow
+
+actor "User" as user
+participant "Treasury" as treasury #66CCFF
+participant "EVVM" as evvm #00EE20
+
+activate user
+
+user -> treasury : deposit(token=address(0), amount, msg.value)
+deactivate user
+
+activate treasury #66CCFF
+
+note right : HOST COIN DEPOSIT (token == address(0))
+
+treasury -> treasury : require(msg.value > 0)
+note right : Revert: DepositAmountMustBeGreaterThanZero()
+
+treasury -> treasury : require(amount == msg.value)
+note right : Revert: InvalidDepositAmount()
+
+treasury -> evvm : addAmountToUser(msg.sender, address(0), msg.value)
+evvm --> treasury : Success
+
+deactivate treasury
+
+@enduml

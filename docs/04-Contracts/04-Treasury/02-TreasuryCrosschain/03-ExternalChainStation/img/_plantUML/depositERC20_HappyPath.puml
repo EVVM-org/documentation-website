@@ -1,0 +1,28 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+title External Station: depositERC20() Flow (Happy Path)
+
+actor "User" as user
+participant "ExternalStation" as ext #66CCFF
+participant "HyperlaneMailbox" as mailbox #EEEEEE
+
+activate user
+user -> ext : depositERC20(toAddress, token, amount, protocolToExecute){value}
+deactivate user
+
+activate ext
+ext -> ext : if amount == 0 revert DepositAmountMustBeGreaterThanZero()
+ext -> ext : IERC20(token).transferFrom(msg.sender, address(this), amount)
+ext -> ext : payload = PayloadUtils.encodePayload(token, toAddress, amount)
+ext -> mailbox : dispatch(payload){value=quote}
+mailbox --> ext : messageId
+
+deactivate ext
+
+@enduml

@@ -29,13 +29,13 @@ The function supports both synchronous and asynchronous nonce management through
 | `token`       | `address` | The token contract address for the transfer.                                                                                                   |
 | `amount`      | `uint256` | The quantity of tokens to transfer from `from` to the recipient.                                                                               |
 | `priorityFee` | `uint256` | Additional fee for transaction priority. If the executor is a staker, they receive this fee as a reward.                                       |
-| `nonce`       | `uint256` | Transaction nonce value. Usage depends on `priorityFlag`: if `false` (sync), this value is ignored and automatic nonce is used.                |
+| `nonce`       | `uint256` | Transaction nonce value. Usage depends on `priorityFlag`: if `false` (sync), the provided value **must** equal the expected synchronous nonce (`getNextCurrentSyncNonce(from)`) otherwise the call reverts with `SyncNonceMismatch()`; if `true` (async), the provided nonce is used and must not have been used previously (otherwise `AsyncNonceAlreadyUsed()`). |
 | `priorityFlag`| `bool`    | Execution type flag: `false` = synchronous nonce (sequential), `true` = asynchronous nonce (custom).                                          |
 | `executor`    | `address` | Address authorized to execute this transaction. Use `address(0)` to allow any address to execute.                                              |
 | `signature`   | `bytes`   | Cryptographic signature ([EIP-191](https://eips.ethereum.org/EIPS/eip-191)) from the `from` address authorizing this payment.                 |
 
 :::note
-The `nonce` parameter usage depends on `priorityFlag`: when `false` (synchronous), the nonce is automatically managed and the provided value is ignored; when `true` (asynchronous), the provided nonce value is used for custom ordering.
+The `nonce` parameter usage depends on `priorityFlag`: when `false` (synchronous), the provided `nonce` must equal the expected synchronous nonce (`getNextCurrentSyncNonce(from)`); when `true` (asynchronous), the provided nonce is used and must not have been used previously.
 :::
 
 ### Execution Methods
@@ -62,7 +62,7 @@ When using a service as the executor, we recommend specifying the service's addr
 
 1. **Signature Verification**: Validates the `signature` against the `from` address and other parameters using `verifyMessageSignedForPay`. For synchronous payments (`priorityFlag = false`), uses `nextSyncUsedNonce[from]` as the nonce; for asynchronous payments (`priorityFlag = true`), uses the provided `nonce` parameter. Reverts with `InvalidSignature` on failure.
 2. **Executor Validation**: If `executor` is not `address(0)`, checks that `msg.sender` matches the `executor` address. Reverts with `SenderIsNotTheExecutor` if they don't match.
-3. **Asynchronous Nonce Verification**: For asynchronous payments only (`priorityFlag = true`), checks if the provided `nonce` has already been used for the `from` address by consulting the `asyncUsedNonce` mapping. Reverts with `InvalidAsyncNonce` if the nonce has already been used.
+3. **Asynchronous Nonce Verification**: For asynchronous payments (`priorityFlag = true`), checks if the provided `nonce` has already been used for the `from` address by consulting the `asyncUsedNonce` mapping. Reverts with `AsyncNonceAlreadyUsed()` if the nonce has already been used. For synchronous payments (`priorityFlag = false`), the provided `nonce` must match `nextSyncUsedNonce[from]` or the call reverts with `SyncNonceMismatch()`. 
 4. **Resolve Recipient Address**: Determines the final recipient address:
    - If `to_identity` is provided (not empty), resolves the identity to an owner address using `verifyStrictAndGetOwnerOfIdentity` from the NameService contract.
    - If `to_identity` is empty, uses the provided `to_address`.

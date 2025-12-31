@@ -98,8 +98,6 @@ emit FisherBridgeSend(
     priorityFee,
     amount,
     nextFisherExecutionNonce[from] - 1
-    amount,
-    nextFisherExecutionNonce[from] - 1
 );
 ```
 
@@ -162,9 +160,9 @@ The priority fee mechanism incentivizes fisher executors:
 
 | Error | Condition |
 |-------|-----------|
-| `PrincipalTokenIsNotWithdrawable` | Attempting to withdraw principal token |
-| `InsufficientBalance` | User lacks sufficient EVVM balance |
-| `InvalidSignature` | Signature verification fails |
+| `PrincipalTokenIsNotWithdrawable()` | Attempting to withdraw principal token |
+| `InsufficientBalance()` | User lacks sufficient EVVM balance |
+| `InvalidSignature()` | Signature verification fails |
 | Access Control Revert | Called by unauthorized address |
 
 ## Usage Flow

@@ -1,6 +1,6 @@
 ---
-+title: "Administrative Functions"
-+description: "Detailed documentation of the EVVM Core Contract's administrative functions for system configuration, governance, and access control."
+title: "Administrative Functions"
+description: "Detailed documentation of the EVVM Core Contract's administrative functions for system configuration, governance, and access control."
 sidebar_position: 6
 ---
 

@@ -20,7 +20,8 @@ activate nameService #00CEEE
 nameService -> nameService : onlyOwnerOfIdentity(user, username)
 note right : Verify user owns the username
 
-nameService -> nameService : verifyIfNonceIsAvailable(user, nonce)
+nameService -> nameService : verifyAsyncNonce(user, nonce)
+    note right : Reverts with AsyncNonceAlreadyUsed() if nonce already used
 
 nameService -> nameService : Validate renewal conditions:\n• flagNotAUsername != 0x01\n• expireDate <= block.timestamp + 36500 days\n(max 100 years in advance)
 
@@ -57,7 +58,7 @@ end
 
 nameService -> nameService : Extend expiration:\nidentityDetails[username].expireDate += 366 days
 
-nameService -> nameService : nameServiceNonce[user][nonce] = true
+nameService -> nameService : markAsyncNonceAsUsed(user, nonce)
 
 nameService --> user : Username renewed successfully\nExtended by 366 days
 

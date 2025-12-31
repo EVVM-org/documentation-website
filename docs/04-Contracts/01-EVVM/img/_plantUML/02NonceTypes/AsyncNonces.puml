@@ -16,19 +16,24 @@ participant "EVVM" as evvm #00EE20
 title Async Nonce Transaction\nGeneric Flow Example
 
 
+activate executor
 executor -> evvm : Execute transaction
+activate evvm
 
 evvm -> evvm : Read nonce state using\nasyncUsedNonce[userAddress][nonce]
 
 alt #f5b7b1 asyncUsedNonce [userAddress][nonce] == true
 
-  evvm -> executor : Revert transaction
+  evvm -x executor : Revert with AsyncNonceAlreadyUsed()
 
 else #white else
 
-  hnote over evvm : payment process
+  note right : Payment processing (illustrative)
 
   evvm -> evvm : asyncUsedNonce[userAddress][nonce] = true
+
+deactivate evvm
+deactivate executor
 
 end
 

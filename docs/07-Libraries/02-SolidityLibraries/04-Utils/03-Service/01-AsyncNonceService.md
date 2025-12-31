@@ -1,18 +1,18 @@
 ---
-title: "AsyncNonceService"
+title: "AsyncNonce"
 description: "Async nonce tracking and validation for replay attack prevention"
 sidebar_position: 1
 ---
 
-# AsyncNonceService
+# AsyncNonce
 
-The `AsyncNonceService` abstract contract provides async nonce management for EVVM services. Unlike sequential (sync) nonces, async nonces allow users to submit transactions in any order using unique identifiers.
+The `AsyncNonce` abstract contract provides async nonce management for EVVM services. Unlike sequential (sync) nonces, async nonces allow users to submit transactions in any order using unique identifiers.
 
 ## Overview
 
 **Contract Type**: Abstract contract  
 **License**: EVVM-NONCOMMERCIAL-1.0  
-**Import Path**: `@evvm/testnet-contracts/library/utils/service/AsyncNonceService.sol`
+**Import Path**: `@evvm/testnet-contracts/library/utils/nonces/AsyncNonce.sol`
 
 ### Key Features
 
@@ -48,11 +48,11 @@ The `AsyncNonceService` abstract contract provides async nonce management for EV
 ## Contract Structure
 
 ```solidity
-abstract contract AsyncNonceService {
-    error ServiceAsyncNonceAlreadyUsed();
+abstract contract AsyncNonce {
+    error AsyncNonceAlreadyUsed();
 
     mapping(address user => mapping(uint256 nonce => bool availability))
-        private asyncServiceNonce;
+        private asyncNonce;
 
     // Internal functions for verification and marking
     // Public view function for checking availability
@@ -77,9 +77,9 @@ mapping(address user => mapping(uint256 nonce => bool availability))
 
 ## Functions
 
-### `markAsyncServiceNonceAsUsed`
+### `markAsyncNonceAsUsed`
 ```solidity
-function markAsyncServiceNonceAsUsed(
+function markAsyncNonceAsUsed(
     address user,
     uint256 nonce
 ) internal virtual
@@ -104,18 +104,18 @@ function orderCoffee(
     ...
 ) external {
     // Verify signature and nonce
-    verifyAsyncServiceNonce(customer, nonce);
+    verifyAsyncNonce(customer, nonce);
     
     // Process order...
     
     // Mark nonce as used
-    markAsyncServiceNonceAsUsed(customer, nonce);
+    markAsyncNonceAsUsed(customer, nonce);
 }
 ```
 
-### `verifyAsyncServiceNonce`
+### `verifyAsyncNonce`
 ```solidity
-function verifyAsyncServiceNonce(
+function verifyAsyncNonce(
     address user,
     uint256 nonce
 ) internal view virtual
@@ -129,7 +129,7 @@ function verifyAsyncServiceNonce(
 
 **Visibility**: `internal view` - read-only check
 
-**Reverts**: `ServiceAsyncNonceAlreadyUsed()` if nonce already consumed
+**Reverts**: `AsyncNonceAlreadyUsed()` if nonce already consumed
 
 **Gas Cost**: ~2,100 (cold read) or ~100 (warm read)
 
@@ -137,15 +137,15 @@ function verifyAsyncServiceNonce(
 ```solidity
 function processAction(address user, uint256 nonce, ...) external {
     // Verify nonce hasn't been used (reverts if used)
-    verifyAsyncServiceNonce(user, nonce);
+    verifyAsyncNonce(user, nonce);
     
     // Safe to process...
 }
 ```
 
-### `isAsyncServiceNonceAvailable`
+### `getIfUsedAsyncNonce`
 ```solidity
-function isAsyncServiceNonceAvailable(
+function getIfUsedAsyncNonce(
     address user,
     uint256 nonce
 ) public view virtual returns (bool)
@@ -169,23 +169,23 @@ function isAsyncServiceNonceAvailable(
 **Example**:
 ```solidity
 // Check from another contract
-bool used = serviceContract.isAsyncServiceNonceAvailable(user, 12345);
+bool used = serviceContract.getIfUsedAsyncNonce(user, 12345);
 if (used) {
     // Nonce already consumed
 }
 
 // Check from frontend (JavaScript)
-const isUsed = await contract.isAsyncServiceNonceAvailable(userAddress, 12345);
+const isUsed = await contract.getIfUsedAsyncNonce(userAddress, 12345);
 ```
 
 ## Error
 
-### `ServiceAsyncNonceAlreadyUsed`
+### `AsyncNonceAlreadyUsed`
 ```solidity
-error ServiceAsyncNonceAlreadyUsed();
+error AsyncNonceAlreadyUsed();
 ```
 
-**Thrown by**: `verifyAsyncServiceNonce()`  
+**Thrown by**: `verifyAsyncNonce()`  
 **Meaning**: The nonce has already been consumed for this user  
 **Action**: Use a different nonce value
 
@@ -193,7 +193,7 @@ error ServiceAsyncNonceAlreadyUsed();
 
 ### Pattern 1: Standard Implementation
 ```solidity
-contract CoffeeShop is AsyncNonceService {
+contract CoffeeShop is AsyncNonce {
     function orderCoffee(
         address customer,
         string memory coffeeType,
@@ -205,20 +205,20 @@ contract CoffeeShop is AsyncNonceService {
         validateSignature(..., nonce, signature, customer);
         
         // 2. Check nonce (reverts if used)
-        verifyAsyncServiceNonce(customer, nonce);
+        verifyAsyncNonce(customer, nonce);
         
         // 3. Process order
         processOrder(customer, coffeeType, price);
         
         // 4. Mark nonce as used
-        markAsyncServiceNonceAsUsed(customer, nonce);
+        markAsyncNonceAsUsed(customer, nonce);
     }
 }
 ```
 
 ### Pattern 2: With EvvmService
 ```solidity
-// EvvmService already inherits AsyncNonceService
+// EvvmService already inherits AsyncNonce
 contract MyService is EvvmService {
     function action(
         address user,
@@ -227,18 +227,18 @@ contract MyService is EvvmService {
     ) external {
         // Use inherited async nonce functions
         validateServiceSignature(...);
-        verifyAsyncServiceNonce(user, nonce);
+        verifyAsyncNonce(user, nonce);
         
         // ... do work ...
         
-        markAsyncServiceNonceAsUsed(user, nonce);
+        markAsyncNonceAsUsed(user, nonce);
     }
 }
 ```
 
 ### Pattern 3: Conditional Nonce Check
 ```solidity
-contract FlexibleService is AsyncNonceService {
+contract FlexibleService is AsyncNonce {
     function action(
         address user,
         uint256 nonce,
@@ -246,13 +246,13 @@ contract FlexibleService is AsyncNonceService {
         bytes memory signature
     ) external {
         if (requireNonce) {
-            verifyAsyncServiceNonce(user, nonce);
+            verifyAsyncNonce(user, nonce);
         }
         
         // Process action...
         
         if (requireNonce) {
-            markAsyncServiceNonceAsUsed(user, nonce);
+            markAsyncNonceAsUsed(user, nonce);
         }
     }
 }
@@ -267,13 +267,13 @@ function batchActions(
 ) external {
     // Verify all nonces first (fail fast)
     for (uint256 i = 0; i < nonces.length; i++) {
-        verifyAsyncServiceNonce(user, nonces[i]);
+        verifyAsyncNonce(users[i], nonces[i]);
     }
     
     // Process all actions
     for (uint256 i = 0; i < nonces.length; i++) {
         processAction(user, signatures[i]);
-        markAsyncServiceNonceAsUsed(user, nonces[i]);
+        markAsyncNonceAsUsed(user, nonces[i]);
     }
 }
 ```
@@ -353,25 +353,25 @@ const nonce = timestamp * 10000 + random;
 ### 1. Always Verify Before Marking
 ```solidity
 // Good - verify then mark
-verifyAsyncServiceNonce(user, nonce);
+verifyAsyncNonce(user, nonce);
 // ... do work ...
-markAsyncServiceNonceAsUsed(user, nonce);
+markAsyncNonceAsUsed(user, nonce);
 
 // Bad - mark without verify (allows reuse!)
-markAsyncServiceNonceAsUsed(user, nonce);
+markAsyncNonceAsUsed(user, nonce);
 // ... do work ... (can be called again with same nonce!)
 ```
 
 ### 2. Mark After Successful Execution
 ```solidity
 // Good - mark after success
-verifyAsyncServiceNonce(user, nonce);
+verifyAsyncNonce(user, nonce);
 processPayment(...); // Might revert
-markAsyncServiceNonceAsUsed(user, nonce); // Only if payment succeeds
+markAsyncNonceAsUsed(user, nonce); // Only if payment succeeds
 
 // Bad - mark before critical operations
-verifyAsyncServiceNonce(user, nonce);
-markAsyncServiceNonceAsUsed(user, nonce); // Marked early
+verifyAsyncNonce(user, nonce);
+markAsyncNonceAsUsed(user, nonce); // Marked early
 processPayment(...); // If this reverts, nonce is wasted
 ```
 
@@ -383,23 +383,23 @@ string memory message = string.concat(
     AdvancedStrings.uintToString(nonce) // Nonce signed
 );
 validateSignature(message, signature, user);
-verifyAsyncServiceNonce(user, nonce);
+verifyAsyncNonce(user, nonce);
 
 // Bad - nonce not in signature (can be changed by fisher!)
 string memory message = "action,param1"; // No nonce
 validateSignature(message, signature, user);
-verifyAsyncServiceNonce(user, nonce); // Fisher can change nonce
+verifyAsyncNonce(user, nonce); // Fisher can change nonce
 ```
 
 ### 4. Check Nonce Early
 ```solidity
 // Good - fail fast
-verifyAsyncServiceNonce(user, nonce); // Check first
+verifyAsyncNonce(user, nonce); // Check first
 // ... expensive operations ...
 
 // Bad - check late (wastes gas on reused nonce)
 // ... expensive operations ...
-verifyAsyncServiceNonce(user, nonce); // Check last
+verifyAsyncNonce(user, nonce); // Check last
 ```
 
 ## Gas Optimization
@@ -408,19 +408,17 @@ verifyAsyncServiceNonce(user, nonce); // Check last
 ```solidity
 // Good - verify all nonces first
 for (uint256 i = 0; i < nonces.length; i++) {
-    verifyAsyncServiceNonce(users[i], nonces[i]);
+    verifyAsyncNonce(users[i], nonces[i]);
 }
 // Then process all
 for (uint256 i = 0; i < nonces.length; i++) {
     processAction(users[i]);
-    markAsyncServiceNonceAsUsed(users[i], nonces[i]);
-}
-
+        markAsyncNonceAsUsed(users[i], nonces[i]);
 // Bad - interleaved (partial success wastes gas)
 for (uint256 i = 0; i < nonces.length; i++) {
-    verifyAsyncServiceNonce(users[i], nonces[i]);
+    verifyAsyncNonce(users[i], nonces[i]);
     processAction(users[i]);
-    markAsyncServiceNonceAsUsed(users[i], nonces[i]);
+    markAsyncNonceAsUsed(users[i], nonces[i]);
     // If action[2] fails, nonces [0,1] already marked
 }
 ```
@@ -457,7 +455,7 @@ function useAsyncNonce(userAddress: string, contractAddress: string) {
     
     // Check if nonce is available
     const isNonceAvailable = useCallback(async (nonce: number) => {
-        const used = await contract.isAsyncServiceNonceAvailable(
+        const used = await contract.getIfUsedAsyncNonce(
             userAddress,
             nonce
         );
@@ -489,14 +487,14 @@ function orderWithPayment(
     bytes memory paymentSignature
 ) external {
     // Verify order signature with async nonce
-    verifyAsyncServiceNonce(customer, orderNonce);
+    verifyAsyncNonce(customer, orderNonce);
     validateOrderSignature(customer, orderNonce, orderSignature);
     
     // Process payment (has its own nonce system)
     evvm.pay(..., paymentNonce, true, ...); // EVVM async nonce
     
     // Mark order nonce as used
-    markAsyncServiceNonceAsUsed(customer, orderNonce);
+    markAsyncNonceAsUsed(customer, orderNonce);
 }
 ```
 
@@ -505,11 +503,11 @@ function orderWithPayment(
 event NonceUsed(address indexed user, uint256 indexed nonce, uint256 timestamp);
 
 function processAction(address user, uint256 nonce, ...) external {
-    verifyAsyncServiceNonce(user, nonce);
+    verifyAsyncNonce(user, nonce);
     
     // ... process ...
     
-    markAsyncServiceNonceAsUsed(user, nonce);
+    markAsyncNonceAsUsed(user, nonce);
     emit NonceUsed(user, nonce, block.timestamp);
 }
 ```
@@ -519,5 +517,5 @@ function processAction(address user, uint256 nonce, ...) external {
 ## See Also
 
 - **[SyncNonceService](./04-SyncNonceService.md)** - Sequential nonce alternative
-- **[EvvmService](../../02-EvvmService.md)** - Inherits AsyncNonceService
+- **[EvvmService](../../02-EvvmService.md)** - Inherits AsyncNonce
 - **[Nonce Types (EVVM)](../../../../04-Contracts/01-EVVM/02-NonceTypes.md)** - EVVM's nonce system

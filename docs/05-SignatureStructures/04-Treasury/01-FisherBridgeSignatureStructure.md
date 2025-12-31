@@ -165,8 +165,8 @@ keccak256(abi.encodePacked(
 
 **Signature verification call:**
 ```solidity
-SignatureRecover.signatureVerification(
-    "1",            // evvmID as string
+SignatureUtil.verifySignature(
+    1,              // evvmID as uint256
     "fisherBridge", // action type
     "0x9876543210987654321098765432109876543210,12,0x0000000000000000000000000000000000000000,10000000000000000,500000000000000000",
     signature,
@@ -215,7 +215,7 @@ keccak256(abi.encodePacked(
 
 ### Address Formatting
 - Uses `AdvancedStrings.addressToString()` for consistent address representation
-- Addresses are converted to lowercase hex strings without `0x` prefix
+- Addresses are converted to lowercase hex strings **with** `0x` prefix (lowercased)
 - Ensures compatibility across different blockchain environments
 
 ### Nonce Tracking
@@ -245,11 +245,11 @@ function verifyMessageSignedForFisherBridge(
 ) internal pure returns (bool)
 ```
 
-This function uses the `SignatureRecover.signatureVerification()` to reconstruct the message string using the provided parameters and verifies that the signature was created by the specified signer address using EIP-191 standard verification.
+This function uses the higher-level `SignatureUtil.verifySignature()` (which internally uses `SignatureRecover` primitives) to reconstruct the message string using the provided parameters and verifies that the signature was created by the specified signer address using EIP-191 standard verification.
 
 ## Signature Implementation Details
 
-The `SignatureRecover` library performs signature verification in the following steps:
+The lower-level `SignatureRecover` primitives (used internally by `SignatureUtil`) perform signature recovery in the following steps:
 
 1. **Message Construction**: Concatenates `evvmID`, `functionName`, and `inputs` with commas
 2. **EIP-191 Formatting**: Prepends `"\x19Ethereum Signed Message:\n"` + message length

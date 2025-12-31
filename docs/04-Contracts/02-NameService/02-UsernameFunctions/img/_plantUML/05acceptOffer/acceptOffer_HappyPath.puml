@@ -69,7 +69,7 @@ end
 
 nameService -> nameService : Update locked tokens:\nmateTokenLockedForWithdrawOffers -=\namount + ((amount * 1) / 199) / 4
 
-nameService -> nameService : nameServiceNonce[user][nonce] = true
+nameService -> nameService : markAsyncNonceAsUsed(user, nonce)
 
 nameService --> user : Offer accepted successfully\nUsername ownership transferred
 

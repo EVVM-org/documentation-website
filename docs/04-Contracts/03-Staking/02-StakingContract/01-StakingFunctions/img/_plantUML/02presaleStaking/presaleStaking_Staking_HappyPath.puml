@@ -21,9 +21,10 @@ deactivate user
 activate staking #FFD700
 
 staking -> staking : verifyMessageSignedForStake(\n  evvmID, user, isPublic=false,\n  isStaking=true, amount=1, nonce, signature\n)
-note right : SIGNATURE VERIFICATION:\nFixed amount=1 for presale\nUser must sign with EIP-712
+note right : SIGNATURE VERIFICATION:\nFixed amount=1 for presale\nUser must sign with EIP-191 (Ethereum Signed Message)
 
-staking -> staking : checkIfStakeNonceUsed(user, nonce)
+staking -> staking : verifyAsyncNonce(user, nonce)
+note right : Reverts with AsyncNonceAlreadyUsed() if nonce already used
 
 staking -> staking : presaleClaims(isStaking=true, user)
 note right : PRESALE VALIDATION:\n- Verify allowPublicStaking=false\n- Verify userPresaleStaker[user].isAllow\n- Check stakingAmount < 2\n- Increment stakingAmount++
@@ -37,7 +38,7 @@ staking -> staking : Check time lock:\ngetTimeToUserUnlockStakingTime(user) <= b
 
 staking -> staking : makePay(\n  user,\n  PRICE_OF_STAKING * 1,\n  (···)\n)
 
-staking -> evvm : pay(···)
+staking -> evvm : IEvvm.pay(...) (async/sync)
 activate evvm #00EE20
 evvm -> evvm : Verify signature and nonce\nTransfer tokens to Staking
 evvm --> staking : Payment successful
@@ -50,12 +51,12 @@ deactivate evvm
 
 staking -> staking : Update userHistory
 
-staking -> staking : stakingNonce[user][nonce] = true
+staking -> staking : markAsyncNonceAsUsed(user, nonce)
 
 alt #white msg.sender is staker
     staking -> staking : makeCaPay(···)
     
-    staking -> evvm : caPay(···)
+    staking -> evvm : IEvvm.caPay(...) (async/sync)
     activate evvm #00EE20
     evvm -> evvm : Transfer rewards
     evvm --> staking : Success

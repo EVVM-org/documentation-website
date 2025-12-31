@@ -14,7 +14,9 @@ The Treasury Host Chain Station includes comprehensive administrative functions 
 **Function Signature**: `proposeAdmin(address)`  
 **Access Control**: `onlyAdmin`
 
-Proposes a new admin address with a mandatory 1-day time delay for security.
+Proposes a new admin address with a mandatory time delay for security.
+
+**Note:** the current implementation sets the delay to `1 minute` (test/dev convenience); in production a longer delay (e.g., 1 day) is typical.
 
 #### Parameters
 | Parameter | Type | Description |

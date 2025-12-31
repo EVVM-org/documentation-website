@@ -167,7 +167,7 @@ The signature format includes `address(0)` for native coins, ensuring consistenc
 
 | Error | Condition |
 |-------|-----------|
-| `InvalidSignature` | Signature verification fails |
+| `InvalidSignature()` | Signature verification fails |
 | `InsufficientBalance` | `msg.value != amount + priorityFee` |
 | Access Control Revert | Called by unauthorized address |
 

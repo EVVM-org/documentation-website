@@ -24,7 +24,7 @@ The Name Service is a decentralized username management system providing human-r
 
 ### Security & Governance
 - **EIP-191 Signatures**: Cryptographic authorization for all operations
-- **Replay Protection**: Nonce-based system prevents duplicate transactions
+- **Replay Protection**: Async nonce system (`verifyAsyncNonce` / `markAsyncNonceAsUsed`) prevents duplicate operations by the same address
 - **Time-Delayed Admin**: 1-day waiting period for administrative changes
 
 ## Registration Process

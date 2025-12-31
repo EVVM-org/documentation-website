@@ -42,16 +42,15 @@ This function can be executed by any address.
 Failure at validation steps typically reverts the transaction.
 
 1. **Username Owner Verification**: Checks if the provided `_user` address is the registered owner of the `_username` (e.g., using an internal ownership check like `onlyAdminOfIdentity`). Reverts if `_user` is not the owner.
-2. **NameService Nonce Verification**: Checks if the provided `_nonce` is unused for the `_user` using the `verifyIfNonceIsAvailable` modifier. Reverts if the nonce is already used.
+2. **NameService Nonce Verification**: Calls internal `verifyAsyncNonce(user, nonce)` which reverts with `AsyncNonceAlreadyUsed()` if the nonce was already used.
 3. **Identity Verification**: Checks if the identity exists and is a valid username (e.g., `identityDetails[_username].flagNotAUsername` indicates it's a valid username type). Reverts if the identity doesn't exist or isn't a valid username.
 4. **Signature Verification**: Validates the `_signature` provided by `_user` (the owner) against the reconstructed message hash using `verifyMessageSignedForRenewUsername`. Reverts if the signature is invalid according to the [Renew Username Signature Structure](../../../05-SignatureStructures/02-NameService/06-renewUsernameStructure.md).
 5. **Date Verification**: Checks if this calculated date exceeds the maximum allowed registration term (e.g., 100 years from the current block timestamp). Reverts if the renewal would extend the registration beyond this limit.
 6. **Price Calculation**: Calls the `seePriceToRenew(_username)` function (or equivalent internal logic) to determine the cost (`renewalFee`) in MATE required to renew the `_username` for 366 days.
 7. **EVVM Payment Execution**: The payment is executed using the `makePay` function.
-8. **Reward Distribution (to Executor)**: Checks if the executor (`msg.sender`) is an sMATE staker (e.g., using `isMateStaker(msg.sender)`). If `msg.sender` is a staker:
-   - Calls an internal helper function (e.g., `_giveMateReward` or `makeCaPay`) to distribute rewards in principal tokens directly to `msg.sender`.
+8. **Reward Distribution (to Executor)**: If `msg.sender` is a staker, the contract distributes rewards by calling EVVM-backed helper functions (e.g., `makeCaPay`) that credit `msg.sender` with principal token rewards and any applicable priority fee.
    - The rewards typically include:
-     - A base MATE reward (e.g., 1 \* `seeMateReward()` value obtained from the EVVM contract).
+     - A base MATE reward (e.g., 1 × `seeMateReward()` value obtained from the EVVM contract).
      - The full `_priorityFeeForFisher` amount, if it was greater than zero and successfully paid in Step 7.
      - A percentage share (e.g., 50%) of the `renewalFee` that was successfully paid in Step 7.
    - _(The remaining portion of the `renewalFee` is typically retained by the service)._

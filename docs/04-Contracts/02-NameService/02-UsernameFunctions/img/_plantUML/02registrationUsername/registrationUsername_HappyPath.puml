@@ -49,7 +49,7 @@ note right : CRITICAL: Links to\npre-registration hash\nProves user committed fi
 nameService -> nameService : Create username registration:\nidentityDetails[username] = {\n  owner: user,\n  expireDate: block.timestamp + 366 days,\n  customMetadataMaxSlots: 0,\n  offerMaxSlots: 0,\n  flagNotAUsername: 0x00\n}
 note right : Initial registration:\n366 days validity\nMust renew annually
 
-nameService -> nameService : nameServiceNonce[user][nonce] = true
+nameService -> nameService : markAsyncNonceAsUsed(user, nonce)
 
 alt #white isAddressStaker(msg.sender)
     nameService -> nameService : makeCaPay(msg.sender,\n(50 * getRewardAmount()) + priorityFee_EVVM)

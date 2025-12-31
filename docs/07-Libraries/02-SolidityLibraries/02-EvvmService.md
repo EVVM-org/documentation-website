@@ -11,7 +11,7 @@ The `EvvmService` abstract contract is the recommended foundation for building E
 ## Overview
 
 **Contract Type**: Abstract base contract  
-**Inheritance**: `AsyncNonceService`  
+**Inheritance**: `AsyncNonce`, `StakingServiceUtils`, `EvvmPayments`  
 **License**: EVVM-NONCOMMERCIAL-1.0  
 **Import Path**: `@evvm/testnet-contracts/library/EvvmService.sol`
 
@@ -27,17 +27,18 @@ The `EvvmService` abstract contract is the recommended foundation for building E
 ## Contract Structure
 
 ```solidity
-abstract contract EvvmService is AsyncNonceService {
+abstract contract EvvmService is AsyncNonce, StakingServiceUtils, EvvmPayments {
     error InvalidServiceSignature();
 
-    IEvvm evvm;
-    IStaking staking;
+    // NOTE: `evvm` and `staking` are provided by base contracts:
+    // - `EvvmPayments` defines `IEvvm internal evvm;`
+    // - `StakingServiceUtils` defines `IStaking internal staking;`
 
-    constructor(address evvmAddress, address stakingAddress) {
-        evvm = IEvvm(evvmAddress);
-        staking = IStaking(stakingAddress);
-    }
-    
+    constructor(address evvmAddress, address stakingAddress)
+        StakingServiceUtils(stakingAddress)
+        EvvmPayments(evvmAddress)
+    {}
+
     // Signature verification
     // Payment processing
     // Service staking
@@ -47,17 +48,19 @@ abstract contract EvvmService is AsyncNonceService {
 
 ## State Variables
 
-### `evvm`
-```solidity
-IEvvm evvm;
-```
-Interface to the EVVM Core Contract for payment processing and balance queries.
+The `EvvmService` relies on state variables declared in its base libraries rather than redeclaring them:
 
-### `staking`
+### From `EvvmPayments`
 ```solidity
-IStaking staking;
+IEvvm internal evvm;
 ```
-Interface to the Staking Contract for service staking operations.
+An `IEvvm` handle for payment processing and balance queries.
+
+### From `StakingServiceUtils`
+```solidity
+IStaking internal staking;
+```
+A `IStaking` handle for service staking operations.
 
 ## Functions
 
@@ -270,27 +273,27 @@ Returns the ETH token address used in EVVM.
 
 ## Inherited Functionality
 
-From `AsyncNonceService`:
+From `AsyncNonce`:
 
-### `verifyAsyncServiceNonce`
+### `verifyAsyncNonce`
 ```solidity
-function verifyAsyncServiceNonce(address user, uint256 nonce) internal view virtual
+function verifyAsyncNonce(address user, uint256 nonce) internal view virtual
 ```
 
 Checks if an async nonce has been used.
 
-**Reverts**: `ServiceAsyncNonceAlreadyUsed()` if nonce was already used
+**Reverts**: `AsyncNonceAlreadyUsed()` if nonce was already used
 
-### `markAsyncServiceNonceAsUsed`
+### `markAsyncNonceAsUsed`
 ```solidity
-function markAsyncServiceNonceAsUsed(address user, uint256 nonce) internal virtual
+function markAsyncNonceAsUsed(address user, uint256 nonce) internal virtual
 ```
 
 Marks an async nonce as consumed to prevent replay attacks.
 
-### `isAsyncServiceNonceAvailable`
+### `getIfUsedAsyncNonce`
 ```solidity
-function isAsyncServiceNonceAvailable(address user, uint256 nonce) public view virtual returns (bool)
+function getIfUsedAsyncNonce(address user, uint256 nonce) public view virtual returns (bool)
 ```
 
 Public function to check nonce availability.
@@ -366,7 +369,7 @@ contract CoffeeShop is EvvmService {
         );
         
         // 2. Check nonce hasn't been used
-        verifyAsyncServiceNonce(customer, nonce);
+        verifyAsyncNonce(customer, nonce);
         
         // 3. Process payment
         requestPay(
@@ -386,7 +389,7 @@ contract CoffeeShop is EvvmService {
         }
         
         // 5. Mark nonce as used
-        markAsyncServiceNonceAsUsed(customer, nonce);
+        markAsyncNonceAsUsed(customer, nonce);
         
         // 6. Prepare coffee (off-chain)
         // emit CoffeeOrdered(customer, coffeeType, quantity);
@@ -438,13 +441,13 @@ validateServiceSignature("action", params, signature, user);
 ### 2. Check Nonces Before Payment
 ```solidity
 // Good - check nonce first
-verifyAsyncServiceNonce(user, nonce);
+verifyAsyncNonce(user, nonce);
 requestPay(...);
-markAsyncServiceNonceAsUsed(user, nonce);
+markAsyncNonceAsUsed(user, nonce);
 
 // Bad - payment before nonce check (wastes gas on replay)
 requestPay(...);
-verifyAsyncServiceNonce(user, nonce);
+verifyAsyncNonce(user, nonce);
 ```
 
 ### 3. Reward Fishers Appropriately
@@ -474,8 +477,8 @@ function stake(uint256 amount) external {
 ## Security Considerations
 
 ### Signature Replay Prevention
-- Always use `verifyAsyncServiceNonce()` before processing actions
-- Mark nonces as used with `markAsyncServiceNonceAsUsed()` after successful execution
+- Always use `verifyAsyncNonce()` before processing actions
+- Mark nonces as used with `markAsyncNonceAsUsed()` after successful execution
 - Never reuse nonces across different function calls
 
 ### Payment Authorization
@@ -526,9 +529,9 @@ contract OldService {
 contract NewService is EvvmService {
     function action(...) external {
         validateServiceSignature("action", params, sig, user);
-        verifyAsyncServiceNonce(user, nonce);
+        verifyAsyncNonce(user, nonce);
         requestPay(user, token, amount, fee, evmNonce, async, paymentSig);
-        markAsyncServiceNonceAsUsed(user, nonce);
+        markAsyncNonceAsUsed(user, nonce);
     }
 }
 ```
@@ -539,7 +542,7 @@ contract NewService is EvvmService {
 
 ## See Also
 
-- **[AsyncNonceService](./04-Utils/03-Service/01-AsyncNonceService.md)** - Inherited nonce management
+- **[AsyncNonce](./04-Utils/03-Service/01-AsyncNonceService.md)** - Inherited nonce management
 - **[SignatureUtil](./04-Utils/02-SignatureUtil.md)** - Signature verification used internally
 - **[How to Make an EVVM Service](../../06-HowToMakeAEVVMService.md)** - Complete service development guide
 - **[Staking Integration](../../04-Contracts/03-Staking/01-Overview.md)** - Service staking details

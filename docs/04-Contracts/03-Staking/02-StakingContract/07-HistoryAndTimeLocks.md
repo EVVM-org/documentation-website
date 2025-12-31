@@ -191,12 +191,12 @@ Before allowing operations, functions check time locks:
 ```solidity
 // Staking cooldown check
 if (getTimeToUserUnlockStakingTime(stakingAccount) > block.timestamp) {
-    revert ErrorsLib.UserMustWaitToStakeAgain();
+    revert ErrorsLib.AddressMustWaitToStakeAgain();
 }
 
 // Full unstaking cooldown check  
 if (getTimeToUserUnlockFullUnstakingTime(stakingAccount) > block.timestamp) {
-    revert ErrorsLib.UserMustWaitToFullUnstake();
+    revert ErrorsLib.AddressMustWaitToFullUnstake();
 }
 ```
 

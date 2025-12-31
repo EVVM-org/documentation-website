@@ -55,10 +55,17 @@ Validates EIP-191 signature with EVVM ID integration using structured message fo
 
 ### 2. Token Transfer
 ```solidity
-SafeTransferLib.safeTransferFrom(tokenAddress, from, address(this), amount + priorityFee);
+// Implementation calls:
+verifyAndDepositERC20(tokenAddress, amount);
+
+// Internally:
+// if (token == address(0)) revert();
+// if (IERC20(token).allowance(msg.sender, address(this)) < amount)
+//     revert ErrorsLib.InsufficientBalance();
+// IERC20(token).transferFrom(msg.sender, address(this), amount);
 ```
 
-Safely transfers ERC20 tokens from user to contract using Solady's SafeTransferLib. Total transfer includes both deposit amount and priority fee.
+Transfers the deposit `amount` from the user to the contract using `transferFrom` (the implementation validates allowance and performs `transferFrom`). **Note:** the `priorityFee` is not transferred here — it is represented in the emitted event and will be credited to the fisher executor on the host chain when the message is processed.
 
 ### 3. Nonce Increment
 ```solidity
@@ -167,7 +174,7 @@ The same signature used here should be processable by the host chain station's `
 
 | Error | Condition |
 |-------|-----------|
-| `InvalidSignature` | Signature verification fails |
+| `InvalidSignature()` | Signature verification fails |
 | `InsufficientBalance` | Insufficient ERC20 allowance |
 | ERC20 Transfer Failure | Token transfer reverts (insufficient balance, paused token, etc.) |
 | Access Control Revert | Called by unauthorized address |

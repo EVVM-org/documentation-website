@@ -8,7 +8,7 @@ sidebar_position: 2
 
 **Function Type**: `external`  
 **Function Signature**: `payMultiple((address,address,string,address,uint256,uint256,uint256,bool,address,bytes)[])`
-**Returns**: `(uint256 successfulTransactions, uint256 failedTransactions, bool[] memory results)`
+**Returns**: `(uint256 successfulTransactions, bool[] memory results)`
 
 Processes multiple payments in a single transaction batch with individual success/failure tracking. Each payment instruction can originate from different senders and supports both staker and non-staker payment types, with comprehensive transaction statistics and detailed results for each operation.
 
@@ -25,7 +25,6 @@ Processes multiple payments in a single transaction batch with individual succes
 | Return Value             | Type        | Description                                                 |
 | ------------------------ | ----------- | ----------------------------------------------------------- |
 | `successfulTransactions` | `uint256`   | Number of payments that completed successfully              |
-| `failedTransactions`     | `uint256`   | Number of payments that failed                              |
 | `results`                | `bool[]`    | Boolean array indicating success/failure for each payment  |
 
 ## `PayData` Struct
@@ -115,7 +114,7 @@ The function processes each payment in the `payData` array independently, allowi
 
    h. **Result Tracking**: Updates counters and result array based on payment success/failure.
 
-3. **Staker Rewards**: After processing all payments, if the executor is a staker, grants principal token rewards equal to the number of successful transactions using `_giveMateReward`.
+3. **Staker Rewards**: After processing all payments, if the executor is a staker, grants principal token rewards equal to the number of successful transactions using `_giveReward`. 
 
 4. **Return Values**: Returns the count of successful transactions, failed transactions, and the detailed results array.
 

@@ -146,7 +146,7 @@ This provides:
 
 | Error | Condition |
 |-------|-----------|
-| `InvalidSignature` | Signature verification fails |
+| `InvalidSignature()` | Signature verification fails |
 | Access Control Revert | Called by unauthorized address (not current fisher executor) |
 
 ## Usage Example

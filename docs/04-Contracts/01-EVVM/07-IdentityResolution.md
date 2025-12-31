@@ -244,6 +244,8 @@ evvm.pay(
     tokenAddress,
     amount,
     priorityFee,
+    0,                    // nonce (example)
+    false,                // priorityFlag (sync example)
     executor,
     signature
 );

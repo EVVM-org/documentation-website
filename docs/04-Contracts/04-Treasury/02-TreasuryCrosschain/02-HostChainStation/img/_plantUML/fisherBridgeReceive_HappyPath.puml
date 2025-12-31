@@ -1,0 +1,33 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+title Host Station: fisherBridgeReceive() Flow (Happy Path)
+
+actor "Fisher" as fisher
+participant "HostStation" as host #66CCFF
+participant "EVVM" as evvm #00EE20
+
+activate fisher
+fisher -> host : fisherBridgeReceive(from, addressToReceive, tokenAddress, priorityFee, amount, signature)
+deactivate fisher
+
+activate host
+host -> host : SignatureUtils.verifyMessageSignedForFisherBridge(...)
+alt #white Signature valid
+    host -> host : nextFisherExecutionNonce[from]++
+    host -> evvm : executerEVVM(true, addressToReceive, tokenAddress, amount)
+    alt #white priorityFee > 0
+        host -> evvm : executerEVVM(true, msg.sender, tokenAddress, priorityFee)
+    end
+else #f5b7b1 Invalid signature
+    host -x fisher : Revert with InvalidSignature()
+end
+
+deactivate host
+
+@enduml

@@ -24,7 +24,8 @@ staking -> staking : Verify allowPublicStaking.flag == true
 
 staking -> staking : verifyMessageSignedForStake(\n  evvmID, user, isPublic=true,\n  isStaking=false, amountOfStaking,\n  nonce, signature\n)
 
-staking -> staking : checkIfStakeNonceUsed(user, nonce)
+staking -> staking : verifyAsyncNonce(user, nonce)
+note right : Reverts with AsyncNonceAlreadyUsed() if nonce already used
 
 staking -> staking : stakingBaseProcess(\n  AccountMetadata{user, false},\n  isStaking=false,\n  amountOfStaking,\n  priorityFee_EVVM, nonce_EVVM,\n  priorityFlag_EVVM, signature_EVVM\n)
 
@@ -50,7 +51,7 @@ evvm -> evvm : Transfer refund to user
 evvm --> staking : Refund successful
 deactivate evvm
 
-staking -> staking : stakingNonce[user][nonce] = true
+staking -> staking : markAsyncNonceAsUsed(user, nonce)
 
 alt #white msg.sender is staker
     staking -> staking : makeCaPay(···)

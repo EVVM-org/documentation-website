@@ -50,7 +50,7 @@ This pricing includes:
 
 Failure at validation steps typically reverts the transaction. The steps execute **in the specified order**.
 
-1.  **NameService Nonce Verification**: Checks if the provided `nonce` is unused for the `user` using the `verifyIfNonceIsAvailable` modifier. Reverts if the nonce is already used.
+1.  **Name Service Nonce Verification**: Calls internal `verifyAsyncNonce(user, nonce)` which reverts with `AsyncNonceAlreadyUsed()` if the nonce was already used.
 2.  **Identity Ownership Verification**: Checks if the provided `user` address is the registered owner of the `username`. Reverts if `user` is not the owner.
 3.  **Username Expiration and Type Validation**: Validates that the username has not expired and is a valid username type:
     - Checks that `block.timestamp < identityDetails[username].expireDate` (username is still active)
@@ -70,7 +70,7 @@ Failure at validation steps typically reverts the transaction. The steps execute
     - Sets `customMetadataMaxSlots` to `0`
     - Preserves existing `offerMaxSlots`
     - Sets `flagNotAUsername` to `0x00` (making it available for re-registration)
-9.  **Nonce Management**: Marks the Name Service `nonce` as used for the `user` address within the `nameServiceNonce` mapping.
+9.  **Nonce Management**: Calls internal `markAsyncNonceAsUsed(user, nonce)` to mark the provided `nonce` as used and prevent replays.
 
 ![flushUsername Happy Path](./img/flushUsername_HappyPath.svg)
 ![flushUsername Failed Path](./img/flushUsername_FailedPath.svg)

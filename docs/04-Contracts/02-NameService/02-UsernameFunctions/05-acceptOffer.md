@@ -43,7 +43,7 @@ This function can be executed by any address.
 Failure at validation steps typically reverts the transaction.
 
 1. **Username Owner Verification**: Checks if the provided `_user` address is the registered owner of the `_username` (e.g., using an internal ownership check like `onlyAdminOfIdentity`). Reverts if `_user` is not the owner.
-2. **NameService Nonce Verification**: Checks if the provided `_nonce` is unused for the `_user` using the `verifyIfNonceIsAvailable` modifier. Reverts if the nonce is already used.
+2. **NameService Nonce Verification**: Calls internal `verifyAsyncNonce(user, nonce)` which reverts with `AsyncNonceAlreadyUsed()` if the nonce was already used.
 3. **Offer validation**: Retrieves the offer data associated with `_username` and `_offerID`. Checks that the offer exists (e.g., `offerer != address(0)`) and that its `expireDate` has not passed based on the current block timestamp. Reverts if the offer is invalid or expired.
 4. **Signature Verification**: Validates the `_signature` provided by `_user` (the owner) against the reconstructed message hash using `verifyMessageSignedForAcceptOffer`. Reverts if the signature is invalid according to the [Accept Offer Signature Structure](../../../05-SignatureStructures/02-NameService/05-acceptOfferStructure.md).
 5. **EVVM Payment Execution (Optional Priority Fee)**: If `_priorityFeeForFisher` is greater than zero:

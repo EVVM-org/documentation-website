@@ -32,7 +32,7 @@ end
 alt #white priorityFee != 0 && !account.IsAService
     base -> base : makePay(···)
     
-    base -> evvm : pay(···)
+    base -> evvm : IEvvm.pay(...) (async/sync)
     activate evvm #00EE20
     
     alt #f5b7b1 Priority fee payment fails

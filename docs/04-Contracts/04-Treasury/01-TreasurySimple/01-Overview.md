@@ -32,6 +32,13 @@ The Simple Treasury provides a streamlined, single-chain solution for asset mana
 
 - **[deposit](./02-deposit.md)**: Deposit native coins or ERC20 tokens into EVVM
 - **[withdraw](./03-withdraw.md)**: Withdraw assets from EVVM back to user wallet
+- **`getEvvmAddress()`**: Returns the configured EVVM core contract address used by the Treasury (helper view on the contract)
+
+## Security Considerations
+
+- The Treasury acts as an accounting gateway: it transfers custody of tokens to the contract (for ERC20) or receives native coins and then calls `addAmountToUser(...)` on the EVVM core contract to credit balances. For withdrawals, it calls `removeAmountFromUser(...)` before performing external transfers.
+- Principal token withdrawals are expressly blocked by design: attempting to withdraw the Principal Token will revert (`PrincipalTokenIsNotWithdrawable()`).
+- Consider using safe ERC20 transfer helpers and adding tests for token transfer failures and malicious token behaviour.
 
 ## Architecture
 

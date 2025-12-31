@@ -65,7 +65,7 @@ When the executor is the user or a service:
 
 ## Workflow
 
-1. **NameService Nonce Verification**: Checks if the provided `nonce` is unused for the `user` using the `verifyIfNonceIsAvailable` modifier. Reverts if used.
+1. **NameService Nonce Verification**: Calls internal `verifyAsyncNonce(user, nonce)` which reverts with `AsyncNonceAlreadyUsed()` if the nonce was already used.
 
 2. **Pre-registration Signature Verification**: Verifies the `signature` provided by `user` using `verifyMessageSignedForPreRegistrationUsername`. Reverts with `InvalidSignatureOnNameService` if invalid.
 
@@ -78,7 +78,7 @@ When the executor is the user or a service:
    - Expiration: `block.timestamp + 30 minutes`
    - Flags: Marked as not a username (`flagNotAUsername = 0x01`)
 
-5. **Nonce Management**: Marks the NameService `nonce` as used for the `user` in the `nameServiceNonce` mapping.
+5. **Nonce Management**: Calls internal `markAsyncNonceAsUsed(user, nonce)` to mark the provided `nonce` as used and prevent replays.
 
 6. **Staker Rewards**: If the executor (`msg.sender`) is a staker (`isAddressStaker(msg.sender)`), distributes rewards via `makeCaPay`:
    - Base MATE reward (`getRewardAmount()`)

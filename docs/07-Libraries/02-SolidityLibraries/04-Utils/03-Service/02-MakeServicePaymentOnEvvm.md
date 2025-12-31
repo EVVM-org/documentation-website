@@ -318,7 +318,7 @@ abstract contract MakeServicePaymentOnEvvm {
 
 ### EvvmService (Includes More)
 ```solidity
-abstract contract EvvmService is AsyncNonceService {
+abstract contract EvvmService is AsyncNonce {
     // Payment helpers + additional features
     function requestPay(...) internal { }  // Similar to makePay
     function makeCaPay(...) internal { }
@@ -327,7 +327,7 @@ abstract contract EvvmService is AsyncNonceService {
     function validateServiceSignature(...) internal { }
     function _makeStakeService(...) internal { }
     function _makeUnstakeService(...) internal { }
-    // + Nonce management via AsyncNonceService
+    // + Nonce management via AsyncNonce
 }
 ```
 

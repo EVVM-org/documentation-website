@@ -1,0 +1,27 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+title External Station: depositCoin() Flow (Happy Path)
+
+actor "User" as user
+participant "ExternalStation" as ext #66CCFF
+participant "HyperlaneMailbox" as mailbox #EEEEEE
+
+activate user
+user -> ext : depositCoin(toAddress, amount, protocolToExecute){value}
+deactivate user
+
+activate ext
+ext -> ext : if (msg.value < amount) revert InsufficientBalance()
+ext -> ext : payload = PayloadUtils.encodePayload(address(0), toAddress, amount)
+ext -> mailbox : dispatch(payload){value=quote}
+mailbox --> ext : messageId
+
+deactivate ext
+
+@enduml

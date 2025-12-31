@@ -22,7 +22,8 @@ activate staking #FFD700
 
 staking -> staking : verifyMessageSignedForStake(\n  evvmID, user, isPublic=false,\n  isStaking=false, amount=1, nonce, signature\n)
 
-staking -> staking : checkIfStakeNonceUsed(user, nonce)
+staking -> staking : verifyAsyncNonce(user, nonce)
+note right : Reverts with AsyncNonceAlreadyUsed() if nonce already used
 
 staking -> staking : presaleClaims(isStaking=false, user)
 note right : DECREMENT:\nuserPresaleStaker[user].stakingAmount--\n(Allows re-staking later)
@@ -53,7 +54,7 @@ evvm -> evvm : Transfer refund to user
 evvm --> staking : Refund successful
 deactivate evvm
 
-staking -> staking : stakingNonce[user][nonce] = true
+staking -> staking : markAsyncNonceAsUsed(user, nonce)
 
 alt #white msg.sender is staker
     staking -> staking : makeCaPay(···)

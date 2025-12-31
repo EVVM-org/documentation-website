@@ -48,7 +48,7 @@ struct DispersePayMetadata {
 | Field         | Type      | Description                                                                                                  |
 | ------------- | --------- | ------------------------------------------------------------------------------------------------------------ |
 | `amount`      | `uint256` | The amount of tokens to be sent to this recipient.                                                           |
-| `to_address`  | `address` | Direct recipient address. Used when `to_identity` is `address(0)`.                                           |
+| `to_address`  | `address` | Direct recipient address. Used when `to_identity` is an empty string (`""`).                                           |
 | `to_identity` | `string`  | Username/identity of the recipient. If provided, the contract resolves it to an address via the NameService. |
 
 :::note
@@ -79,7 +79,7 @@ When using a service as the executor, we recommend specifying the service's addr
 
 2. **Executor Validation**: If `executor` is not `address(0)`, checks that `msg.sender` matches the `executor` address. Reverts with `SenderIsNotTheExecutor` if they don't match.
 
-3. **Async Nonce Verification**: If `priorityFlag` is `true` (asynchronous), checks if the custom nonce hasn't been used by consulting the `asyncUsedNonce` mapping. Reverts with `InvalidAsyncNonce` if already used.
+3. **Async Nonce Verification**: If `priorityFlag` is `true` (asynchronous), checks if the custom nonce hasn't been used by consulting the `asyncUsedNonce` mapping. Reverts with `AsyncNonceAlreadyUsed()` if already used. 
 
 4. **Balance Verification**: Checks that the `from` address has sufficient balance to cover both `amount` and `priorityFee`. Reverts with `InsufficientBalance` if insufficient.
 
@@ -98,8 +98,8 @@ When using a service as the executor, we recommend specifying the service's addr
 8. **Staker Benefits**:
 
    - If the executor is a staker (`isAddressStaker(msg.sender)`):
-     - Grants 1 principal token reward using `_giveMateReward`
-     - Distributes the `priorityFee` to the executor
+     - Grants 1 principal token reward using `_giveReward`
+     - Transfers the `priorityFee` to the executor
    - If the executor is not a staker:
      - Returns the `priorityFee` to the original sender
 

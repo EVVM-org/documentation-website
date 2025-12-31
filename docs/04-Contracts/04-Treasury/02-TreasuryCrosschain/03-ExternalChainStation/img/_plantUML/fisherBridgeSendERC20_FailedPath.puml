@@ -1,0 +1,29 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+title External Station: fisherBridgeSendERC20() Flow (Failed Paths)
+
+actor "Fisher" as fisher
+participant "ExternalStation" as ext #66CCFF
+
+activate fisher
+fisher -> ext : fisherBridgeSendERC20(...)
+deactivate fisher
+
+activate ext
+alt #f5b7b1 Invalid signature
+    ext -x fisher : Revert with InvalidSignature()
+else #f5b7b1 Insufficient allowance
+    ext -x fisher : Revert with InsufficientBalance()
+else #f5b7b1 TransferFrom failed
+    ext -x fisher : ERC20 transferFrom reverted
+end
+
+deactivate ext
+
+@enduml

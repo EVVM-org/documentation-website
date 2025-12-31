@@ -32,7 +32,7 @@ else #white Signature is valid
     alt #white priorityFlag == true
         evvm -> evvm : check asyncUsedNonce[from][nonce]
         alt #f5b7b1 asyncUsedNonce[from][nonce] == true
-            evvm -x user : Revert with InvalidAsyncNonce
+            evvm -x user : Revert with AsyncNonceAlreadyUsed()
             note right : Prevents replay attacks:\nEach async nonce can only\nbe used once
         end
     end
@@ -75,6 +75,5 @@ else #white Signature is valid
     end
 end
 
-deactivate evvm
-
+deactivate evvmdeactivate user
 @enduml

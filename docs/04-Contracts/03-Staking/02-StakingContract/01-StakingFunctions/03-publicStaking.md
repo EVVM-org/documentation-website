@@ -14,7 +14,7 @@ The `publicStaking` function enables universal access to MATE token staking when
 
 :::info
 
-For all EVVM testnets `allowPublicStaking.flag` is enabled by default.
+Note: In this repository's contract implementation the constructor leaves `allowPublicStaking.flag` disabled by default and enables `allowPresaleStaking.flag`. Deployments and testnets may use different defaults; consult the deployed contract metadata for runtime flag values.
 
 :::
 
@@ -49,7 +49,7 @@ The function supports two execution paths:
 
 1. **Feature Status Verification**: Confirms `allowPublicStaking.flag` is enabled
 2. **Signature Verification**: Validates the authenticity of the user signature
-3. **Nonce Validation**: Confirms the contract nonce is valid and unused
+3. **Nonce Validation**: Calls internal `verifyAsyncNonce(user, nonce)` which reverts with `AsyncNonceAlreadyUsed()` if the nonce was already used; after successful execution the contract calls `markAsyncNonceAsUsed(user, nonce)` to prevent replays
 4. **Process Execution**: Calls the internal `stakingBaseProcess` function with:
    - User address and IsAService=false in AccountMetadata
    - Specified amount of staking tokens
@@ -70,7 +70,7 @@ For detailed information about the `stakingBaseProcess` function, refer to the [
 
 1. **Feature Status Verification**: Confirms `allowPublicStaking.flag` is enabled  
 2. **Signature Verification**: Validates the authenticity of the user signature
-3. **Nonce Validation**: Confirms the contract nonce is valid and unused
+3. **Nonce Validation**: Calls internal `verifyAsyncNonce(user, nonce)` which reverts with `AsyncNonceAlreadyUsed()` if the nonce was already used; after successful execution the contract calls `markAsyncNonceAsUsed(user, nonce)` to prevent replays
 4. **Process Execution**: Calls the internal `stakingBaseProcess` function with:
    - User address and IsAService=false in AccountMetadata
    - Specified amount of staking tokens

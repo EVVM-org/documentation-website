@@ -1,0 +1,47 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+title withdraw() Flow
+
+actor "User" as user
+participant "Treasury" as treasury #66CCFF
+participant "EVVM" as evvm #00EE20
+participant "Token" as token #EEEEEE
+
+activate user
+
+user -> treasury : withdraw(token, amount)
+
+deactivate user
+
+activate treasury #66CCFF
+
+treasury -> evvm : getEvvmMetadata().principalTokenAddress
+note right : Must not match `token`
+
+alt #white Token is principal
+    treasury -x user : Revert with PrincipalTokenIsNotWithdrawable()
+else #white Check balance
+    treasury -> evvm : getBalance(msg.sender, token)
+    alt #f5b7b1 insufficient
+        treasury -x user : Revert with InsufficientBalance()
+    else #white Sufficient balance
+        treasury -> evvm : removeAmountFromUser(msg.sender, token, amount)
+        note right : state updated before external transfer
+        alt #white Native coin (token == address(0))
+            treasury -> evvm : removeAmountFromUser(msg.sender, address(0), amount)
+            treasury -> treasury : SafeTransferLib.safeTransferETH(msg.sender, amount)
+        else #white ERC20
+            treasury -> token : IERC20(token).transfer(msg.sender, amount)
+        end
+    end
+end
+
+deactivate treasury
+
+@enduml

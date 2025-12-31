@@ -1,0 +1,42 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+title Host Station: fisherBridgeSend() Flow (Happy Path)
+
+actor "Fisher Executor" as fisher
+participant "HostStation" as host #66CCFF
+participant "EVVM" as evvm #00EE20
+
+activate fisher
+fisher -> host : fisherBridgeSend(from, addressToReceive, tokenAddress, priorityFee, amount, signature)
+deactivate fisher
+
+activate host
+host -> evvm : getEvvmMetadata().principalTokenAddress
+note right : Prevent bridging principal token
+
+host -> evvm : getBalance(from, tokenAddress)
+alt #white Sufficient
+    host -> host : SignatureUtils.verifyMessageSignedForFisherBridge(...)
+    alt #white Signature valid
+        host -> host : nextFisherExecutionNonce[from]++
+        host -> evvm : executerEVVM(false, from, tokenAddress, amount + priorityFee)
+        alt #white priorityFee > 0
+            host -> evvm : executerEVVM(true, msg.sender, tokenAddress, priorityFee)
+        end
+        host -> host : emit FisherBridgeSend(...)
+    else #f5b7b1 Invalid signature
+        host -x fisher : Revert with InvalidSignature()
+    end
+else #f5b7b1 Insufficient balance
+    host -x fisher : Revert with InsufficientBalance()
+end
+
+deactivate host
+
+@enduml

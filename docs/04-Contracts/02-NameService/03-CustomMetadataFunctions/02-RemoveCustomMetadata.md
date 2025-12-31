@@ -49,7 +49,7 @@ This ensures the pricing scales with the network's current reward structure and 
 Failure at validation steps typically reverts the transaction. The steps execute **in the specified order**.
 
 1.  **Identity Ownership Verification**: Checks if the provided `user` address is the registered owner of the `identity`. Reverts if `user` is not the owner.
-2.  **Name Service Nonce Verification**: Checks if the provided `nonce` is unused for the `user` using the `verifyIfNonceIsAvailable` modifier. Reverts if the nonce is already used.
+2.  **Name Service Nonce Verification**: Calls internal `verifyAsyncNonce(user, nonce)` which reverts with `AsyncNonceAlreadyUsed()` if the nonce was already used.
 3.  **Remove Custom Metadata Signature Validation**: Verifies the `signature` provided by `user` (the owner) against the reconstructed message hash using `verifyMessageSignedForRemoveCustomMetadata`. Reverts if the signature is invalid according to the [Remove Custom Metadata Signature Structure](../../../05-SignatureStructures/02-NameService/08-removeCustomMetadataStructure.md).
 4.  **Custom Metadata Index Validation**: Checks that the provided `key` (index) is valid, meaning it is less than the current number of metadata entries for the `identity` (`key < identityDetails[identity].customMetadataMaxSlots`). Reverts if the index is out of bounds.
 5.  **Payment execution**: Calls `makePay` to transfer the payment using the `getPriceToRemoveCustomMetadata()` function and `priorityFee_EVVM` of principal tokens from `user` to the service via the EVVM contract. Reverts if the payment fails.
@@ -60,7 +60,7 @@ Failure at validation steps typically reverts the transaction. The steps execute
       - In each iteration, copies the metadata entry from index `i + 1` to index `i` (`identityCustomMetadata[identity][i] = identityCustomMetadata[identity][i + 1]`).
       - Deletes the entry at the last occupied index (`identityCustomMetadata[identity][customMetadataMaxSlots]`) to clear the duplicated data.
 7.  **Decrement Count**: Decreases the metadata count: `identityDetails[identity].customMetadataMaxSlots--` to reflect the removal.
-8.  **Nonce Management**: Marks the Name Service `nonce` (provided as an input parameter for this transaction) as used for the `user` address within the `nameServiceNonce` mapping.
+8.  **Nonce Management**: Calls internal `markAsyncNonceAsUsed(user, nonce)` to mark the provided `nonce` as used and prevent replays.
 9.  **Reward Distribution (to Executor)**: If the executor (`msg.sender`) is an sMATE staker, calls an internal helper function (`makeCaPay`) to distribute rewards in principal tokens directly to `msg.sender`. The rewards consist of:
     - 5 times the base reward amount (`5 * Evvm(evvmAddress.current).getRewardAmount()`).
     - The full `priorityFee_EVVM`, if it was greater than zero and successfully paid in Step 5.

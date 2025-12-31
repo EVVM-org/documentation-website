@@ -34,7 +34,7 @@ alt #white priorityFee != 0 && !account.IsAService
     base -> base : makePay(···)
     note right : OPTIONAL:\nPriority fee payment
     
-    base -> evvm : pay(···)
+    base -> evvm : IEvvm.pay(...) (async/sync)
     activate evvm #00EE20
     evvm --> base : Success
     deactivate evvm

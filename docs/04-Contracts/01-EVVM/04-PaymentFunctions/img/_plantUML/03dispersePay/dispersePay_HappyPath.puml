@@ -18,6 +18,8 @@ executor -> evvm : dispersePay(···)
 activate evvm #00EE20
 
 evvm -> evvm : verifyMessageSignedForDispersePay()
+note right : Signature covers sha256(abi.encode(toData)) (hashList)
+note right : Signature includes EvvmID and other params
 
 alt #white executor != address(0)
     evvm -> evvm : verify if msg.sender == executor
@@ -74,7 +76,7 @@ end
 
 evvm --> executor : Transaction completed successfully
 
-deactivate executor
 deactivate evvm
+deactivate executor
 
 @enduml

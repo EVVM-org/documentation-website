@@ -24,7 +24,7 @@ Proposes a new admin address with a mandatory 1-day time delay for security.
 #### Workflow
 1. **Validation**: Ensures new address is not zero address or current admin
 2. **Proposal Setup**: Sets `admin.proposal = _newOwner`
-3. **Time Lock**: Sets `admin.timeToAccept = block.timestamp + 1 days`
+3. **Time Lock**: Sets `admin.timeToAccept = block.timestamp + 1 minutes` (current testnet/dev setting; production may use `+ 1 days`)
 
 ### rejectProposalAdmin
 

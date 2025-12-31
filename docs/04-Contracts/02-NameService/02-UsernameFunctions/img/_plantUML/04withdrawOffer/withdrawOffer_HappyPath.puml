@@ -16,7 +16,8 @@ user -> nameService : withdrawOffer(···)
 
 activate nameService #00CEEE
 
-nameService -> nameService : verifyIfNonceIsAvailable(user, nonce)
+nameService -> nameService : verifyAsyncNonce(user, nonce)
+    note right : Reverts with AsyncNonceAlreadyUsed() if nonce already used
 
 nameService -> nameService : Verify ownership:\nusernameOffers[username][offerID].offerer == user
 
@@ -60,7 +61,7 @@ deactivate evvm
 
 nameService -> nameService : Update locked tokens:\nmateTokenLockedForWithdrawOffers -=\namount + ((amount * 1) / 199) / 4
 
-nameService -> nameService : nameServiceNonce[user][nonce] = true
+nameService -> nameService : markAsyncNonceAsUsed(user, nonce)
 
 nameService --> user : Offer withdrawn successfully\nTokens refunded
 

@@ -173,8 +173,8 @@ uint256 totalRequired = amount + estimatedAxelarGas;
 
 | Error | Condition |
 |-------|-----------|
-| `DepositAmountMustBeGreaterThanZero` | Amount parameter is zero |
-| `InvalidDepositAmount` | Insufficient `msg.value` for deposit + protocol fees |
+| `DepositAmountMustBeGreaterThanZero()` | Amount parameter is zero |
+| `InvalidDepositAmount()` | Insufficient `msg.value` for deposit + protocol fees |
 | Protocol Revert | Unsupported `protocolToExecute` identifier |
 | Cross-Chain Failure | Insufficient gas payment for selected protocol |
 

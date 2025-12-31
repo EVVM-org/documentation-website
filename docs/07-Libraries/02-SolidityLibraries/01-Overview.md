@@ -27,10 +27,11 @@ All libraries are imported from `@evvm/testnet-contracts/library/` followed by t
 
 - **AdvancedStrings**: Type conversion utilities (uint/address/bytes to string)
 - **SignatureUtil**: High-level signature verification for EVVM messages
+- **GovernanceUtils**: Time-delayed governance helpers (`AdminControlled`)
 
 ### Service Utilities
 
-- **AsyncNonceService**: Async nonce tracking and validation
+- **AsyncNonce**: Async nonce tracking and validation
 - **SyncNonceService**: Sequential nonce management
 - **MakeServicePaymentOnEvvm**: Payment processing helpers
 - **StakingServiceUtils**: Service staking integration utilities
@@ -64,13 +65,13 @@ contract MyService is EvvmService {
         validateServiceSignature("myFunction", data, signature, user);
 
         // Check nonce
-        verifyAsyncServiceNonce(user, nonce);
+        verifyAsyncNonce(user, nonce);
 
         // Process payment
         requestPay(user, getEtherAddress(), 1 ether, priorityFee, evvmNonce, useAsync, paymentSig);
 
         // Mark nonce as used
-        markAsyncServiceNonceAsUsed(user, nonce);
+        markAsyncNonceAsUsed(user, nonce);
     }
 }
 ```
@@ -82,9 +83,9 @@ For more granular control, use individual libraries:
 ```solidity
 import {SignatureUtil} from "@evvm/testnet-contracts/library/utils/SignatureUtil.sol";
 import {AdvancedStrings} from "@evvm/testnet-contracts/library/utils/AdvancedStrings.sol";
-import {AsyncNonceService} from "@evvm/testnet-contracts/library/utils/service/AsyncNonceService.sol";
+import {AsyncNonce} from "@evvm/testnet-contracts/library/utils/nonces/AsyncNonce.sol";
 
-contract MyCustomService is AsyncNonceService {
+contract MyCustomService is AsyncNonce {
     function verifyUser(address user, bytes memory sig) internal view {
         bool valid = SignatureUtil.verifySignature(
             evvmId,
@@ -143,7 +144,7 @@ contract Service is EvvmService {
 
 ### Pattern 2: Modular Composition
 ```solidity
-contract Service is AsyncNonceService, MakeServicePaymentOnEvvm {
+contract Service is AsyncNonce, MakeServicePaymentOnEvvm {
     // Mix utilities as needed - granular control
 }
 ```
@@ -169,9 +170,9 @@ Use `EvvmService` for complete service functionality:
 contract CoffeeShop is EvvmService {
     function orderCoffee(...) external {
         validateServiceSignature(...);
-        verifyAsyncServiceNonce(...);
+        verifyAsyncNonce(...);
         requestPay(...);
-        markAsyncServiceNonceAsUsed(...);
+        markAsyncNonceAsUsed(...);
     }
 }
 ```
@@ -193,10 +194,10 @@ contract Validator {
 Inherit both nonce services:
 
 ```solidity
-import {AsyncNonceService} from "@evvm/testnet-contracts/library/utils/service/AsyncNonceService.sol";
+import {AsyncNonce} from "@evvm/testnet-contracts/library/utils/nonces/AsyncNonce.sol";
 import {SyncNonceService} from "@evvm/testnet-contracts/library/utils/service/SyncNonceService.sol";
 
-contract HybridService is AsyncNonceService, SyncNonceService {
+contract HybridService is AsyncNonce, SyncNonceService {
     function actionWithSyncNonce(...) external {
         uint256 expectedNonce = getNextSyncServiceNonce(user);
         require(nonce == expectedNonce, "Invalid nonce");
@@ -204,8 +205,8 @@ contract HybridService is AsyncNonceService, SyncNonceService {
     }
 
     function actionWithAsyncNonce(...) external {
-        verifyAsyncServiceNonce(user, nonce);
-        markAsyncServiceNonceAsUsed(user, nonce);
+        verifyAsyncNonce(user, nonce);
+        markAsyncNonceAsUsed(user, nonce);
     }
 }
 ```
@@ -235,7 +236,7 @@ Explore individual library documentation:
 1. **[EvvmService](./02-EvvmService.md)** - Complete service development framework
 2. **[Primitives](./03-Primitives/01-Math.md)** - Low-level mathematical and cryptographic operations
 3. **[Utils](./04-Utils/01-AdvancedStrings.md)** - String conversions and signature verification
-4. **[Service Utilities](./04-Utils/03-Service/01-AsyncNonceService.md)** - Modular service components
+4. **[Service Utilities](./04-Utils/03-Service/01-AsyncNonceService.md)** - Modular service components (see `AsyncNonce` for async nonce management)
 
 ---
 

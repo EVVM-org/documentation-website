@@ -55,11 +55,11 @@ When the executor is the user or a service:
 
 Failure at validation steps typically reverts the transaction.
 
-1.  **NameService Nonce Verification**: Checks if the provided `_nonce` is unused for the `_user` using the `verifyIfNonceIsAvailable` modifier. Reverts if the nonce is already used.
+1.  **NameService Nonce Verification**: Calls internal `verifyAsyncNonce(user, nonce)` which reverts with `AsyncNonceAlreadyUsed()` if the nonce was already used.
 2.  **Offerer Verification**: Retrieves the offer data associated with `_username` and `_offerID` from the `usernameOffers` mapping. Verifies that the `_user` parameter matches the `offerer` address stored in the retrieved offer data. Reverts if `_user` is not the recorded offerer or if the specified offer does not exist.
 3.  **Withdrawal Signature Validation**: Verifies the `_signature` provided by `_user` (which authorizes this NameService withdrawal action) using the `verifyMessageSignedForWithdrawOffer` function. Reverts if the signature is invalid according to the [Withdraw Offer Signature Structure](../../../05-SignatureStructures/02-NameService/04-withdrawOfferStructure.md).
 4.  **EVVM Payment Execution (Optional Priority Fee)**: If `_priorityFeeForFisher` is greater than zero:
-    - Calls an internal helper function (e.g., `makePay`) designed to interact with the EVVM's `payMateStaker` function.
+    - Calls the internal helper `makePay`, which invokes `IEvvm.pay(...)` to perform the EVVM payment.
     - Uses the provided `_nonce_Evvm`, `_priority_Evvm`, and `_signature_Evvm` parameters to authorize the EVVM payment.
     - This action attempts to transfer the `_priorityFeeForFisher` amount of principal tokens from the `_user` address to the `msg.sender` address via the EVVM contract mechanism.
     - Reverts if this EVVM payment process fails.
@@ -69,7 +69,7 @@ Failure at validation steps typically reverts the transaction.
     - A base MATE reward, typically fetched from the EVVM contract (e.g., 1 \* `seeMateReward()`).
     - The `_priorityFeeForFisher`, if it was greater than zero and successfully paid in Step 4.
     - An additional amount calculated based on the withdrawn offer's value: 0.125% of the `amount` stored in `usernameOffers[_username][_offerID]`. _(This is derived from the 0.5% fee structure associated with the offer)._
-8.  **Nonce Management**: Marks the NameService `_nonce` (provided as input parameter) as used for the `_user` address within the `mateNameServiceNonce` mapping to prevent replay of this specific withdrawal action.
+8.  **Nonce Management**: Calls internal `markAsyncNonceAsUsed(user, nonce)` to mark the provided `_nonce` as used and prevent replay of this withdrawal action.
 
 
 ![withdrawOffer Happy Path](./img/withdrawOffer_HappyPath.svg)

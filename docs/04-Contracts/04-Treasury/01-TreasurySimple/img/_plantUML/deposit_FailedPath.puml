@@ -1,0 +1,32 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+title deposit() Flow (Failed Path)
+
+actor "User" as user
+participant "Treasury" as treasury #66CCFF
+
+activate user
+
+user -> treasury : deposit(token=address(0)/token, amount, msg.value)
+
+deactivate user
+
+activate treasury #66CCFF
+
+alt #f5b7b1 Missing host coin
+    treasury -x user : Revert with DepositAmountMustBeGreaterThanZero()
+else #f5b7b1 Amount mismatch
+    treasury -x user : Revert with InvalidDepositAmount()
+else #f5b7b1 ERC20 but value provided
+    treasury -x user : Revert with InvalidDepositAmount()
+else #f5b7b1 ERC20 transfer fails
+    treasury -x user : TransferFrom failed (token did not transfer)
+end
+
+@enduml

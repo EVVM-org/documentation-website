@@ -105,7 +105,7 @@ else #white User owns the username
 
                     nameService -> nameService : Update locked tokens:\nmateTokenLockedForWithdrawOffers -= amount + ...
 
-                    nameService -> nameService : nameServiceNonce[user][nonce] = true
+                    nameService -> nameService : markAsyncNonceAsUsed(user, nonce)
 
                     nameService --> user : Offer accepted successfully\nUsername ownership transferred
                 end

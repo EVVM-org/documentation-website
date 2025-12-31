@@ -52,6 +52,5 @@ end
 
 evvm --> user : Transaction completed successfully
 
-deactivate evvm
-
+deactivate evvmdeactivate user
 @enduml

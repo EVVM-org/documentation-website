@@ -15,7 +15,8 @@ title registrationUsername Transaction Flow\n(Failed Path - Error Handling)
 user -> nameService : registrationUsername(···)
 activate nameService #00CEEE
 
-nameService -> nameService : verifyIfNonceIsAvailable(···)
+nameService -> nameService : verifyAsyncNonce(user, nonce)
+note right : Reverts with AsyncNonceAlreadyUsed() if nonce already used
 
 alt #f5b7b1 nameServiceNonce[user][nonce] == true
     nameService -x user : Revert with\nNonceAlreadyUsed
@@ -50,11 +51,14 @@ else #white Nonce is available
             nameService -> nameService : makePay(···)
 
             alt #white priorityFlag_EVVM == true
-                nameService -> evvm : payStaker_async(···)
+                nameService -> evvm : IEvvm.pay(...) (async)
                 activate evvm #00EE20
             else #white priorityFlag_EVVM == false
-                nameService -> evvm : payStaker_sync(···)
+                nameService -> evvm : IEvvm.pay(...) (sync)
+                activate evvm #00EE20
             end
+
+            evvm -> evvm : Verify payment inputs
 
             evvm -> evvm : Verify payment inputs
 
@@ -78,7 +82,7 @@ else #white Nonce is available
 
                     nameService -> nameService : identityDetails[username] = {\n  owner: user,\n  expireDate: block.timestamp + 366 days,\n  ...\n}
 
-                    nameService -> nameService : nameServiceNonce[user][nonce] = true
+                    nameService -> nameService : markAsyncNonceAsUsed(user, nonce)
 
                     alt #white isAddressStaker(msg.sender)
                         nameService -> nameService : makeCaPay(msg.sender,\n(50 * getRewardAmount()) + priorityFee_EVVM)

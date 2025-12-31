@@ -20,7 +20,7 @@ The `presaleStaking` function enables presale participants to stake or unstake t
 
 :::info
 
-For all EVVM testnets `allowPublicStaking.flag` is enabled by default, all users should use the `publicStaking` function for staking and unstaking operations.
+Note: In this repository's contract implementation the constructor enables `allowPresaleStaking.flag` by default and leaves `allowPublicStaking.flag` disabled. Deployments and testnets may use different defaults; consult the deployed contract metadata for runtime flag values.
 
 :::
 
@@ -32,7 +32,8 @@ For all EVVM testnets `allowPublicStaking.flag` is enabled by default, all users
 | `isStaking`         | bool    | `true` = Stake, `false` = Unstake                    |
 | `nonce`             | uint256 | Staking contract nonce for replay protection         |
 | `signature`         | bytes   | User authorization signature                         |
-| `priorityFee_EVVM`  | uint256 | EVVM priority fee                                    |
+
+> **Note:** For presale staking the function enforces a fixed amount of `1` token; therefore the signed message must include `_amountOfStaking = 1`.| `priorityFee_EVVM`  | uint256 | EVVM priority fee                                    |
 | `nonce_EVVM`        | uint256 | EVVM payment operation nonce                         |
 | `priorityFlag_EVVM` | bool    | EVVM execution mode (`true` = async, `false` = sync) |
 | `signature_EVVM`    | bytes   | EVVM payment authorization                           |
@@ -53,7 +54,7 @@ The function supports two execution paths:
 ## Staking Process
 
 1. **Signature Verification**: Validates the authenticity of the user signature
-2. **Nonce Validation**: Confirms the contract nonce is valid and unused
+2. **Nonce Validation**: Calls internal `verifyAsyncNonce(user, nonce)` which reverts with `AsyncNonceAlreadyUsed()` if the nonce was already used; after successful execution the contract calls `markAsyncNonceAsUsed(user, nonce)` to prevent replays
 3. **Presale Claims Processing**: Calls `presaleClaims()` to verify presale participation and enforce 2-token limit
 4. **Presale Staking Status**: Verifies `allowPresaleStaking.flag` is enabled
 5. **Process Execution**: Calls the internal `stakingBaseProcess` function with:
@@ -75,7 +76,7 @@ For detailed information about the `stakingBaseProcess` function, refer to the [
 ## Unstaking Process
 
 1. **Signature Verification**: Validates the authenticity of the user signature
-2. **Nonce Validation**: Confirms the contract nonce is valid and unused
+2. **Nonce Validation**: Calls internal `verifyAsyncNonce(user, nonce)` which reverts with `AsyncNonceAlreadyUsed()` if the nonce was already used; after successful execution the contract calls `markAsyncNonceAsUsed(user, nonce)` to prevent replays
 3. **Presale Claims Processing**: Calls `presaleClaims()` to verify presale participation and validate unstaking eligibility
 4. **Presale Staking Status**: Verifies `allowPresaleStaking.flag` is enabled
 5. **Process Execution**: Calls the internal `stakingBaseProcess` function with:

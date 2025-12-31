@@ -299,7 +299,7 @@ abstract contract StakingServiceUtils {
 
 ### EvvmService (More Complete)
 ```solidity
-abstract contract EvvmService is AsyncNonceService {
+abstract contract EvvmService is AsyncNonce {
     IEvvm evvm;
     IStaking staking;
     

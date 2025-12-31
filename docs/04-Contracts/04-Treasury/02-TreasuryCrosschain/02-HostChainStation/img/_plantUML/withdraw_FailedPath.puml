@@ -1,0 +1,29 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+title Host Station: withdraw() Flow (Failed Paths)
+
+actor "User" as user
+participant "HostStation" as host #66CCFF
+
+activate user
+user -> host : withdraw(toAddress, token, amount, protocolToExecute){value}
+deactivate user
+
+activate host
+alt #f5b7b1 Principal token
+    host -x user : Revert with PrincipalTokenIsNotWithdrawable()
+else #f5b7b1 Insufficient balance
+    host -x user : Revert with InsufficientBalance()
+else #f5b7b1 Protocol not supported
+    host -x user : Revert (generic)
+end
+
+deactivate host
+
+@enduml

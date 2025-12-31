@@ -27,11 +27,12 @@ else #white Public staking enabled
     
     alt #f5b7b1 Invalid signature
         staking -x user : Revert with InvalidSignatureOnStaking
-        note right : SECURITY: EIP-712\nsignature must match\nuser, amountOfStaking, nonce
+        note right : SECURITY: EIP-191 (Ethereum Signed Message)\nsignature must match\nuser, amountOfStaking, nonce
         
     else #white Signature valid
 
-        staking -> staking : checkIfStakeNonceUsed(user, nonce)
+        staking -> staking : verifyAsyncNonce(user, nonce)
+        note right : Reverts with AsyncNonceAlreadyUsed() if nonce already used
         
         alt #f5b7b1 Nonce already used
             staking -x user : Revert with StakingNonceAlreadyUsed
@@ -69,7 +70,7 @@ else #white Public staking enabled
                     
                     staking -> staking : Update userHistory
                     
-                    staking -> staking : stakingNonce[user][nonce] = true
+                    staking -> staking : markAsyncNonceAsUsed(user, nonce)
                     
                     alt #white msg.sender is staker
                         staking -> staking : makeCaPay(···)

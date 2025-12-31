@@ -24,7 +24,8 @@ else #white User owns the identity
 
     nameService -> nameService : verifyIfNonceIsAvailable(···)
     
-    alt #f5b7b1 nameServiceNonce[user][nonce] == true
+    alt #f5b7b1 nonce already used
+    nameService -x user : Revert with AsyncNonceAlreadyUsed()
         nameService -x user : Revert with\nNonceAlreadyUsed
         
     else #white Nonce is available
@@ -73,7 +74,7 @@ else #white User owns the identity
 
                 nameService -> nameService : identityDetails[identity].customMetadataMaxSlots--
 
-                nameService -> nameService : nameServiceNonce[user][nonce] = true
+                nameService -> nameService : markAsyncNonceAsUsed(user, nonce)
 
                 alt #white isAddressStaker(msg.sender)
                     nameService -> nameService : makeCaPay(msg.sender,\n5x reward + priorityFee_EVVM)

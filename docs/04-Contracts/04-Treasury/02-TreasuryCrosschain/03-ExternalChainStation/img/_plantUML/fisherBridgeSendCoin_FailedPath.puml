@@ -1,0 +1,27 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+title External Station: fisherBridgeSendCoin() Flow (Failed Paths)
+
+actor "Fisher" as fisher
+participant "ExternalStation" as ext #66CCFF
+
+activate fisher
+fisher -> ext : fisherBridgeSendCoin(...){value}
+deactivate fisher
+
+activate ext
+alt #f5b7b1 Incorrect payment
+    ext -x fisher : Revert with InsufficientBalance()
+else #f5b7b1 Invalid signature
+    ext -x fisher : Revert with InvalidSignature()
+end
+
+deactivate ext
+
+@enduml

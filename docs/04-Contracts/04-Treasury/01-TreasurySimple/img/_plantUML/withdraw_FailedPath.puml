@@ -1,0 +1,30 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+title withdraw() Flow (Failed Path)
+
+actor "User" as user
+participant "Treasury" as treasury #66CCFF
+
+activate user
+
+user -> treasury : withdraw(token, amount)
+
+deactivate user
+
+activate treasury #66CCFF
+
+alt #f5b7b1 Principal token
+    treasury -x user : Revert with PrincipalTokenIsNotWithdrawable()
+else #f5b7b1 Insufficient balance
+    treasury -x user : Revert with InsufficientBalance()
+else #f5b7b1 ERC20 transfer fails
+    treasury -x user : Transfer failed (IERC20.transfer returned false)
+end
+
+@enduml

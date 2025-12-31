@@ -63,14 +63,14 @@ Gasless cross-chain transactions:
 - **[Admin Functions](./03-ExternalChainStation/06-AdminFunctions.md)**: System configuration
 
 :::warning[Security Considerations]
-- **Principal Token Protection**: Principal token (MATE) withdrawals blocked via `PrincipalTokenIsNotWithdrawable` error
+- **Principal Token Protection**: Principal token (MATE) withdrawals blocked via `PrincipalTokenIsNotWithdrawable()` error
 - **Cross-Chain Authorization**: All messages require sender and chain ID validation
 - **Fisher Bridge Signatures**: EIP-191 compliant signatures with structured message format
 - **Nonce-Based Protection**: Sequential nonce tracking prevents replay attacks
 - **Time-Delayed Governance**: 1-day delays for admin and Fisher executor changes
 - **Access Control**: `onlyAdmin` and `onlyFisherExecutor` modifiers restrict critical functions
 - **Protocol Validation**: Chain-specific authorization for Hyperlane, LayerZero, and Axelar
-- **Balance Verification**: Insufficient balance checks with `InsufficientBalance` error protection
+- **Balance Verification**: Insufficient balance checks with `InsufficientBalance()` error protection
 :::
 
 ## Gas Management

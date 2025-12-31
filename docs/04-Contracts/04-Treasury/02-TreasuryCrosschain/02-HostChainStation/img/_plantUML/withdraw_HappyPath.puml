@@ -1,0 +1,41 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+title Host Station: withdraw() Flow (Happy Path)
+
+actor "User (caller)" as user
+participant "HostStation" as host #66CCFF
+participant "EVVM" as evvm #00EE20
+participant "HyperlaneMailbox" as mailbox #EEEEEE
+
+activate user
+user -> host : withdraw(toAddress, token, amount, protocolToExecute){value}
+deactivate user
+
+activate host #66CCFF
+
+host -> evvm : getEvvmMetadata().principalTokenAddress
+note right : Check Principal token
+
+alt #white Not principal
+    host -> evvm : getBalance(msg.sender, token)
+    alt #white Sufficient balance
+        host -> evvm : removeAmountFromUser(msg.sender, token, amount)
+        note right : State updated before dispatch
+        host -> mailbox : dispatch(payload){value=quote}
+        mailbox --> host : messageId
+    else #f5b7b1 Insufficient balance
+        host -x user : Revert with InsufficientBalance()
+    end
+else #f5b7b1 Principal token
+    host -x user : Revert with PrincipalTokenIsNotWithdrawable()
+end
+
+deactivate host
+
+@enduml

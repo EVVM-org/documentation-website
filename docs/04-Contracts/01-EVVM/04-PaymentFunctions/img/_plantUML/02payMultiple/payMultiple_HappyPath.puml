@@ -16,7 +16,7 @@ activate user
 user -> evvm : payMultiple(PayData[])
 activate evvm #00EE20
 
-note over evvm : Initialize:\nsuccessfulTransactions = 0\nfailedTransactions = 0\nresults = new bool[](payData.length)
+note over evvm : Initialize:\nsuccessfulTransactions = 0\nresults = new bool[](payData.length)
 
 == Begin For Loop ==
 
@@ -57,8 +57,9 @@ alt #white isAddressStaker(msg.sender)
     note right : Reward multiplied by\nsuccessful transaction count\nHigher efficiency = more rewards
 end
 
-evvm --> user : return (successfulTransactions, failedTransactions, results[])
+evvm --> user : return (successfulTransactions, results[])
 
 deactivate evvm
+deactivate user
 
 @enduml

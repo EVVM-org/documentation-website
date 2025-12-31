@@ -9,7 +9,7 @@ sidebar_position: 3
 **Function Type**: `public`  
 **Function Signature**: `makeOffer(address,string,uint256,uint256,uint256,bytes,uint256,uint256,bool,bytes)`
 
-Allows a user (`_user`) to make a formal, time-limited offer to purchase an existing username (`_username`) by committing principal tokens. This function **must be executed by an sMATE staker** (`msg.sender`).
+Allows a user (`_user`) to make a formal, time-limited offer to purchase an existing username (`_username`) by committing principal tokens. This function can be executed by any address; **if the executor (`msg.sender`) is a staker they receive executor rewards**.
 
 ## Parameters
 
@@ -55,7 +55,7 @@ When the executor is the user or a service:
 
 ## Workflow
 
-1. **NameService Nonce Verification**: Checks if the provided `nonce` is unused for the `user` using the `verifyIfNonceIsAvailable` modifier. Reverts if used.
+1. **NameService Nonce Verification**: Calls internal `verifyAsyncNonce(user, nonce)` which reverts with `AsyncNonceAlreadyUsed()` if the nonce was already used.
 
 2. **Offer Validation**: Validates the offer parameters:
 
@@ -81,11 +81,11 @@ When the executor is the user or a service:
    - Plus 0.125% of the gross `amount`
    - Plus the `priorityFee_EVVM`
 
-8. **Token Locking**: Updates `mateTokenLockedForWithdrawOffers` to track locked tokens for future withdrawals.
+8. **Token Locking**: Updates internal accounting for locked principal tokens (variable `principalTokenTokenLockedForWithdrawOffers` in the contract) to track funds reserved for future withdrawals.
 
 9. **Offer Slot Management**: Updates the username's `offerMaxSlots` if this offer exceeds the current maximum slot count.
 
-10. **Nonce Management**: Marks the user's `nonce` as used in the `nameServiceNonce` mapping.
+10. **Nonce Management**: Calls internal `markAsyncNonceAsUsed(user, nonce)` to mark the provided `nonce` as used and prevent replays.
 
 ![makeOffer Happy Path](./img/makeOffer_HappyPath.svg)
 ![makeOffer Failed Path](./img/makeOffer_FailedPath.svg)

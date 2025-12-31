@@ -13,7 +13,7 @@ The Treasury Host Chain Station uses a time-delayed proposal system to configure
 **Access Control**: `onlyAdmin`  
 **Returns**: `void`
 
-Proposes new external chain station addresses for all protocols with a mandatory time delay (typically 1 day) for security.
+Proposes new external chain station addresses for all protocols with a mandatory time delay for security. Note: **the current implementation sets the delay to `1 minute` (for testnet/dev convenience); in production this is expected to be a longer period (e.g., 1 day).**
 
 ### Parameters
 

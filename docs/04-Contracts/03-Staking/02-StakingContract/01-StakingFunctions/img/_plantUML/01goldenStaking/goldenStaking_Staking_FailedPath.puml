@@ -35,7 +35,7 @@ else #white Caller is Golden Fisher
         
         staking -> staking : makePay(···)
         
-        staking -> evvm : pay(···)
+        staking -> evvm : IEvvm.pay(...) (async/sync)
         activate evvm #00EE20
         
         alt #f5b7b1 Payment fails

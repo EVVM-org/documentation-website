@@ -23,7 +23,8 @@ alt #f5b7b1 User is not the owner of the username
     
 else #white User owns the username
 
-    nameService -> nameService : verifyIfNonceIsAvailable(user, nonce)
+    nameService -> nameService : verifyAsyncNonce(user, nonce)
+    note right : Reverts with AsyncNonceAlreadyUsed() if nonce already used
 
     alt #f5b7b1 nameServiceNonce[user][nonce] == true
         nameService -x user : Revert with\nNonceAlreadyUsed

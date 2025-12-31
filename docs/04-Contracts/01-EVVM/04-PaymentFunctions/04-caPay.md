@@ -37,7 +37,7 @@ Contract-to-address payment function designed for authorized smart contracts to 
    - Credits the `amount` to the recipient's balance
    - Reverts with `UpdateBalanceFailed` if the transfer fails
 
-3. **Staker Reward**: If the calling contract is a registered staker (`isAddressStaker(msg.sender)`), grants 1 principal token reward using `_giveMateReward`.
+3. **Staker Reward**: If the calling contract is a registered staker (`isAddressStaker(msg.sender)`), grants 1 principal token reward using `_giveReward`. 
 
 ![caPay Function Happy Path](./img/caPay_HappyPath.svg)
 ![caPay Function Failed Path](./img/caPay_FailedPath.svg)

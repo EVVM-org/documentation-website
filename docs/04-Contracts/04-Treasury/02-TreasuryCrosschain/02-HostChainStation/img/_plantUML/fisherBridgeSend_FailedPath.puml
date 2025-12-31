@@ -1,0 +1,29 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+title Host Station: fisherBridgeSend() Flow (Failed Paths)
+
+actor "Fisher" as fisher
+participant "HostStation" as host #66CCFF
+
+activate fisher
+fisher -> host : fisherBridgeSend(...)
+deactivate fisher
+
+activate host
+alt #f5b7b1 Principal token
+    host -x fisher : Revert with PrincipalTokenIsNotWithdrawable()
+else #f5b7b1 Insufficient balance
+    host -x fisher : Revert with InsufficientBalance()
+else #f5b7b1 Invalid signature
+    host -x fisher : Revert with InvalidSignature()
+end
+
+deactivate host
+
+@enduml

@@ -1,0 +1,31 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+title External Station: depositERC20() Flow (Failed Paths)
+
+actor "User" as user
+participant "ExternalStation" as ext #66CCFF
+
+activate user
+user -> ext : depositERC20(...){value}
+deactivate user
+
+activate ext
+alt #f5b7b1 amount == 0
+    ext -x user : Revert with DepositAmountMustBeGreaterThanZero()
+else #f5b7b1 insufficient allowance
+    ext -x user : Revert with InsufficientBalance()
+else #f5b7b1 transfer fails
+    ext -x user : TransferFrom failed (ERC20 revert)
+else #f5b7b1 protocol error
+    ext -x user : Revert (invalid protocol)
+end
+
+deactivate ext
+
+@enduml

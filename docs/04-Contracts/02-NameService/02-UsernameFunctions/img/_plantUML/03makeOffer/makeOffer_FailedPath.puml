@@ -15,10 +15,11 @@ title makeOffer Transaction Flow\n(Failed Path - Error Handling)
 user -> nameService : makeOffer(···)
 activate nameService #00CEEE
 
-nameService -> nameService : verifyIfNonceIsAvailable(user, nonce)
+nameService -> nameService : verifyAsyncNonce(user, nonce)
+note right : Reverts with AsyncNonceAlreadyUsed() if nonce already used
 
-alt #f5b7b1 nameServiceNonce[user][nonce] == true
-    nameService -x user : Revert with NonceAlreadyUsed
+alt #f5b7b1 nonce already used
+    nameService -x user : Revert with AsyncNonceAlreadyUsed()
     
 else #white Nonce is available
 
@@ -41,10 +42,11 @@ else #white Nonce is available
             nameService -> nameService : makePay(user, amount, ···)
 
             alt #white priorityFlag_EVVM == true
-                nameService -> evvm : payStaker_async(···)
+                nameService -> evvm : IEvvm.pay(...) (async)
                 activate evvm #00EE20
             else #white priorityFlag_EVVM == false
-                nameService -> evvm : payStaker_sync(···)
+                nameService -> evvm : IEvvm.pay(...) (sync)
+                activate evvm #00EE20
             end
 
             evvm -> evvm : Verify payment inputs
@@ -88,7 +90,7 @@ else #white Nonce is available
                     nameService -> nameService : identityDetails[username].offerMaxSlots++
                 end
 
-                nameService -> nameService : nameServiceNonce[user][nonce] = true
+                nameService -> nameService : markAsyncNonceAsUsed(user, nonce)
 
                 nameService --> user : Offer created successfully\nwith offerID: {offerID}
             end

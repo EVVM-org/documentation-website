@@ -232,7 +232,7 @@ contract BatchSequentialService is SyncNonceService {
 ### Pattern 4: Hybrid Nonce System
 ```solidity
 // Support both sync and async nonces
-contract HybridService is SyncNonceService, AsyncNonceService {
+contract HybridService is SyncNonceService, AsyncNonce {
     function actionWithSyncNonce(
         address user,
         uint256 nonce,
@@ -251,16 +251,16 @@ contract HybridService is SyncNonceService, AsyncNonceService {
         uint256 nonce,
         bytes memory signature
     ) external {
-        verifyAsyncServiceNonce(user, nonce);
+        verifyAsyncNonce(user, nonce);
         
         // Process...
         
-        markAsyncServiceNonceAsUsed(user, nonce);
+        markAsyncNonceAsUsed(user, nonce);
     }
 }
 ```
 
-## Comparison with AsyncNonceService
+## Comparison with AsyncNonce
 
 ### Sync Nonce Example
 ```solidity
@@ -399,7 +399,7 @@ function depositDaily(address user, uint256 nonce, ...) external {
 }
 
 // Bad - async nonces for sequential operations (wastes storage)
-// Using AsyncNonceService for daily sequential deposits
+// Using AsyncNonce for daily sequential deposits
 ```
 
 ## Frontend Integration
@@ -585,6 +585,6 @@ function batchExecute(
 
 ## See Also
 
-- **[AsyncNonceService](./01-AsyncNonceService.md)** - Flexible async nonce alternative
+- **[AsyncNonce](./01-AsyncNonceService.md)** - Flexible async nonce alternative
 - **[EVVM Nonce Types](../../../../04-Contracts/01-EVVM/02-NonceTypes.md)** - EVVM's nonce system
-- **[EvvmService](../../02-EvvmService.md)** - Uses AsyncNonceService by default
+- **[EvvmService](../../02-EvvmService.md)** - Uses AsyncNonce by default

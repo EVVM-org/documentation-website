@@ -17,7 +17,8 @@ activate nameService #00CEEE
 
 nameService -> nameService : verifyIfNonceIsAvailable(···)
 
-alt #f5b7b1 nameServiceNonce[user][nonce] == true
+alt #f5b7b1 nonce already used
+    nameService -x user : Revert with AsyncNonceAlreadyUsed()
     nameService -x user : Revert with\nNonceAlreadyUsed
     
 else #white Nonce is available
@@ -81,7 +82,7 @@ else #white Nonce is available
 
                     nameService -> nameService : Reset identityDetails[username]
 
-                    nameService -> nameService : nameServiceNonce[user][nonce] = true
+                    nameService -> nameService : markAsyncNonceAsUsed(user, nonce)
 
                     deactivate nameService
                 end

@@ -1,0 +1,27 @@
+@startuml
+
+<style>
+document {
+  BackGroundColor white
+}
+</style>
+
+title Host Station: fisherBridgeReceive() Flow (Failed Paths)
+
+actor "Fisher" as fisher
+participant "HostStation" as host #66CCFF
+
+activate fisher
+fisher -> host : fisherBridgeReceive(...)
+deactivate fisher
+
+activate host
+alt #f5b7b1 Invalid signature
+    host -x fisher : Revert with InvalidSignature()
+else #f5b7b1 other error
+    host -x fisher : Revert (generic)
+end
+
+deactivate host
+
+@enduml

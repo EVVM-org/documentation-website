@@ -15,7 +15,8 @@ title withdrawOffer Transaction Flow\n(Failed Path - Error Handling)
 user -> nameService : withdrawOffer(···)
 activate nameService #00CEEE
 
-nameService -> nameService : verifyIfNonceIsAvailable(user, nonce)
+nameService -> nameService : verifyAsyncNonce(user, nonce)
+    note right : Reverts with AsyncNonceAlreadyUsed() if nonce already used
 
 alt #f5b7b1 nameServiceNonce[user][nonce] == true
     nameService -x user : Revert with\nNonceAlreadyUsed
@@ -42,10 +43,11 @@ else #white Nonce is available
                 nameService -> nameService : makePay(user, 0, priorityFee_EVVM, ···)
                 
                 alt #white priorityFlag_EVVM == true
-                    nameService -> evvm : payStaker_async(···)
-                    activate evvm #00EE20
-                else #white priorityFlag_EVVM == false
-                    nameService -> evvm : payStaker_sync(···)
+nameService -> evvm : IEvvm.pay(...) (async)
+                activate evvm #00EE20
+            else #white priorityFlag_EVVM == false
+                nameService -> evvm : IEvvm.pay(...) (sync)
+                activate evvm #00EE20
                 end
                 
                 evvm -> evvm : Verify payment inputs

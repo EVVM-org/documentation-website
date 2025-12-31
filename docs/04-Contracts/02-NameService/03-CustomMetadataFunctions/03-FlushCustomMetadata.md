@@ -48,7 +48,7 @@ This ensures the pricing scales with both the network's current reward structure
 Failure at validation steps typically reverts the transaction. The steps execute **in the specified order**.
 
 1.  **Identity Ownership Verification**: Checks if the provided `user` address is the registered owner of the `identity`. Reverts if `user` is not the owner.
-2.  **NameService Nonce Verification**: Checks if the provided `nonce` is unused for the `user` using the `verifyIfNonceIsAvailable` modifier. Reverts if the nonce is already used.
+2.  **NameService Nonce Verification**: Calls internal `verifyAsyncNonce(user, nonce)` which reverts with `AsyncNonceAlreadyUsed()` if the nonce was already used.
 3.  **Flush Custom Metadata Signature Validation**: Verifies the `signature` provided by `user` (the owner) against the reconstructed message hash using `verifyMessageSignedForFlushCustomMetadata`. Reverts if the signature is invalid according to the [Flush Custom Metadata Signature Structure](../../../05-SignatureStructures/02-NameService/09-flushCustomMetadataStructure.md).
 4.  **Empty Metadata Validation**: Checks that the identity has at least one metadata entry (`identityDetails[identity].customMetadataMaxSlots > 0`). Reverts if there are no metadata entries to flush.
 5.  **Payment Execution**: Calls `makePay` to transfer the payment using `getPriceToFlushCustomMetadata(identity)` and `priorityFee_EVVM` of principal tokens from `user` to the service via the EVVM contract. Reverts if the payment fails.
@@ -59,7 +59,7 @@ Failure at validation steps typically reverts the transaction. The steps execute
     - 5 times the base reward amount **multiplied by the number of metadata entries** (`(5 * getRewardAmount()) * customMetadataMaxSlots`).
     - The full `priorityFee_EVVM`, if it was greater than zero and successfully paid in Step 5.
 8.  **Reset Metadata Counter**: Sets `identityDetails[identity].customMetadataMaxSlots = 0` to reflect that all metadata has been removed.
-9.  **Nonce Management**: Marks the NameService `nonce` as used for the `user` address within the `nameServiceNonce` mapping.
+9.  **Nonce Management**: Calls internal `markAsyncNonceAsUsed(user, nonce)` to mark the provided `nonce` as used and prevent replays.
 
 ![flushCustomMetadata Happy Path](./img/flushCustomMetadata_HappyPath.svg)
 ![flushCustomMetadata Failed Path](./img/flushCustomMetadata_FailedPath.svg)

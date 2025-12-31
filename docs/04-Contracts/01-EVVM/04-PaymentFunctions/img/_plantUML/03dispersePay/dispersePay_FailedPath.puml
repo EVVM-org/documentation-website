@@ -17,6 +17,8 @@ executor -> evvm : dispersePay(···)
 activate evvm #00EE20
 
 evvm -> evvm : verifyMessageSignedForDispersePay()
+note right : Verifies sha256(abi.encode(toData)) (hashList)
+note right : Signature includes EvvmID and other params
 
 alt #f5b7b1 Signature is invalid
     evvm -x executor : Revert with InvalidSignature
@@ -33,7 +35,7 @@ else #white Signature is valid
     alt #white priorityFlag == true
         evvm -> evvm : verify async nonce not used
         alt #f5b7b1 nonce already used
-            evvm -x executor : Revert with InvalidAsyncNonce
+            evvm -x executor : Revert with AsyncNonceAlreadyUsed()
         end
     end
 

@@ -37,9 +37,8 @@ Ensures meaningful deposit amounts and prevents zero-value transactions.
 
 ### 2. Token Transfer
 ```solidity
-SafeTransferLib.safeTransferFrom(token, msg.sender, address(this), amount);
+IERC20(token).transferFrom(msg.sender, address(this), amount);
 ```
-Safely transfers ERC20 tokens from user to contract using Solady's SafeTransferLib for gas optimization and security.
 
 ### 3. Payload Encoding
 ```solidity
@@ -161,7 +160,7 @@ Use the respective quote functions to estimate required amounts:
 
 | Error | Condition |
 |-------|-----------|
-| `DepositAmountMustBeGreaterThanZero` | Amount parameter is zero |
+| `DepositAmountMustBeGreaterThanZero()` | Amount parameter is zero |
 | SafeTransfer Revert | Token transfer fails (insufficient balance, approval, etc.) |
 | Protocol Revert | Invalid `protocolToExecute` value |
 | Insufficient Gas | `msg.value` doesn't cover cross-chain messaging costs |
