@@ -155,10 +155,17 @@ Production URL: https://www.evvm.info`,
       respectPrefersColorScheme: false,
     },
     navbar: {
-      title: "EVVM",
+      title: "",
       logo: {
         alt: "EVVM logo",
-        src: "img/logo.svg",
+        src: "img/evvm-logo.svg",
+        style: { 
+          height: "30px", 
+          width: "auto",
+          justifyContent: "center",
+          alignItems: "center",
+          display: "flex",
+        },
       },
       items: [
         {
@@ -166,6 +173,7 @@ Production URL: https://www.evvm.info`,
           sidebarId: "docsSidebar",
           position: "left",
           label: "Docs",
+          style: { marginLeft: "-15px" },
         },
         /*
           { to: "/blog", label: "Blog", position: "left" },
