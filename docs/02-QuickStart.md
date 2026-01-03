@@ -409,7 +409,6 @@ cast wallet list
 **Advanced Topics:**
 - **[Signature Structures](./05-SignatureStructures/Overview.md)** - EIP-191 specifications
 - **[Registry System](./08-RegistryEvvm/01-Overview.md)** - Registry governance
-- **[npm Library Usage](./07-Libraries/01-npmLibraries/)** - Use EVVM contracts in your dApps
 
 ---
 
