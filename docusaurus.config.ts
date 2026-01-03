@@ -151,7 +151,7 @@ Production URL: https://www.evvm.info`,
     image: "img/backgroundBanner.jpg",
     colorMode: {
       defaultMode: 'dark',
-      disableSwitch: false,
+      disableSwitch: true,
       respectPrefersColorScheme: false,
     },
     navbar: {
