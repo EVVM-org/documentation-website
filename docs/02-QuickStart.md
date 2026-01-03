@@ -400,7 +400,6 @@ cast wallet list
 - **[Deploy Command Details](./09-evvmCli/02-Deploy.md)** - Advanced deployment options
 - **[Register Command Details](./09-evvmCli/03-Register.md)** - Registration options
 - **[Cross-Chain Setup](./09-evvmCli/05-SetUpCrossChainTreasuries.md)** - For cross-chain deployments
-- **[CLI Examples](./09-evvmCli/07-Examples.md)** - Real-world workflow examples
 
 **Build Services on Your EVVM:**
 - **[How to Make an EVVM Service](./06-HowToMakeAEVVMService.md)** - Build dApps on your EVVM
