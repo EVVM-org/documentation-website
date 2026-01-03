@@ -41,9 +41,9 @@ The address of your deployed EVVM contract.
 
 If not provided, the CLI will prompt you to enter it interactively.
 
-### `--walletName <name>`, `-w <name>`
+### `--walletName <name>`, `-n <name>`
 
-Specify which Foundry wallet to use for registration transactions.
+Specify which Foundry wallet to use for registration transactions (single-chain only).
 
 - **Type**: `string`
 - **Default**: `defaultKey`
@@ -58,6 +58,22 @@ cast wallet import myWallet --interactive
 :::important
 The wallet address must have sufficient ETH Sepolia for gas fees.
 :::
+
+### `--walletNameHost <name>`
+
+Specify which Foundry wallet to use for host chain registration (cross-chain only).
+
+- **Type**: `string`
+- **Default**: `defaultKey`
+- **Usage**: `./evvm register --crossChain --walletNameHost hostWallet`
+
+### `--walletNameExternal <name>`
+
+Specify which Foundry wallet to use for external chain registration (cross-chain only).
+
+- **Type**: `string`
+- **Default**: `defaultKey`
+- **Usage**: `./evvm register --crossChain --walletNameExternal externalWallet`
 
 ### `--useCustomEthRpc`
 

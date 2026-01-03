@@ -36,6 +36,20 @@ This option:
 3. Generates `.sol` interface files
 4. Useful for integration and testing
 
+### `--runTest`, `-t`
+
+Run the complete test suite for EVVM contracts.
+
+- **Type**: `boolean`
+- **Default**: `false`
+- **Usage**: `./evvm developer --runTest`
+
+This option:
+1. Compiles all contracts
+2. Runs unit tests
+3. Runs fuzz tests
+4. Generates test reports
+
 ## Usage Examples
 
 ### Generate Contract Interfaces
@@ -78,18 +92,35 @@ Generate interfaces to:
 - Maintain consistency across contracts
 - Document public contract APIs
 
-## Future Commands
+## Usage Examples
 
-The `developer` command will be expanded with additional utilities:
+### Interactive Mode
 
-- **Run full test suite** - Execute all contract tests
-- **Run specific service tests** - Test individual components
-- **Run unit tests** - Execute unit test suites
-- **Run fuzz tests** - Execute fuzz testing
+Run without flags for interactive menu:
 
-:::tip[Coming Soon]
-More developer utilities are being added. Check `./evvm help` for the latest available commands.
-:::
+```bash
+./evvm developer
+```
+
+This shows options:
+```
+Select an action:
+  🭬 Generate Contract Interfaces
+    Run Full Test Suite
+    exit
+```
+
+### Generate Contract Interfaces
+
+```bash
+./evvm developer --makeInterface
+```
+
+### Run Tests
+
+```bash
+./evvm developer --runTest
+```
 
 ## Related Commands
 

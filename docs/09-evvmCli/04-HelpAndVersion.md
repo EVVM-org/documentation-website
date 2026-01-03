@@ -97,6 +97,25 @@ EXAMPLES:
   # Deploy with interactive configuration
   evvm deploy
 
+  # Deploy with custom wallet
+  evvm deploy --walletName myWallet
+
+  # Deploy cross-chain
+  evvm deploy --crossChain
+
+  # Register EVVM
+  evvm register --evvmAddress 0x...
+
+  # Set up cross-chain treasuries
+  evvm setUpCrossChainTreasuries
+
+  # Run tests
+  evvm developer --runTest
+
+  # Generate interfaces
+  evvm developer --makeInterface
+```
+
 ### When to Use
 
 Use the help command when you need:
@@ -205,8 +224,6 @@ Both `--help` and `--version` flags work with any command:
 ./evvm register --help
 ```
 
-Shows the same general help screen (command-specific help is not implemented).
-
 ### Check Version Anywhere
 
 ```bash
@@ -214,15 +231,14 @@ Shows the same general help screen (command-specific help is not implemented).
 ./evvm register --version
 ```
 
-All display the CLI version before executing any command.
+All display the CLI version.
 
 ---
 
-## See Also
+## Related Commands
 
-- **[Overview](./01-Overview.md)** - CLI introduction and setup
-- **[Deploy Command](./02-Deploy.md)** - Deploy EVVM instances
-- **[Register Command](./03-Register.md)** - Register in EVVM Registry
-- **[SetUp Cross-Chain Treasuries](./05-SetUpCrossChainTreasuries.md)** - Configure cross-chain treasuries
-- **[Developer Command](./06-Developer.md)** - Developer utilities
-- **[QuickStart Guide](../02-QuickStart.md)** - Complete tutorial
+- [`deploy`](./02-Deploy.md) - Deploy EVVM instances
+- [`register`](./03-Register.md) - Register EVVM instances
+- [`setUpCrossChainTreasuries`](./05-SetUpCrossChainTreasuries.md) - Configure cross-chain treasuries
+- [`developer`](./06-Developer.md) - Developer utilities
+

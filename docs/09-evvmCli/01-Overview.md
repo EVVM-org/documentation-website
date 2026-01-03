@@ -86,22 +86,45 @@ The EVVM CLI is organized into several commands:
 
 # Generate contract interfaces (for developers)
 ./evvm developer --makeInterface
+
+# Run test suite
+./evvm developer --runTest
 ```
 
 ## Environment Configuration
 
 The CLI uses environment variables from a `.env` file:
 
+### Single-Chain Configuration
 ```bash
 # Required: RPC URL for your target network
 RPC_URL="https://sepolia-rollup.arbitrum.io/rpc"
 
 # Optional: Custom Ethereum Sepolia RPC for registry operations
-ETH_SEPOLIA_RPC="https://gateway.tenderly.co/public/sepolia"
+EVVM_REGISTRATION_RPC_URL="https://gateway.tenderly.co/public/sepolia"
 
 # Optional: Etherscan API key for contract verification
 ETHERSCAN_API="your_etherscan_api_key"
 ```
+
+### Cross-Chain Configuration
+```bash
+# Host chain RPC (main EVVM deployment)
+HOST_RPC_URL="https://sepolia-rollup.arbitrum.io/rpc"
+
+# External chain RPC (Treasury External Station)
+EXTERNAL_RPC_URL="https://sepolia.base.org"
+
+# Optional: Custom Ethereum Sepolia RPC for registry operations
+EVVM_REGISTRATION_RPC_URL="https://gateway.tenderly.co/public/sepolia"
+
+# Optional: Etherscan API key for contract verification
+ETHERSCAN_API="your_etherscan_api_key"
+```
+
+:::info
+If RPC URLs are not found in `.env`, the CLI will prompt you to enter them interactively.
+:::
 
 Create your `.env` file from the example:
 
@@ -126,6 +149,9 @@ cast wallet import myWallet --interactive
 
 # Specify wallet during deployment
 ./evvm deploy --walletName myWallet
+
+# List imported wallets
+cast wallet list
 ```
 
 ## Global Options
@@ -134,7 +160,6 @@ All commands support these global options:
 
 - `-h`, `--help` - Show command help
 - `-v`, `--version` - Show CLI version
-- `-w`, `--walletName <name>` - Specify wallet name (default: `defaultKey`)
 
 ## Next Steps
 

@@ -39,9 +39,9 @@ Useful for:
 Ensure configuration files exist and contain valid data before using this flag.
 :::
 
-### `--walletName <name>`, `-w <name>`
+### `--walletName <name>`, `-n <name>`
 
-Specify which Foundry wallet to use for deployment transactions.
+Specify which Foundry wallet to use for single-chain deployment transactions.
 
 - **Type**: `string`
 - **Default**: `defaultKey`
@@ -52,6 +52,26 @@ The wallet must be previously imported into Foundry's keystore:
 ```bash
 cast wallet import myWallet --interactive
 ```
+
+### `--walletNameHost <name>`
+
+Specify which Foundry wallet to use for host chain deployment (cross-chain only).
+
+- **Type**: `string`
+- **Default**: `defaultKey`
+- **Usage**: `./evvm deploy --crossChain --walletNameHost hostWallet`
+
+Requires sufficient gas tokens on the host chain.
+
+### `--walletNameExternal <name>`
+
+Specify which Foundry wallet to use for external chain deployment (cross-chain only).
+
+- **Type**: `string`
+- **Default**: `defaultKey`
+- **Usage**: `./evvm deploy --crossChain --walletNameExternal externalWallet`
+
+Requires sufficient gas tokens on the external chain.
 
 ### `--crossChain`, `-c`
 
