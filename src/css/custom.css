@@ -1,30 +1,971 @@
 /**
- * Any CSS included here will be global. The classic template
- * bundles Infima by default. Infima is a CSS framework designed to
- * work well for content-centric websites.
+ * EVVM Design System - Global CSS Variables & Docusaurus Overrides
+ * 
+ * Este archivo define el sistema de diseño completo:
+ * - Paleta de colores con accesibilidad WCAG AA
+ * - Sistema de espaciado consistente
+ * - Sombras y efectos
+ * - Tipografía
+ * - Overrides de tema Docusaurus
  */
 
-/* You can override the default Infima variables here. */
+/* ============================================================================
+   FONT IMPORTS
+   ============================================================================ */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+/* ============================================================================
+   ROOT VARIABLES - DESIGN SYSTEM
+   ============================================================================ */
 :root {
-  --ifm-color-primary: #2e8555;
-  --ifm-color-primary-dark: #29784c;
-  --ifm-color-primary-darker: #277148;
-  --ifm-color-primary-darkest: #205d3b;
-  --ifm-color-primary-light: #33925d;
-  --ifm-color-primary-lighter: #359962;
-  --ifm-color-primary-lightest: #3cad6e;
-  --ifm-code-font-size: 95%;
-  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+  /* === COLORES PRINCIPALES === */
+  --evvm-primary: #00FF88;
+  --evvm-primary-dark: #00CC6F;
+  --evvm-primary-darker: #00995A;
+  --evvm-primary-glow: rgba(0, 255, 136, 0.3);
+  --evvm-primary-subtle: rgba(0, 255, 136, 0.1);
+  
+  /* === BACKGROUNDS === */
+  --evvm-bg-primary: #0A0A0A;
+  --evvm-bg-secondary: #151515;
+  --evvm-bg-tertiary: #1F1F1F;
+  --evvm-bg-elevated: #252525;
+  
+  /* === TEXTOS === */
+  --evvm-text-primary: rgba(255, 255, 255, 0.95);
+  --evvm-text-secondary: rgba(255, 255, 255, 0.70);
+  --evvm-text-tertiary: rgba(255, 255, 255, 0.50);
+  --evvm-text-quaternary: rgba(255, 255, 255, 0.35);
+  
+  /* === BORDERS === */
+  --evvm-border-subtle: rgba(255, 255, 255, 0.08);
+  --evvm-border-default: rgba(255, 255, 255, 0.12);
+  --evvm-border-strong: rgba(255, 255, 255, 0.20);
+  
+  /* === ESPACIADO === */
+  --spacing-xs: 8px;
+  --spacing-sm: 16px;
+  --spacing-md: 24px;
+  --spacing-lg: 32px;
+  --spacing-xl: 48px;
+  --spacing-2xl: 64px;
+  --spacing-3xl: 96px;
+  --spacing-4xl: 128px;
+  
+  /* === SOMBRAS === */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 12px 48px rgba(0, 0, 0, 0.6);
+  --shadow-glow: 0 0 20px var(--evvm-primary-glow);
+  --shadow-glow-strong: 0 0 30px rgba(0, 255, 136, 0.4);
+  
+  /* === TRANSICIONES === */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-bounce: 400ms cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  
+  /* === BORDER RADIUS === */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+  
+  /* === Z-INDEX === */
+  --z-base: 1;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-fixed: 300;
+  --z-modal-backdrop: 400;
+  --z-modal: 500;
+  --z-popover: 600;
+  --z-tooltip: 700;
 }
 
-/* For readability concerns, you should choose a lighter palette in dark mode. */
+/* ============================================================================
+   DOCUSAURUS VARIABLE OVERRIDES
+   ============================================================================ */
+:root {
+  /* Tipografía */
+  --ifm-font-family-base: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 
+    'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+  --ifm-font-family-monospace: 'JetBrains Mono', 'Fira Code', 'Monaco', 
+    'Courier New', monospace;
+  
+  --ifm-font-size-base: 16px;
+  --ifm-line-height-base: 1.6;
+  --ifm-heading-font-weight: 700;
+  --ifm-font-weight-bold: 600;
+  
+  /* Colores globales */
+  --ifm-color-primary: var(--evvm-primary);
+  --ifm-color-primary-dark: var(--evvm-primary-dark);
+  --ifm-color-primary-darker: var(--evvm-primary-darker);
+  
+  --ifm-background-color: var(--evvm-bg-primary);
+  --ifm-navbar-background-color: rgba(10, 10, 10, 0.95);
+  --ifm-footer-background-color: var(--evvm-bg-secondary);
+  
+  /* Link colors */
+  --ifm-link-color: var(--evvm-primary);
+  --ifm-link-hover-color: var(--evvm-primary-dark);
+  
+  /* Code blocks */
+  --ifm-code-font-size: 14px;
+  --ifm-code-background: var(--evvm-bg-tertiary);
+  
+  /* Spacing */
+  --ifm-spacing-horizontal: var(--spacing-md);
+  --ifm-spacing-vertical: var(--spacing-md);
+  
+  --docusaurus-highlighted-code-line-bg: rgba(0, 255, 136, 0.1);
+}
+
+/* ============================================================================
+   GLOBAL RESETS & BASE STYLES
+   ============================================================================ */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background: var(--evvm-bg-primary);
+  color: var(--evvm-text-primary);
+  font-family: var(--ifm-font-family-base);
+  line-height: var(--ifm-line-height-base);
+}
+
+/* ============================================================================
+   DOCUSAURUS NAVBAR OVERRIDES
+   ============================================================================ */
+.navbar {
+  background: linear-gradient(
+    180deg, 
+    rgba(10, 10, 10, 0.95) 0%, 
+    rgba(10, 10, 10, 0.8) 100%
+  );
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--evvm-border-subtle);
+  box-shadow: var(--shadow-sm);
+}
+
+.navbar__brand {
+  transition: transform var(--transition-fast);
+}
+
+.navbar__brand:hover {
+  transform: scale(1.05);
+}
+
+.navbar__link {
+  color: var(--evvm-text-secondary);
+  transition: color var(--transition-fast);
+  position: relative;
+  font-weight: 500;
+  font-size: 15px;
+}
+
+.navbar__link:hover {
+  color: var(--evvm-text-primary);
+  text-decoration: none;
+}
+
+.navbar__link--active {
+  color: var(--evvm-primary);
+}
+
+.navbar__link::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: var(--evvm-primary);
+  transition: width var(--transition-base);
+}
+
+.navbar__link:hover::after,
+.navbar__link--active::after {
+  width: 100%;
+}
+
+/* ============================================================================
+   DOCUSAURUS FOOTER OVERRIDES
+   ============================================================================ */
+.footer {
+  background: var(--evvm-bg-secondary);
+  border-top: 1px solid var(--evvm-border-subtle);
+  padding: var(--spacing-2xl) 0;
+}
+
+.footer__title {
+  color: var(--evvm-text-primary);
+  font-weight: 700;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.footer__link-item {
+  color: var(--evvm-text-secondary);
+  transition: color var(--transition-fast);
+}
+
+.footer__link-item:hover {
+  color: var(--evvm-primary);
+  text-decoration: none;
+}
+
+/* ============================================================================
+   UTILITY CLASSES
+   ============================================================================ */
+.container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 var(--spacing-md);
+}
+
+.container-wide {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 var(--spacing-md);
+}
+
+.container-narrow {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 var(--spacing-md);
+}
+
+/* Text utilities */
+.text-primary {
+  color: var(--evvm-text-primary);
+}
+
+.text-secondary {
+  color: var(--evvm-text-secondary);
+}
+
+.text-tertiary {
+  color: var(--evvm-text-tertiary);
+}
+
+.text-accent {
+  color: var(--evvm-primary);
+}
+
+/* ============================================================================
+   SCROLLBAR CUSTOM STYLES
+   ============================================================================ */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--evvm-bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--evvm-bg-elevated);
+  border-radius: var(--radius-sm);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--evvm-primary-dark);
+}
+
+/* ============================================================================
+   SELECTION STYLES
+   ============================================================================ */
+::selection {
+  background: var(--evvm-primary-glow);
+  color: var(--evvm-text-primary);
+}
+
+::-moz-selection {
+  background: var(--evvm-primary-glow);
+  color: var(--evvm-text-primary);
+}
+
+/* ============================================================================
+   FOCUS STYLES (Accessibility)
+   ============================================================================ */
+:focus-visible {
+  outline: 2px solid var(--evvm-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ============================================================================
+   DARK MODE VARIABLES (Tema oscuro por defecto)
+   ============================================================================ */
 [data-theme='dark'] {
-  --ifm-color-primary: #25c2a0;
-  --ifm-color-primary-dark: #21af90;
-  --ifm-color-primary-darker: #1fa588;
-  --ifm-color-primary-darkest: #1a8870;
-  --ifm-color-primary-light: #29d5b0;
-  --ifm-color-primary-lighter: #32d8b4;
-  --ifm-color-primary-lightest: #4fddbf;
-  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+  --ifm-background-color: #0A0A0A;
+  --ifm-background-surface-color: #151515;
+  --ifm-color-primary: #00FF88;
+  --ifm-color-primary-dark: #00CC6F;
+  --ifm-color-primary-darker: #00B863;
+  --ifm-color-primary-darkest: #009951;
+  --ifm-color-primary-light: #33FFAA;
+  --ifm-color-primary-lighter: #4DFFB5;
+  --ifm-color-primary-lightest: #80FFCC;
+  
+  --ifm-font-color-base: rgba(255, 255, 255, 0.9);
+  --ifm-font-color-secondary: rgba(255, 255, 255, 0.7);
+  
+  --ifm-code-background: rgba(255, 255, 255, 0.05);
+  --ifm-code-border-radius: 6px;
+}
+
+/* ============================================================================
+   LAYOUT PRINCIPAL - 3 COLUMNAS (Sidebar | Content | TOC)
+   ============================================================================ */
+.main-wrapper {
+  display: flex;
+  flex: 1 0 auto;
+  background: var(--evvm-bg-primary);
+}
+
+.docMainContainer {
+  display: grid;
+  grid-template-columns: 280px 1fr 240px;
+  gap: 0;
+  max-width: 1600px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* ============================================================================
+   SIDEBAR IZQUIERDO - Navegación de documentación
+   ============================================================================ */
+
+/* Container del sidebar */
+.theme-doc-sidebar-container {
+  background: #0F0F0F;
+  border-right: 1px solid var(--evvm-border-subtle);
+  min-width: 0;
+}
+
+.sidebar {
+  padding: var(--spacing-md);
+}
+
+/* Links del menú */
+.menu__link {
+  color: var(--evvm-text-secondary);
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+  font-size: 14px;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+.menu__link:hover {
+  background: var(--evvm-primary-subtle);
+  color: var(--evvm-primary);
+  text-decoration: none;
+}
+
+/* Link activo con indicador visual fuerte */
+.menu__link--active {
+  background: rgba(0, 255, 136, 0.15);
+  color: var(--evvm-primary);
+  font-weight: 600;
+  border-left: 3px solid var(--evvm-primary);
+  padding-left: 13px;
+}
+
+.menu__link--active:hover {
+  background: rgba(0, 255, 136, 0.2);
+}
+
+/* Categorías colapsables del sidebar */
+.menu__list-item-collapsible .menu__link {
+  color: var(--evvm-text-primary);
+  font-weight: 600;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: var(--spacing-sm);
+}
+
+.menu__list-item-collapsible .menu__link:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--evvm-primary);
+}
+
+/* Sublistas anidadas */
+.menu__list .menu__list {
+  margin-top: 4px;
+  margin-bottom: 12px;
+  padding-left: 8px;
+  border-left: 1px solid var(--evvm-border-subtle);
+}
+
+/* Iconos de expand/collapse más visibles */
+.menu__link--sublist-caret:after {
+  background-size: 1.25rem 1.25rem;
+  filter: brightness(0) invert(0.7);
+  transition: transform var(--transition-fast);
+}
+
+.menu__list-item-collapsible--active > .menu__link--sublist-caret:after {
+  transform: rotate(90deg);
+}
+
+/* Separación entre secciones principales */
+.menu__list-item:not(:first-child) {
+  margin-top: 4px;
+}
+
+/* ============================================================================
+   CONTENIDO PRINCIPAL - Área de documentación
+   ============================================================================ */
+
+/* Wrapper del contenido */
+.docItemContainer {
+  background: var(--evvm-bg-primary);
+}
+
+/* Container con padding generoso */
+.theme-doc-markdown {
+  max-width: 900px;
+  padding: var(--spacing-lg) var(--spacing-xl);
+}
+
+/* Breadcrumbs */
+.theme-doc-breadcrumbs {
+  margin-bottom: var(--spacing-md);
+}
+
+.breadcrumbs__link {
+  color: var(--evvm-text-tertiary);
+  font-size: 14px;
+  transition: color var(--transition-fast);
+}
+
+.breadcrumbs__link:hover {
+  color: var(--evvm-primary);
+  text-decoration: none;
+}
+
+/* ============================================================================
+   TIPOGRAFÍA DE MARKDOWN
+   ============================================================================ */
+
+/* Heading 1 - Título principal */
+.markdown h1 {
+  font-size: 42px;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: var(--spacing-md);
+  margin-top: 0;
+  color: var(--evvm-text-primary);
+  letter-spacing: -0.02em;
+}
+
+/* Heading 2 - Secciones principales */
+.markdown h2 {
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.3;
+  margin-top: var(--spacing-xl);
+  margin-bottom: var(--spacing-md);
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--evvm-border-subtle);
+  color: var(--evvm-text-primary);
+  letter-spacing: -0.01em;
+}
+
+/* Heading 3 - Subsecciones */
+.markdown h3 {
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.4;
+  margin-top: var(--spacing-lg);
+  margin-bottom: var(--spacing-sm);
+  color: rgba(255, 255, 255, 0.90);
+}
+
+/* Heading 4 */
+.markdown h4 {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.5;
+  margin-top: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* Heading 5 & 6 */
+.markdown h5,
+.markdown h6 {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
+  margin-top: var(--spacing-md);
+  margin-bottom: var(--spacing-xs);
+  color: rgba(255, 255, 255, 0.80);
+}
+
+/* Párrafos */
+.markdown p {
+  font-size: 16px;
+  line-height: 1.7;
+  margin-bottom: var(--spacing-md);
+  color: var(--evvm-text-secondary);
+}
+
+/* Strong emphasis */
+.markdown strong {
+  color: var(--evvm-text-primary);
+  font-weight: 600;
+}
+
+/* Enlaces en contenido */
+.markdown a {
+  color: var(--evvm-primary);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color var(--transition-fast);
+}
+
+.markdown a:hover {
+  border-bottom-color: var(--evvm-primary);
+}
+
+/* Código inline */
+.markdown code {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 14px;
+  color: var(--evvm-primary);
+  border: 1px solid var(--evvm-border-subtle);
+}
+
+/* ============================================================================
+   LISTAS
+   ============================================================================ */
+.markdown ul,
+.markdown ol {
+  margin-bottom: var(--spacing-md);
+  padding-left: 28px;
+}
+
+.markdown li {
+  font-size: 16px;
+  line-height: 1.7;
+  margin-bottom: 8px;
+  color: var(--evvm-text-secondary);
+}
+
+.markdown li strong {
+  color: var(--evvm-text-primary);
+  font-weight: 600;
+}
+
+/* Bullet points personalizados */
+.markdown ul li::marker {
+  color: var(--evvm-primary);
+}
+
+/* Números de lista personalizados */
+.markdown ol li::marker {
+  color: var(--evvm-primary);
+  font-weight: 600;
+}
+
+/* Listas anidadas */
+.markdown li > ul,
+.markdown li > ol {
+  margin-top: 8px;
+  margin-bottom: 0;
+}
+
+/* ============================================================================
+   CODE BLOCKS
+   ============================================================================ */
+.theme-code-block {
+  background: #0F0F0F;
+  border: 1px solid var(--evvm-border-subtle);
+  border-radius: var(--radius-md);
+  margin: var(--spacing-md) 0;
+  box-shadow: var(--shadow-sm);
+}
+
+.prism-code {
+  background: transparent;
+  padding: var(--spacing-md);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+pre code {
+  background: transparent;
+  padding: 0;
+  color: rgba(255, 255, 255, 0.9);
+  border: none;
+}
+
+/* Botón de copiar código */
+.clean-btn {
+  color: var(--evvm-text-tertiary);
+  transition: color var(--transition-fast);
+}
+
+.clean-btn:hover {
+  color: var(--evvm-primary);
+}
+
+/* Highlight de línea */
+.theme-code-block-highlighted-line {
+  background: rgba(0, 255, 136, 0.1);
+  border-left: 3px solid var(--evvm-primary);
+  display: block;
+  margin: 0 calc(-1 * var(--spacing-md));
+  padding: 0 calc(var(--spacing-md) - 3px);
+  padding-left: calc(var(--spacing-md));
+}
+
+/* ============================================================================
+   BLOCKQUOTES
+   ============================================================================ */
+.markdown blockquote {
+  border-left: 4px solid var(--evvm-primary);
+  background: var(--evvm-primary-subtle);
+  padding: var(--spacing-sm) var(--spacing-md);
+  margin: var(--spacing-md) 0;
+  border-radius: 4px;
+}
+
+.markdown blockquote p {
+  margin-bottom: var(--spacing-xs);
+}
+
+.markdown blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+/* ============================================================================
+   ADMONITIONS (Cajas de info/warning/tip)
+   ============================================================================ */
+.alert {
+  border-radius: var(--radius-md);
+  border-left: 4px solid currentColor;
+  padding: var(--spacing-sm) var(--spacing-md);
+  margin: var(--spacing-md) 0;
+}
+
+.alert--success {
+  background: rgba(0, 255, 136, 0.1);
+  border-color: var(--evvm-primary);
+}
+
+.alert--info {
+  background: rgba(33, 150, 243, 0.1);
+  border-color: #2196F3;
+}
+
+.alert--warning {
+  background: rgba(255, 152, 0, 0.1);
+  border-color: #FF9800;
+}
+
+.alert--danger {
+  background: rgba(244, 67, 54, 0.1);
+  border-color: #F44336;
+}
+
+.admonition-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-weight: 600;
+  margin-bottom: var(--spacing-xs);
+}
+
+/* ============================================================================
+   TABLAS
+   ============================================================================ */
+.markdown table {
+  width: 100%;
+  margin: var(--spacing-md) 0;
+  border-collapse: collapse;
+  border: 1px solid var(--evvm-border-subtle);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.markdown th,
+.markdown td {
+  padding: 12px 16px;
+  border: 1px solid var(--evvm-border-subtle);
+  text-align: left;
+}
+
+.markdown th {
+  background: rgba(0, 255, 136, 0.1);
+  font-weight: 600;
+  color: var(--evvm-text-primary);
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.markdown td {
+  color: var(--evvm-text-secondary);
+  font-size: 15px;
+}
+
+.markdown tr:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* ============================================================================
+   TABLE OF CONTENTS (TOC) - Columna derecha
+   ============================================================================ */
+
+/* Container del TOC */
+.theme-doc-toc-desktop {
+  position: sticky;
+  top: calc(var(--ifm-navbar-height) + var(--spacing-md));
+  max-height: calc(100vh - var(--ifm-navbar-height) - var(--spacing-xl));
+  overflow-y: auto;
+  padding: var(--spacing-md);
+  border-left: 1px solid var(--evvm-border-subtle);
+}
+
+/* Título del TOC */
+.table-of-contents__link--active {
+  color: var(--evvm-primary);
+  font-weight: 600;
+  border-left: 2px solid var(--evvm-primary);
+  padding-left: 14px;
+  margin-left: -16px;
+}
+
+/* Links del TOC */
+.table-of-contents__link {
+  color: var(--evvm-text-tertiary);
+  font-size: 13px;
+  line-height: 1.6;
+  padding: 4px 0 4px 16px;
+  transition: all var(--transition-fast);
+  display: block;
+}
+
+.table-of-contents__link:hover {
+  color: rgba(255, 255, 255, 0.9);
+  text-decoration: none;
+}
+
+/* Items anidados del TOC */
+.table-of-contents ul {
+  padding-left: 12px;
+  border-left: 1px solid var(--evvm-border-subtle);
+  margin-left: 4px;
+  margin-top: 4px;
+}
+
+.table-of-contents li {
+  margin-bottom: 4px;
+}
+
+/* Scrollbar del TOC */
+.theme-doc-toc-desktop::-webkit-scrollbar {
+  width: 6px;
+}
+
+.theme-doc-toc-desktop::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+}
+
+.theme-doc-toc-desktop::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.theme-doc-toc-desktop::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* ============================================================================
+   PAGINACIÓN (Anterior/Siguiente)
+   ============================================================================ */
+.pagination-nav {
+  margin-top: var(--spacing-2xl);
+  padding-top: var(--spacing-xl);
+  border-top: 1px solid var(--evvm-border-subtle);
+}
+
+.pagination-nav__link {
+  background: var(--evvm-bg-secondary);
+  border: 1px solid var(--evvm-border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  transition: all var(--transition-base);
+}
+
+.pagination-nav__link:hover {
+  background: rgba(0, 255, 136, 0.05);
+  border-color: var(--evvm-primary);
+  text-decoration: none;
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.pagination-nav__label {
+  font-size: 12px;
+  color: var(--evvm-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.pagination-nav__sublabel {
+  color: var(--evvm-text-primary);
+  font-weight: 600;
+  font-size: 16px;
+  margin-top: 4px;
+}
+
+/* ============================================================================
+   BOTÓN "SCROLL TO TOP"
+   ============================================================================ */
+.theme-back-to-top-button {
+  background: var(--evvm-primary);
+  color: #0A0A0A;
+  box-shadow: 0 4px 12px rgba(0, 255, 136, 0.3);
+  border-radius: var(--radius-full);
+  transition: all var(--transition-base);
+}
+
+.theme-back-to-top-button:hover {
+  background: var(--evvm-primary-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 255, 136, 0.4);
+}
+
+/* ============================================================================
+   EDIT PAGE LINK
+   ============================================================================ */
+.theme-edit-this-page {
+  color: var(--evvm-text-tertiary);
+  font-size: 14px;
+  transition: color var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.theme-edit-this-page:hover {
+  color: var(--evvm-primary);
+  text-decoration: none;
+}
+
+/* ============================================================================
+   ÚLTIMA ACTUALIZACIÓN
+   ============================================================================ */
+.theme-last-updated {
+  font-size: 14px;
+  color: var(--evvm-text-tertiary);
+  font-style: italic;
+  margin-top: var(--spacing-md);
+}
+
+/* ============================================================================
+   SIDEBAR MOBILE (Hamburger menu)
+   ============================================================================ */
+.navbar__toggle {
+  color: var(--evvm-text-secondary);
+}
+
+.navbar__toggle:hover {
+  color: var(--evvm-primary);
+}
+
+/* ============================================================================
+   RESPONSIVE DESIGN
+   ============================================================================ */
+
+/* Tablets - Ocultar TOC */
+@media (max-width: 996px) {
+  .docMainContainer {
+    grid-template-columns: 280px 1fr;
+  }
+  
+  .theme-doc-toc-desktop {
+    display: none;
+  }
+  
+  .theme-doc-markdown {
+    max-width: 100%;
+  }
+}
+
+/* Mobile - Sidebar colapsable */
+@media (max-width: 768px) {
+  .docMainContainer {
+    grid-template-columns: 1fr;
+  }
+  
+  .theme-doc-markdown {
+    padding: var(--spacing-md) var(--spacing-sm);
+  }
+  
+  .markdown h1 {
+    font-size: 32px;
+  }
+  
+  .markdown h2 {
+    font-size: 26px;
+    margin-top: var(--spacing-lg);
+  }
+  
+  .markdown h3 {
+    font-size: 22px;
+  }
+  
+  .markdown table {
+    font-size: 14px;
+  }
+  
+  .markdown th,
+  .markdown td {
+    padding: 8px 12px;
+  }
+}
+
+/* Mobile pequeño */
+@media (max-width: 480px) {
+  .theme-doc-markdown {
+    padding: var(--spacing-sm);
+  }
+  
+  .markdown h1 {
+    font-size: 28px;
+  }
+  
+  .markdown h2 {
+    font-size: 24px;
+  }
+  
+  .markdown h3 {
+    font-size: 20px;
+  }
 }

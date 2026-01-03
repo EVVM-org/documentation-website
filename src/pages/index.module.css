@@ -1,11 +1,607 @@
 /**
- * Modern EVVM Homepage Design
- * CSS files with the .module.css suffix will be treated as CSS modules
- * and scoped locally.
+ * EVVM Landing Page Styles - CSS Module
+ * 
+ * Estructura:
+ * 1. Landing Container
+ * 2. Hero Section
+ * 3. Quick Access Section
+ * 4. Resources Section
+ * 5. Features Section
+ * 6. Buttons & Interactive Elements
+ * 7. Animations
+ * 8. Responsive Design
+ * 
+ * Design Principles:
+ * - Mobile-first responsive
+ * - WCAG AA accessibility
+ * - Smooth microinteractions
+ * - Performance-optimized animations
  */
 
-/* Import Inter font */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+/* ============================================================================
+   1. LANDING CONTAINER
+   ============================================================================ */
+.landing {
+  background: var(--evvm-bg-primary);
+  min-height: 100vh;
+}
+
+/* ============================================================================
+   2. HERO SECTION
+   ============================================================================ */
+.hero {
+  position: relative;
+  padding: var(--spacing-4xl) var(--spacing-md) var(--spacing-3xl);
+  text-align: center;
+  overflow: hidden;
+  
+  /* Gradient background effect */
+  background: radial-gradient(
+    ellipse 80% 50% at 50% -20%,
+    rgba(0, 255, 136, 0.15),
+    transparent
+  );
+  
+  animation: fadeInUp 0.8s ease;
+}
+
+/* Grid pattern overlay */
+.hero::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 50px 50px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.heroContent {
+  position: relative;
+  z-index: var(--z-base);
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.heroTitle {
+  font-size: clamp(32px, 5vw, 56px);
+  line-height: 1.2;
+  font-weight: 800;
+  margin: 0 0 var(--spacing-md);
+  color: var(--evvm-text-primary);
+  letter-spacing: -0.02em;
+}
+
+.accent {
+  color: var(--evvm-primary);
+  background: linear-gradient(135deg, var(--evvm-primary) 0%, #00CC88 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.heroSubtitle {
+  font-size: clamp(16px, 2vw, 20px);
+  line-height: 1.6;
+  color: var(--evvm-text-secondary);
+  margin: 0 0 var(--spacing-xl);
+  max-width: 700px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* CTA Group - Jerarquía visual clara */
+.ctaGroup {
+  display: flex;
+  gap: var(--spacing-md);
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: var(--spacing-2xl);
+}
+
+/* Trust Badges */
+.trustBadges {
+  display: flex;
+  gap: var(--spacing-lg);
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: var(--spacing-xl);
+}
+
+.badge {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--evvm-bg-secondary);
+  border: 1px solid var(--evvm-border-default);
+  border-radius: var(--radius-full);
+  color: var(--evvm-text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  transition: all var(--transition-base);
+}
+
+.badge:hover {
+  border-color: var(--evvm-primary);
+  transform: translateY(-2px);
+}
+
+.badgeIcon {
+  font-size: 18px;
+}
+
+/* ============================================================================
+   3. QUICK ACCESS SECTION
+   ============================================================================ */
+.quickAccess {
+  padding: var(--spacing-3xl) var(--spacing-md);
+  background: var(--evvm-bg-secondary);
+  animation: fadeInUp 0.8s ease 0.2s backwards;
+}
+
+.quickAccessGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--spacing-md);
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.quickCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: var(--spacing-lg);
+  background: var(--evvm-bg-primary);
+  border: 1px solid var(--evvm-border-subtle);
+  border-radius: var(--radius-lg);
+  transition: all var(--transition-base);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.quickCard:hover {
+  transform: translateY(-4px);
+  border-color: var(--evvm-primary);
+  box-shadow: var(--shadow-md), 0 0 20px rgba(0, 255, 136, 0.1);
+  text-decoration: none;
+}
+
+.quickCardIcon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--evvm-primary);
+  margin-bottom: var(--spacing-md);
+  transition: transform var(--transition-base);
+}
+
+.quickCard:hover .quickCardIcon {
+  transform: scale(1.1);
+}
+
+.quickCardTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--evvm-text-primary);
+  margin: 0 0 var(--spacing-xs);
+}
+
+.quickCardDescription {
+  font-size: 14px;
+  color: var(--evvm-text-tertiary);
+  margin: 0;
+}
+
+/* ============================================================================
+   4. RESOURCES SECTION
+   ============================================================================ */
+.resources {
+  padding: var(--spacing-3xl) var(--spacing-md);
+  max-width: 1280px;
+  margin: 0 auto;
+  animation: fadeInUp 0.8s ease 0.4s backwards;
+}
+
+.sectionHeader {
+  text-align: center;
+  margin-bottom: var(--spacing-2xl);
+}
+
+.sectionTitle {
+  font-size: clamp(32px, 4vw, 42px);
+  font-weight: 800;
+  color: var(--evvm-text-primary);
+  margin: 0 0 var(--spacing-sm);
+  letter-spacing: -0.02em;
+}
+
+.sectionSubtitle {
+  font-size: 18px;
+  color: var(--evvm-text-secondary);
+  margin: 0;
+}
+
+/* Featured Video Player */
+.featuredVideo {
+  margin-bottom: var(--spacing-xl);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 2px solid var(--evvm-primary);
+  box-shadow: 0 0 30px rgba(0, 255, 136, 0.2);
+}
+
+.videoPlayer {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: var(--evvm-bg-tertiary);
+}
+
+.videoPlayer iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+/* Resources Grid */
+.resourcesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+.resourceCard {
+  display: flex;
+  flex-direction: column;
+  background: var(--evvm-bg-secondary);
+  border: 1px solid var(--evvm-border-default);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: all var(--transition-base);
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+}
+
+.resourceCard:hover {
+  transform: translateY(-4px);
+  border-color: var(--evvm-primary);
+  box-shadow: var(--shadow-md), 0 0 20px rgba(0, 255, 136, 0.1);
+}
+
+.resourceCardActive {
+  border-color: var(--evvm-primary);
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+}
+
+.resourceThumbnail {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: var(--evvm-bg-tertiary);
+}
+
+.resourceThumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform var(--transition-slow);
+}
+
+.resourceCard:hover .resourceThumbnail img {
+  transform: scale(1.05);
+}
+
+.playIcon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0.9;
+  transition: all var(--transition-base);
+}
+
+.resourceCard:hover .playIcon {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1.1);
+}
+
+.resourceContent {
+  padding: var(--spacing-md);
+}
+
+.resourceTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--evvm-text-primary);
+  margin: 0 0 var(--spacing-sm);
+}
+
+.resourceMeta {
+  display: flex;
+  gap: var(--spacing-md);
+  font-size: 14px;
+}
+
+.resourceDuration {
+  color: var(--evvm-text-tertiary);
+}
+
+.resourceLevel {
+  color: var(--evvm-primary);
+  font-weight: 500;
+}
+
+/* ============================================================================
+   5. FEATURES SECTION
+   ============================================================================ */
+.features {
+  padding: var(--spacing-3xl) var(--spacing-md);
+  background: var(--evvm-bg-secondary);
+  animation: fadeInUp 0.8s ease 0.6s backwards;
+}
+
+.featuresGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--spacing-lg);
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.featureCard {
+  background: var(--evvm-bg-primary);
+  border: 1px solid var(--evvm-border-subtle);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xl);
+  text-align: center;
+  transition: all var(--transition-base);
+}
+
+.featureCard:hover {
+  transform: translateY(-4px);
+  border-color: var(--evvm-primary);
+  box-shadow: var(--shadow-md), 0 0 20px rgba(0, 255, 136, 0.1);
+}
+
+.featureIcon {
+  font-size: 48px;
+  margin-bottom: var(--spacing-md);
+  transition: transform var(--transition-base);
+}
+
+.featureCard:hover .featureIcon {
+  transform: scale(1.1);
+}
+
+.featureTitle {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--evvm-text-primary);
+  margin: 0 0 var(--spacing-sm);
+}
+
+.featureDescription {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--evvm-text-secondary);
+  margin: 0;
+}
+
+/* ============================================================================
+   6. BUTTONS & INTERACTIVE ELEMENTS
+   ============================================================================ */
+
+/* Primary Button - Máxima jerarquía visual */
+.btnPrimary {
+  display: inline-block;
+  background: linear-gradient(135deg, var(--evvm-primary) 0%, var(--evvm-primary-dark) 100%);
+  color: #0A0A0A;
+  font-weight: 600;
+  font-size: 16px;
+  padding: 14px 32px;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  box-shadow: 0 4px 12px rgba(0, 255, 136, 0.2);
+  text-decoration: none;
+}
+
+.btnPrimary:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: var(--shadow-glow);
+  color: #000;
+  text-decoration: none;
+}
+
+.btnPrimary:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* Secondary Button - Menor jerarquía */
+.btnSecondary {
+  display: inline-block;
+  background: transparent;
+  color: var(--evvm-primary);
+  font-weight: 600;
+  font-size: 16px;
+  padding: 14px 32px;
+  border: 2px solid var(--evvm-primary);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  text-decoration: none;
+}
+
+.btnSecondary:hover {
+  background: rgba(0, 255, 136, 0.1);
+  transform: translateY(-2px);
+  box-shadow: 0 0 16px rgba(0, 255, 136, 0.15);
+  color: var(--evvm-primary);
+  text-decoration: none;
+}
+
+.btnSecondary:active {
+  transform: translateY(0);
+}
+
+/* ============================================================================
+   7. ANIMATIONS
+   ============================================================================ */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes glowPulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(0, 255, 136, 0.4);
+  }
+}
+
+.btnPrimary:hover {
+  animation: glowPulse 2s ease-in-out infinite;
+}
+
+/* ============================================================================
+   8. RESPONSIVE DESIGN
+   ============================================================================ */
+
+/* Mobile (< 640px) */
+@media (max-width: 640px) {
+  .hero {
+    padding: var(--spacing-3xl) var(--spacing-sm) var(--spacing-2xl);
+  }
+  
+  .heroTitle {
+    font-size: 32px;
+  }
+  
+  .heroSubtitle {
+    font-size: 16px;
+  }
+  
+  .ctaGroup {
+    flex-direction: column;
+    gap: var(--spacing-sm);
+  }
+  
+  .btnPrimary,
+  .btnSecondary {
+    width: 100%;
+    text-align: center;
+  }
+  
+  .trustBadges {
+    gap: var(--spacing-sm);
+  }
+  
+  .badge {
+    font-size: 12px;
+    padding: var(--spacing-xs) var(--spacing-sm);
+  }
+  
+  .quickAccess {
+    padding: var(--spacing-2xl) var(--spacing-sm);
+  }
+  
+  .quickAccessGrid {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-sm);
+  }
+  
+  .resources,
+  .features {
+    padding: var(--spacing-2xl) var(--spacing-sm);
+  }
+  
+  .resourcesGrid {
+    grid-template-columns: 1fr;
+  }
+  
+  .featuresGrid {
+    grid-template-columns: 1fr;
+  }
+  
+  .sectionTitle {
+    font-size: 28px;
+  }
+}
+
+/* Tablet (641px - 1024px) */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .heroTitle {
+    font-size: 42px;
+  }
+  
+  .quickAccessGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .resourcesGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .featuresGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Desktop (> 1025px) */
+@media (min-width: 1025px) {
+  .heroTitle {
+    font-size: 56px;
+  }
+  
+  .quickAccessGrid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Landscape mobile fix */
+@media (max-height: 500px) and (orientation: landscape) {
+  .hero {
+    padding: var(--spacing-xl) var(--spacing-md);
+  }
+  
+  .heroTitle {
+    font-size: 28px;
+    margin-bottom: var(--spacing-sm);
+  }
+  
+  .heroSubtitle {
+    font-size: 14px;
+    margin-bottom: var(--spacing-md);
+  }
+  
+  .trustBadges {
+    margin-top: var(--spacing-md);
+  }
+}
 
 /* Root variables */
 :root {
