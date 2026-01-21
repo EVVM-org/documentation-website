@@ -1,7 +1,7 @@
 ---
-title: "Services"
+title: "Services Overview"
 description: "How to use services in evvm-js"
-sidebar_position: 2
+sidebar_label: Overview
 ---
 
 # Services
@@ -17,7 +17,7 @@ Common services:
 
 ## Using services
 
-In order to use services, the user must first create a signer, please refer to the [signers documentation]() to learn how to create signers using either ethersjs or viem.
+In order to use services, the user must first create a signer, please refer to the [signers documentation](/docs/Libraries/npmLibraries/evvmJs/01-signers) to learn how to create signers using either ethersjs or viem.
 After successfully creating a signer, a new service instance can be created, and used to create [SignedActions](#signed-actions) and use [nonces](#nonce-management).
 
 Example: create an `EVVM` service and sign a payment
