@@ -6,7 +6,7 @@ sidebar_position: 5
 
 # Custom Services
 
-`@evvm/evvm-js` allows users to create their own services interacting with the evvm, they must initially follow the [evvm service spec](); this documentation focuses on building the signature creation tool that users can then use in their own dapps.
+`@evvm/evvm-js` allows users to create their own services interacting with the evvm, they must initially follow the [evvm service spec](/docs/HowToMakeAEVVMService); this documentation focuses on building the signature creation tool that users can then use in their own dapps.
 
 ## Creation of custom services
 
