@@ -46,7 +46,9 @@ Notes:
 
 ## Nonce management
 
-It is up to the user to provide the nonce in every signature creation function call, but the service itself has an utility to either get the current sync nonce, or to validate an arbitrary async nonce, please refer to the [nonces documentation]() to learn more about nonces in the EVVM.
+It is up to the user to provide the nonce in every signature creation function call, that's why every service have an utility to either get the current sync nonce, or to validate an arbitrary async nonce, please refer to the [nonces documentation](/docs/ProcessOfATransaction#nonce-verification) to learn more about nonces in the EVVM.
+
+### Sync nonce
 
 Example: get the next sync nonce for the EVVM service
 
@@ -66,6 +68,8 @@ const signedAction = await evvm.pay({
   priorityFlag: false, // false, because we are using sync nonces
 });
 ```
+
+### Async nonce
 
 Example: use an arbitrary async nonce
 
@@ -88,9 +92,8 @@ const signedAction = await evvm.pay({
 });
 ```
 
-> Note:
-> Every EVVM service has it's own nonce records, thus, every service described in this documentation includes the methods `getSyncNonce()` and `isValidAsyncNonce()`
+> Every service has it's own nonce records, thus, every service described in this documentation includes the methods `getSyncNonce()` and `isValidAsyncNonce()`
 
 ## Signed Actions
 
-Signed actions are designed to encapsulate everything needed to send and execute an EVVM transaction everywhere, this could be the same application where the signature was built, or a [fisher](/docs/HowToMakeAEVVMService#who-are-fishers) that caugh the tx from whatever [fishing spot](/docs/ProcessOfATransaction#3-broadcast-to-fishing-spot) the user decided to use.
+Signed actions are designed to encapsulate everything needed to send and [execute](/docs/Libraries/npmLibraries/evvmJs/utils#execute) an EVVM transaction anywhere, this could be the same application where the signature was built, or a [fisher](/docs/HowToMakeAEVVMService#who-are-fishers) that caugh the tx from whatever [fishing spot](/docs/ProcessOfATransaction#3-broadcast-to-fishing-spot) the user decided to use.
