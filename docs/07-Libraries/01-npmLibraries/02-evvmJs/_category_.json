@@ -1,0 +1,11 @@
+{
+  "label": "@evvm/evvm-js",
+  "position": 2,
+  "description": "Documentation for the @evvm/evvm-js NPM package",
+  "link": {
+    "type": "generated-index",
+    "title": "evvm-js",
+    "description": "Client utilities, services, signers and types provided by @evvm/evvm-js.",
+    "slug": "/npm-libraries/evvm-js"
+  }
+}
