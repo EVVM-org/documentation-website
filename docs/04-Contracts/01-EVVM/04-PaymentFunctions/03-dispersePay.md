@@ -79,13 +79,23 @@ When using a service as the executor, we recommend specifying the service's addr
 
 2. **Executor Validation**: If `executor` is not `address(0)`, checks that `msg.sender` matches the `executor` address. Reverts with `SenderIsNotTheExecutor` if they don't match.
 
-3. **Async Nonce Verification**: If `priorityFlag` is `true` (asynchronous), checks if the custom nonce hasn't been used by consulting the `asyncUsedNonce` mapping. Reverts with `AsyncNonceAlreadyUsed()` if already used. 
+3. **Nonce Verification**: Depending on the `priorityFlag`:
+   - **Async (priorityFlag = true)**: Checks if the custom nonce hasn't been used by consulting the `asyncUsedNonce` mapping. Reverts with `AsyncNonceAlreadyUsed` if already used.
+   - **Sync (priorityFlag = false)**: Checks if the nonce matches the expected sequential nonce in `nextSyncUsedNonce`. Reverts with `SyncNonceMismatch` if they don't match.
 
-4. **Balance Verification**: Checks that the `from` address has sufficient balance to cover both `amount` and `priorityFee`. Reverts with `InsufficientBalance` if insufficient.
+4. **Staker Check**: Determines if the executor (`msg.sender`) is a registered staker using `isAddressStaker`.
 
-5. **Balance Deduction**: Subtracts the total `amount` and `priorityFee` from the sender's balance upfront.
+5. **Balance Verification**: Checks that the `from` address has sufficient balance. The required balance depends on staker status:
+   - If executor is a staker: `amount + priorityFee`
+   - If executor is not a staker: `amount` only (priorityFee is not collected)
+   
+   Reverts with `InsufficientBalance` if insufficient.
 
-6. **Distribution Loop**: Iterates through each recipient in the `toData` array:
+6. **Balance Deduction**: Subtracts the required amount from the sender's balance upfront:
+   - If executor is a staker: deducts `amount + priorityFee`
+   - If executor is not a staker: deducts `amount` only
+
+7. **Distribution Loop**: Iterates through each recipient in the `toData` array:
 
    - **Amount Tracking**: Maintains a running total (`accumulatedAmount`) of distributed amounts
    - **Recipient Resolution**:
@@ -93,19 +103,15 @@ When using a service as the executor, we recommend specifying the service's addr
      - If `to_identity` is empty, uses `to_address`
    - **Token Distribution**: Adds the specified amount to the recipient's balance
 
-7. **Amount Validation**: Verifies that the total distributed amount (`accumulatedAmount`) exactly matches the specified `amount` parameter. Reverts with `InvalidAmount` if mismatch.
+8. **Amount Validation**: Verifies that the total distributed amount (`accumulatedAmount`) exactly matches the specified `amount` parameter. Reverts with `InvalidAmount` if mismatch.
 
-8. **Staker Benefits**:
+9. **Staker Benefits**: If the executor is a staker (`isAddressStaker(msg.sender)`):
+   - Grants 1 principal token reward using `_giveReward`
+   - Transfers the `priorityFee` to the executor's balance
 
-   - If the executor is a staker (`isAddressStaker(msg.sender)`):
-     - Grants 1 principal token reward using `_giveReward`
-     - Transfers the `priorityFee` to the executor
-   - If the executor is not a staker:
-     - Returns the `priorityFee` to the original sender
-
-9. **Nonce Update**: Marks the nonce as used to prevent replay attacks:
-   - **Async (priorityFlag = true)**: Marks the custom nonce as used in `asyncUsedNonce`
-   - **Sync (priorityFlag = false)**: Increments the sequential nonce in `nextSyncUsedNonce`
+10. **Nonce Update**: Marks the nonce as used to prevent replay attacks:
+    - **Async (priorityFlag = true)**: Marks the custom nonce as used in `asyncUsedNonce`
+    - **Sync (priorityFlag = false)**: Increments the sequential nonce in `nextSyncUsedNonce`
 
 ![DispersePay Happy Path](./img/dispersePay_HappyPath.svg)
 ![DispersePay Failed Path](./img/dispersePay_FailedPath.svg)

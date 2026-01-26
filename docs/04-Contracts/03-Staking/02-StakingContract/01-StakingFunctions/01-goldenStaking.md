@@ -37,7 +37,7 @@ The EVVM payment signature (`signature_EVVM`) follows the [Single Payment Signat
 
 :::info
 
-For detailed information about the `stakingBaseProcess` implementation, refer to the [stakingBaseProcess](../02-InternalStakingFunctions/02-stakingBaseProcess.md).
+For detailed information about the `stakingBaseProcess` implementation, refer to the [stakingBaseProcess](../02-InternalStakingFunctions/01-stakingBaseProcess.md).
 
 :::
 
@@ -56,7 +56,7 @@ For detailed information about the `stakingBaseProcess` implementation, refer to
 
 :::info
 
-For detailed information about the `stakingBaseProcess` implementation, refer to the [stakingBaseProcess](../02-InternalStakingFunctions/02-stakingBaseProcess.md).
+For detailed information about the `stakingBaseProcess` implementation, refer to the [stakingBaseProcess](../02-InternalStakingFunctions/01-stakingBaseProcess.md).
 
 :::
 

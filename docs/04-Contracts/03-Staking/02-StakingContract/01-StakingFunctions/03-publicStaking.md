@@ -14,7 +14,7 @@ The `publicStaking` function enables universal access to MATE token staking when
 
 :::info
 
-Note: In this repository's contract implementation the constructor leaves `allowPublicStaking.flag` disabled by default and enables `allowPresaleStaking.flag`. Deployments and testnets may use different defaults; consult the deployed contract metadata for runtime flag values.
+Note: In this repository's contract implementation the constructor enables `allowPublicStaking.flag` by default and leaves `allowPresaleStaking.flag` disabled. Deployments and testnets may use different defaults; consult the deployed contract metadata for runtime flag values.
 
 :::
 
@@ -59,7 +59,7 @@ The function supports two execution paths:
 
 :::info
 
-For detailed information about the `stakingBaseProcess` function, refer to the [stakingBaseProcess](../02-InternalStakingFunctions/02-stakingBaseProcess.md).
+For detailed information about the `stakingBaseProcess` function, refer to the [stakingBaseProcess](../02-InternalStakingFunctions/01-stakingBaseProcess.md).
 
 :::
 
@@ -80,7 +80,7 @@ For detailed information about the `stakingBaseProcess` function, refer to the [
 
 :::info
 
-For detailed information about the `stakingBaseProcess` function, refer to the [stakingBaseProcess](../02-InternalStakingFunctions/02-stakingBaseProcess.md).
+For detailed information about the `stakingBaseProcess` function, refer to the [stakingBaseProcess](../02-InternalStakingFunctions/01-stakingBaseProcess.md).
 
 :::
 

@@ -116,7 +116,7 @@ contract MyService {
 
 :::info
 
-For detailed information about the core unstaking logic and time lock calculations, refer to the [stakingBaseProcess](../../02-InternalStakingFunctions/02-stakingBaseProcess.md).
+For detailed information about the core unstaking logic and time lock calculations, refer to the [stakingBaseProcess](../../02-InternalStakingFunctions/01-stakingBaseProcess.md).
 
 :::
 

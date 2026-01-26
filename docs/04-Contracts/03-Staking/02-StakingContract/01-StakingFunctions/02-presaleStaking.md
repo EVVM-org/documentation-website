@@ -20,7 +20,7 @@ The `presaleStaking` function enables presale participants to stake or unstake t
 
 :::info
 
-Note: In this repository's contract implementation the constructor enables `allowPresaleStaking.flag` by default and leaves `allowPublicStaking.flag` disabled. Deployments and testnets may use different defaults; consult the deployed contract metadata for runtime flag values.
+Note: In this repository's contract implementation the constructor enables `allowPublicStaking.flag` by default and leaves `allowPresaleStaking.flag` disabled. Deployments and testnets may use different defaults; consult the deployed contract metadata for runtime flag values.
 
 :::
 
@@ -53,20 +53,22 @@ The function supports two execution paths:
 
 ## Staking Process
 
-1. **Signature Verification**: Validates the authenticity of the user signature
-2. **Nonce Validation**: Calls internal `verifyAsyncNonce(user, nonce)` which reverts with `AsyncNonceAlreadyUsed()` if the nonce was already used; after successful execution the contract calls `markAsyncNonceAsUsed(user, nonce)` to prevent replays
-3. **Presale Claims Processing**: Calls `presaleClaims()` to verify presale participation and enforce 2-token limit
-4. **Presale Staking Status**: Verifies `allowPresaleStaking.flag` is enabled
-5. **Process Execution**: Calls the internal `stakingBaseProcess` function with:
+1. **Presale Staking Status**: Verifies `allowPresaleStaking.flag` is enabled and `allowPublicStaking.flag` is disabled, reverts with `PresaleStakingDisabled()` otherwise
+2. **Signature Verification**: Validates the authenticity of the user signature
+3. **Presale Participant Verification**: Confirms the user is registered as a presale participant using `userPresaleStaker[user].isAllow`, reverts with `UserIsNotPresaleStaker()` if not authorized
+4. **Nonce Validation**: Calls internal `verifyAsyncNonce(user, nonce)` which reverts with `AsyncNonceAlreadyUsed()` if the nonce was already used
+5. **Limit Check**: Ensures `userPresaleStaker[user].stakingAmount < 2`, reverts with `UserPresaleStakerLimitExceeded()` if limit reached
+6. **Counter Update**: Increments `userPresaleStaker[user].stakingAmount`
+7. **Process Execution**: Calls the internal `stakingBaseProcess` function with:
    - User address and IsAService=false in AccountMetadata
    - Fixed amount of 1 staking token
    - Standard EVVM payment processing
    - Historical record updates and reward distribution
-6. **Nonce Update**: Marks the staking nonce as used to prevent replay attacks
+8. **Nonce Update**: Marks the staking nonce as used to prevent replay attacks
 
 :::info
 
-For detailed information about the `stakingBaseProcess` function, refer to the [stakingBaseProcess](../02-InternalStakingFunctions/02-stakingBaseProcess.md).
+For detailed information about the `stakingBaseProcess` function, refer to the [stakingBaseProcess](../02-InternalStakingFunctions/01-stakingBaseProcess.md).
 
 :::
 
@@ -75,20 +77,22 @@ For detailed information about the `stakingBaseProcess` function, refer to the [
 
 ## Unstaking Process
 
-1. **Signature Verification**: Validates the authenticity of the user signature
-2. **Nonce Validation**: Calls internal `verifyAsyncNonce(user, nonce)` which reverts with `AsyncNonceAlreadyUsed()` if the nonce was already used; after successful execution the contract calls `markAsyncNonceAsUsed(user, nonce)` to prevent replays
-3. **Presale Claims Processing**: Calls `presaleClaims()` to verify presale participation and validate unstaking eligibility
-4. **Presale Staking Status**: Verifies `allowPresaleStaking.flag` is enabled
-5. **Process Execution**: Calls the internal `stakingBaseProcess` function with:
+1. **Presale Staking Status**: Verifies `allowPresaleStaking.flag` is enabled and `allowPublicStaking.flag` is disabled, reverts with `PresaleStakingDisabled()` otherwise
+2. **Signature Verification**: Validates the authenticity of the user signature
+3. **Presale Participant Verification**: Confirms the user is registered as a presale participant using `userPresaleStaker[user].isAllow`, reverts with `UserIsNotPresaleStaker()` if not authorized
+4. **Nonce Validation**: Calls internal `verifyAsyncNonce(user, nonce)` which reverts with `AsyncNonceAlreadyUsed()` if the nonce was already used
+5. **Balance Check**: Ensures `userPresaleStaker[user].stakingAmount > 0`, reverts with `UserPresaleStakerLimitExceeded()` if no stakes to unstake
+6. **Counter Decrement**: Decrements `userPresaleStaker[user].stakingAmount`
+7. **Process Execution**: Calls the internal `stakingBaseProcess` function with:
    - User address and IsAService=false in AccountMetadata
    - Fixed amount of 1 staking token
    - Standard EVVM payment processing
    - Historical record updates and reward distribution
-6. **Nonce Update**: Marks the staking nonce as used to prevent replay attacks
+8. **Nonce Update**: Marks the staking nonce as used to prevent replay attacks
 
 :::info
 
-For detailed information about the `stakingBaseProcess` function, refer to the [stakingBaseProcess](../02-InternalStakingFunctions/02-stakingBaseProcess.md).
+For detailed information about the `stakingBaseProcess` function, refer to the [stakingBaseProcess](../02-InternalStakingFunctions/01-stakingBaseProcess.md).
 
 :::
 

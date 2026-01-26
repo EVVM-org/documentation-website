@@ -133,73 +133,16 @@ function makeCaPay(
 uint256 ethBalance = evvm.getBalance(address(this), address(0));
 makeCaPay(owner, address(0), ethBalance);
 
-// Reward fisher with Principal tokens
-makeCaPay(msg.sender, evvm.getPrincipalTokenAddress(), rewardAmount);
+// Reward fisher with MATE tokens
+makeCaPay(msg.sender, address(1), rewardAmount);
 
 // Transfer tokens to user
 makeCaPay(userAddress, tokenAddress, amount);
 ```
 
-### `requestDispersePay`
-```solidity
-function requestDispersePay(
-    EvvmStructs.DispersePayMetadata[] memory toData,
-    address token,
-    uint256 amount,
-    uint256 priorityFee,
-    uint256 nonce,
-    bool priorityFlag,
-    bytes memory signature
-) internal virtual
-```
-
-**Description**: Requests a batch payment from the caller to multiple recipients through EVVM
-
-**Parameters**:
-- `toData`: Array of recipient addresses/identities and amounts
-- `token`: Token address to distribute
-- `amount`: Total amount being distributed (for signature verification)
-- `priorityFee`: Fee for fisher executing transaction
-- `nonce`: EVVM nonce for payment
-- `priorityFlag`: `true` for async nonce, `false` for sync nonce
-- `signature`: Payment authorization signature
-
-**Default Values (Set Automatically)**:
-- `from`: `address(this)` - this service contract is the sender
-- `executor`: `address(this)` - service contract executes payment
-
-### `makeDisperseCaPay`
-```solidity
-function makeDisperseCaPay(
-    EvvmStructs.DisperseCaPayMetadata[] memory toData,
-    address token,
-    uint256 amount
-) internal virtual
-```
-
-**Description**: Distributes tokens from service contract's EVVM balance to multiple recipients
-
-**Parameters**:
-- `toData`: Array of recipient addresses and amounts
-- `token`: Token address to distribute
-- `amount`: Total amount being distributed (must equal sum of individual amounts)
-
-**Requirements**:
-- Service contract must have sufficient balance in EVVM
-- Total of individual amounts must match `amount` parameter
-
-**Example**:
-```solidity
-// Distribute rewards to multiple users
-EvvmStructs.DisperseCaPayMetadata[] memory recipients = new EvvmStructs.DisperseCaPayMetadata[](2);
-recipients[0] = EvvmStructs.DisperseCaPayMetadata({amount: 100, toAddress: user1});
-recipients[1] = EvvmStructs.DisperseCaPayMetadata({amount: 200, toAddress: user2});
-makeDisperseCaPay(recipients, tokenAddress, 300);
-```
-
 ### `_changeEvvmAddress`
 ```solidity
-function _changeEvvmAddress(address newEvvmAddress) internal virtual
+function _changeEvvmAddress(address newEvvmAddress) internal
 ```
 
 **Description**: Updates the EVVM contract address (for proxy upgrades)
@@ -213,7 +156,7 @@ function _changeEvvmAddress(address newEvvmAddress) internal virtual
 
 **Example**:
 ```solidity
-contract MyService is EvvmPayments {
+contract MyService is MakeServicePaymentOnEvvm {
     address public owner;
     
     modifier onlyOwner() {

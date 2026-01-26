@@ -300,7 +300,7 @@ Allows the current admin to cancel a pending public staking flag change proposal
 
 #### Workflow
 
-1. **Admin Verification**: Validates caller has admin privileges
+1. **Admin Verification**: Validates caller has admin privileges using `onlyOwner` modifier
 2. **Time Lock Reset**: Resets `allowPublicStaking.timeToAccept = 0`
 
 ---
@@ -314,10 +314,12 @@ Allows the admin to confirm the public staking flag toggle after the waiting per
 
 #### Workflow
 
-1. **Admin Verification**: Validates caller has admin privileges
+1. **Admin Verification**: Validates caller has admin privileges using `onlyOwner` modifier
 2. **Time Lock Validation**: Confirms `allowPublicStaking.timeToAccept <= block.timestamp`
-3. **Flag Toggle**: Creates new `BoolTypeProposal` with `flag: !allowPublicStaking.flag`
-4. **Cleanup**: Sets `timeToAccept: 0`
+3. **Flag Toggle**: Updates `allowPublicStaking` with new `BoolTypeProposal` struct:
+   - `flag`: `!allowPublicStaking.flag` (toggles the boolean state)
+   - `timeToAccept`: `0` (resets the time lock)
+4. **Cleanup**: Resets time lock to 0 through the struct assignment
 
 ---
 
@@ -332,8 +334,8 @@ Initiates the process to toggle the presale staking availability flag.
 
 #### Workflow
 
-1. **Admin Verification**: Validates caller has admin privileges
-2. **Time Lock Activation**: Sets `allowPresaleStaking.timeToAccept = block.timestamp + 1 days`
+1. **Admin Verification**: Validates caller has admin privileges using `onlyOwner` modifier
+2. **Time Lock Activation**: Sets `allowPresaleStaking.timeToAccept = block.timestamp + TIME_TO_ACCEPT_PROPOSAL` (1 day)
 
 ---
 
@@ -346,7 +348,7 @@ Allows the current admin to cancel a pending presale staking flag change proposa
 
 #### Workflow
 
-1. **Admin Verification**: Validates caller has admin privileges
+1. **Admin Verification**: Validates caller has admin privileges using `onlyOwner` modifier
 2. **Time Lock Reset**: Resets `allowPresaleStaking.timeToAccept = 0`
 
 ---
@@ -360,10 +362,10 @@ Allows the admin to confirm the presale staking flag toggle after the waiting pe
 
 #### Workflow
 
-1. **Admin Verification**: Validates caller has admin privileges
+1. **Admin Verification**: Validates caller has admin privileges using `onlyOwner` modifier
 2. **Time Lock Validation**: Confirms `allowPresaleStaking.timeToAccept <= block.timestamp`
-3. **Flag Toggle**: Creates new `BoolTypeProposal` with `flag: !allowPresaleStaking.flag`
-4. **Cleanup**: Sets `timeToAccept: 0`
+3. **Flag Toggle**: Updates `allowPresaleStaking.flag = !allowPresaleStaking.flag`
+4. **Cleanup**: Sets `allowPresaleStaking.timeToAccept = 0`
 
 ---
 
@@ -384,9 +386,9 @@ Initiates the process to change the estimator contract address.
 
 #### Workflow
 
-1. **Admin Verification**: Validates caller has admin privileges
-2. **Proposal Setup**: Sets `estimator.proposal = _estimator`
-3. **Time Lock Activation**: Sets `estimator.timeToAccept = block.timestamp + 1 days`
+1. **Admin Verification**: Validates caller has admin privileges using `onlyOwner` modifier
+2. **Proposal Setup**: Sets `estimatorAddress.proposal = _estimator`
+3. **Time Lock Activation**: Sets `estimatorAddress.timeToAccept = block.timestamp + TIME_TO_ACCEPT_PROPOSAL` (1 day)
 
 ---
 
@@ -399,9 +401,9 @@ Allows the current admin to cancel a pending estimator change proposal.
 
 #### Workflow
 
-1. **Admin Verification**: Validates caller has admin privileges
-2. **Proposal Cancellation**: Resets `estimator.proposal = address(0)`
-3. **Time Lock Reset**: Resets `estimator.timeToAccept = 0`
+1. **Admin Verification**: Validates caller has admin privileges using `onlyOwner` modifier
+2. **Proposal Cancellation**: Resets `estimatorAddress.proposal = address(0)`
+3. **Time Lock Reset**: Resets `estimatorAddress.timeToAccept = 0`
 
 ---
 
@@ -414,10 +416,11 @@ Allows the admin to confirm the new estimator address after the waiting period.
 
 #### Workflow
 
-1. **Admin Verification**: Validates caller has admin privileges
-2. **Time Lock Validation**: Confirms `estimator.timeToAccept <= block.timestamp`
-3. **Contract Update**: Updates `estimator.actual = estimator.proposal`
-4. **Cleanup**: Resets `estimator.proposal = address(0)` and `estimator.timeToAccept = 0`
+1. **Admin Verification**: Validates caller has admin privileges using `onlyOwner` modifier
+2. **Time Lock Validation**: Confirms `estimatorAddress.timeToAccept <= block.timestamp`
+3. **Contract Update**: Updates `estimatorAddress.actual = estimatorAddress.proposal`
+4. **Instance Update**: Updates `estimator = IEstimator(estimatorAddress.actual)`
+5. **Cleanup**: Resets `estimatorAddress.proposal = address(0)` and `estimatorAddress.timeToAccept = 0`
 
 ---
 
@@ -433,7 +436,7 @@ struct AddressTypeProposal {
 }
 ```
 
-Used for managing: `admin`, `goldenFisher`, `estimator`
+Used for managing: `admin`, `goldenFisher`, `estimatorAddress`
 
 ### UintTypeProposal
 

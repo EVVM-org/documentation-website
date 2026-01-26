@@ -25,7 +25,7 @@ The Staking service is a dual-contract system enabling users to stake MATE token
 - **EIP-191 Signatures**: Cryptographic authorization for all operations
 - **Nonce Management**: Per-user replay protection
 - **Time-Delayed Governance**: 24-hour administrative changes
-- **Time-Locked Unstaking**: 21-day waiting period
+- **Time-Locked Unstaking**: 5-day waiting period for full unstaking (configurable)
 - **Fixed Price**: 1 staking token = 5,083 MATE tokens
 - **Enhanced Rewards**: 2x rewards for stakers validating transactions
 

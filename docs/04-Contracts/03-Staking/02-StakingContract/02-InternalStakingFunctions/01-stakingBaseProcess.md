@@ -1,7 +1,7 @@
 ---
 title: "stakingBaseProcess"
 description: "Detailed documentation of the EVVM Staking Contract's internal stakingBaseProcess function for core staking logic."
-sidebar_position: 2
+sidebar_position: 1
 ---
 
 # stakingBaseProcess
@@ -62,7 +62,7 @@ The function processes two distinct operation types with different validation an
    - **Cooldown Check**: Verifies `getTimeToUserUnlockFullUnstakingTime(account.Address) <= block.timestamp`, reverts with `AddressMustWaitToFullUnstake()` if cooldown not met
    - **Status Removal**: Sets `Evvm(EVVM_ADDRESS).pointStaker(account.Address, 0x00)` to remove staker status
 2. **Optional Priority Payment**: If `priorityFee_EVVM != 0 && !account.IsAService` (user unstaking with priority fee):
-   - **Priority Fee Payment**: Calls `makePay(account.Address, priorityFee_EVVM, 0, priorityFlag_EVVM, nonce_EVVM, signature_EVVM)`
+   - **Priority Fee Payment**: Calls `makePay(account.Address, 0, priorityFee_EVVM, priorityFlag_EVVM, nonce_EVVM, signature_EVVM)` (amount is 0, only priority fee is paid)
 3. **Balance Calculation**: `auxSMsteBalance = lastTotalStaked - amountOfStaking`
 4. **Token Refund**: Calls `makeCaPay(PRINCIPAL_TOKEN_ADDRESS, account.Address, PRICE_OF_STAKING * amountOfStaking)` to return tokens
 5. **History Update**: Pushes `HistoryMetadata` with transaction type `bytes32(uint256(2))`, amount, timestamp, and remaining total staked

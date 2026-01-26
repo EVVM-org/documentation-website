@@ -218,30 +218,6 @@ Retrieves the total amount of staking tokens currently staked by a user.
 
 ---
 
-## Security and Validation Functions
-
-### checkIfStakeNonceUsed
-
-**Function Type**: `view`  
-**Function Signature**: `checkIfStakeNonceUsed(address,uint256)`
-
-Checks if a specific staking nonce has already been used by a user.
-
-#### Input Parameters
-
-| Parameter  | Type    | Description                               |
-| ---------- | ------- | ----------------------------------------- |
-| `_account` | address | Address of the user to check the nonce for |
-| `_nonce`   | uint256 | The nonce to check for prior usage        |
-
-#### Return Value
-
-| Type | Description                                         |
-| ---- | --------------------------------------------------- |
-| bool | `true` if nonce has been used, `false` otherwise    |
-
----
-
 ## Contract Reference Functions
 
 ### getGoldenFisher
@@ -390,18 +366,18 @@ Retrieves the total number of presale stakers in the contract.
 
 ## Contract Status Functions
 
-### getAllDataOfAllowPublicStaking
+### getAllowPublicStaking
 
 **Function Type**: `view`  
-**Function Signature**: `getAllDataOfAllowPublicStaking()`
+**Function Signature**: `getAllowPublicStaking()`
 
-Retrieves the value of the `allowPublicStaking` variable in `BoolTypeProposal` struct.
+Retrieves the complete public staking configuration and status including the current flag state and any pending changes.
 
 #### Return Value
 
 | Type             | Description                                                         |
 | ---------------- | ------------------------------------------------------------------- |
-| BoolTypeProposal | Value of `allowPublicStaking` variable in `BoolTypeProposal` struct |
+| BoolTypeProposal | Complete public staking configuration with flag and pending change timestamp |
 
 The struct contains the following fields:
 
@@ -419,13 +395,13 @@ struct BoolTypeProposal {
 **Function Type**: `view`  
 **Function Signature**: `getAllowPresaleStaking()`
 
-Retrieves the value of the `allowPresaleStaking` variable in `BoolTypeProposal` struct.
+Retrieves the complete presale staking configuration and status including the current flag state and any pending changes.
 
 #### Return Value
 
 | Type             | Description                                                          |
 | ---------------- | -------------------------------------------------------------------- |
-| BoolTypeProposal | Value of `allowPresaleStaking` variable in `BoolTypeProposal` struct |
+| BoolTypeProposal | Complete presale staking configuration with flag and pending change timestamp |
 
 The struct contains the following fields:
 
@@ -437,3 +413,63 @@ struct BoolTypeProposal {
 ```
 
 ---
+
+## EVVM Integration Functions
+
+### getEvvmID
+
+**Function Type**: `view`  
+**Function Signature**: `getEvvmID()`
+
+Retrieves the unique identifier for the EVVM instance this staking contract is connected to.
+
+#### Return Value
+
+| Type    | Description                                    |
+| ------- | ---------------------------------------------- |
+| uint256 | Unique EVVM identifier used in signature verification |
+
+---
+
+### getEvvmAddress
+
+**Function Type**: `view`  
+**Function Signature**: `getEvvmAddress()`
+
+Retrieves the address of the EVVM core contract.
+
+#### Return Value
+
+| Type    | Description                               |
+| ------- | ----------------------------------------- |
+| address | Address of the EVVM contract              |
+
+---
+
+### getMateAddress
+
+**Function Type**: `view`  
+**Function Signature**: `getMateAddress()`
+
+Retrieves the address representing the Principal Token (MATE) in the EVVM system.
+
+#### Return Value
+
+| Type    | Description                                    |
+| ------- | ---------------------------------------------- |
+| address | Address representing the Principal Token       |
+
+---
+
+### getOwner
+
+**Function Type**: `view`  
+**Function Signature**: `getOwner()`
+
+Retrieves the address of the current contract admin/owner.
+
+#### Return Value
+
+| Type    | Description                               |
+| ------- | ----------------------------------------- |
+| address | Address of the contract admin             |

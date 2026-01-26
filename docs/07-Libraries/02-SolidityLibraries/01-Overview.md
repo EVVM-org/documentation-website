@@ -32,8 +32,8 @@ All libraries are imported from `@evvm/testnet-contracts/library/` followed by t
 ### Service Utilities
 
 - **AsyncNonce**: Async nonce tracking and validation
-- **SyncNonceService**: Sequential nonce management
-- **MakeServicePaymentOnEvvm**: Payment processing helpers
+- **SyncNonce**: Sequential nonce management
+- **EvvmPayments**: Payment processing helpers
 - **StakingServiceUtils**: Service staking integration utilities
 
 ## Quick Start

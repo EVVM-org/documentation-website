@@ -61,10 +61,10 @@ abstract contract AsyncNonce {
 
 ## State Variables
 
-### `asyncServiceNonce`
+### `asyncNonce`
 ```solidity
 mapping(address user => mapping(uint256 nonce => bool availability))
-    private asyncServiceNonce;
+    private asyncNonce;
 ```
 
 **Description**: Nested mapping tracking which nonces have been used by each user

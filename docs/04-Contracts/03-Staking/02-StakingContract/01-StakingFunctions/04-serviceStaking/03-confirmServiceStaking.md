@@ -104,7 +104,7 @@ function stakeAsService(uint256 amount) external {
 
 :::info
 
-For detailed information about the core staking logic, refer to the [stakingBaseProcess](../../02-InternalStakingFunctions/02-stakingBaseProcess.md).
+For detailed information about the core staking logic, refer to the [stakingBaseProcess](../../02-InternalStakingFunctions/01-stakingBaseProcess.md).
 
 :::
 
