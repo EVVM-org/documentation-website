@@ -40,6 +40,20 @@ export class MyCustomService extends BaseService {
 }
 ```
 
+:::important
+
+In order to use decorators, the `experimentalDecorators` option should be set in tsconfig.json as follows:
+
+```json
+{
+  "compilerOptions": {
+    "experimentalDecorators": true
+  }
+}
+```
+
+:::
+
 So that you can use `MyCustomService` as follows:
 
 ```ts
