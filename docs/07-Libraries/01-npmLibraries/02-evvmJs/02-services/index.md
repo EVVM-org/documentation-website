@@ -25,7 +25,12 @@ Example: create an `EVVM` service and sign a payment
 ```ts
 import { EVVM } from "@evvm/evvm-js";
 
-const evvm = new EVVM(signer, "EVVM_CONTRACT_ADDRESS");
+const evvm = new EVVM({
+  signer,
+  address: "EVVM_CONTRACT_ADDRESS",
+  chainId: 1,
+  evvmId: 1, // optional
+});
 
 const action = await evvm.pay({
   to: "0xRecipient",
@@ -55,7 +60,12 @@ Example: get the next sync nonce for the EVVM service
 ```ts
 import { EVVM } from "@evvm/evvm-js";
 
-const evvm = new EVVM(signer, "EVVM_CONTRACT_ADDRESS");
+const evvm = new EVVM({
+  signer,
+  address: "EVVM_CONTRACT_ADDRESS",
+  chainId: 1,
+  evvmId: 1, // optional
+});
 
 const nonce = await evvm.getSyncNonce();
 
@@ -76,7 +86,12 @@ Example: use an arbitrary async nonce
 ```ts
 import { EVVM } from "@evvm/evvm-js";
 
-const evvm = new EVVM(signer, "EVVM_CONTRACT_ADDRESS");
+const evvm = new EVVM({
+  signer,
+  address: "EVVM_CONTRACT_ADDRESS",
+  chainId: 1,
+  evvmId: 1, // optional
+});
 const nonce = BigInt(getRandomNumber());
 const isValidNonce = await evvm.isValidAsyncNonce(nonce);
 

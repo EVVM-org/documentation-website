@@ -47,7 +47,12 @@ const wallet = new ethers.Wallet(privateKey, provider);
 const signer = await createSignerWithEthers(wallet);
 
 // 2. Instantiate the EVVM service
-const evvm = new EVVM(signer, "EVVM_CONTRACT_ADDRESS");
+const evvm = new EVVM({
+  signer,
+  address: "EVVM_CONTRACT_ADDRESS",
+  chainId: 1,
+  evvmId: 1, // optional
+});
 
 // 3. Call a method to create a signed action
 const signedAction = await evvm.pay({
@@ -83,8 +88,12 @@ const client = createWalletClient({
 const signer = await createSignerWithViem(client);
 
 // 2. Instantiate the EVVM service
-const evvm = new EVVM(signer, "EVVM_CONTRACT_ADDRESS");
+const evvm = new EVVM({
+  signer,
+  address: "EVVM_CONTRACT_ADDRESS",
+  chainId: 1,
+  evvmId: 1, // optional
+});
 
 // Continue with steps 3 and 4 exactly as shown in the ethers.js example
 ```
-

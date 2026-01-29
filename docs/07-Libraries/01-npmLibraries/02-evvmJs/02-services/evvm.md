@@ -31,7 +31,12 @@ Creates and signs a `pay` action to transfer tokens to a recipient.
 ```ts
 import { EVVM } from "@evvm/evvm-js";
 
-const evvm = new EVVM(signer, "EVVM_CONTRACT_ADDRESS");
+const evvm = new EVVM({
+  signer,
+  address: "EVVM_CONTRACT_ADDRESS",
+  chainId: 1,
+  evvmId: 1, // optional
+});
 
 const action = await evvm.pay({
   to: "0xRecipient",

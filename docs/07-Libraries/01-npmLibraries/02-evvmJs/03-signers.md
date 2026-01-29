@@ -27,15 +27,19 @@ const ethersSigner = await provider.getSigner();
 const signer = await createSignerWithEthers(ethersSigner);
 
 // 3. Instantiate a service
-const evvm = new EVVM(signer, "EVVM_CONTRACT_ADDRESS");
-// ...
+const evvm = new EVVM({
+  signer,
+  address: "EVVM_CONTRACT_ADDRESS",
+  chainId: 1,
+  evvmId: 1, // optional
+});
 ```
 
 > Refer to the official [ethers](https://docs.ethers.org/v6/) documentation for more about signer usage and creation.
 
 ## Viem
 
-```ts
+````ts
 import { EVVM } from "@evvm/evvm-js";
 import { createSignerWithViem } from "@evvm/evvm-js/signers";
 import { createWalletClient, http } from "viem";
@@ -53,8 +57,13 @@ const client = createWalletClient({
 const signer = await createSignerWithViem(client);
 
 // 3. Instantiate a service
-const evvm = new EVVM(signer, "EVVM_CONTRACT_ADDRESS");
-```
+const evvm = new EVVM({
+  signer,
+  address: "EVVM_CONTRACT_ADDRESS",
+  chainId: 1,
+  evvmId: 1, // optional
+});
+`
 
 > Refer to the official [viem](https://viem.sh/) documentation for more about wallet usage and creation.
 
@@ -62,7 +71,9 @@ const evvm = new EVVM(signer, "EVVM_CONTRACT_ADDRESS");
 
 Returned from `createSignerWithViem()` and `createSignerWithEthers()` utilities. It includes:
 
-- `address` and `chainId` properties
+- `address` — connected address
+- `getChainId()` — returns the active chain the signer is connected to
+- `switchChain(chainId)` — switch to a new chain using the id provided
 - `signMessage(message)` — low-level message sign
 - `signGenericEvvmMessage(evvmId, functionName, inputs)` — convenience
 - `readContract()` and `writeContract()` — adapter methods to interact with contracts
@@ -79,16 +90,13 @@ interface ISendTransactionParams {
 
 interface ISigner {
   address: HexString;
-  chainId: number;
-  signMessage(message: string): Promise<string>; // signature
-  signGenericEvvmMessage(
-    evvmId: bigint,
-    functionName: string,
-    inputs: string,
-  ): Promise<string>;
-  writeContract(params: ISendTransactionParams): Promise<HexString>; // txHash
+  getChainId(): Promise<number>;
+  switchChain(chainId: number): Promise<void>;
+  signMessage(message: string): Promise<string>;
+  signGenericEvvmMessage( evvmId: bigint, functionName: string, inputs: string,): Promise<string>;
+  writeContract(params: ISendTransactionParams): Promise<HexString>;
   readContract<T>(params: ISendTransactionParams): Promise<T>;
 }
-```
+````
 
 > These interfaces can be imported from `@evvm/evvm-js`
