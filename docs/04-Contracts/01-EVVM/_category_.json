@@ -1,7 +1,7 @@
 {
-  "label": "Evvm.sol",
+  "label": "Core.sol",
   "position": 1,
-  "description": "Central payment processing and token management hub of the abstract blockchain",
+  "description": "Central hub for payment processing, signature verification, nonce management, and treasury operations",
   "link": {
     "type": "generated-index"
   }

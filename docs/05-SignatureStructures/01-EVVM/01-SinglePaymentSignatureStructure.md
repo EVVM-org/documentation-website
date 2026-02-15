@@ -2,66 +2,118 @@
 sidebar_position: 1
 ---
 
-# Single Payment Signature Structure 
+# Single Payment Signature Structure
 
-To authorize payment operations the user must generate a cryptographic signature compliant with the [EIP-191](https://eips.ethereum.org/EIPS/eip-191) standard using the Ethereum Signed Message format.
+:::info[Centralized Verification]
+Payment signatures are **verified by Core.sol** using `validateAndConsumeNonce()`.
+:::
 
-The signature verification process uses the `SignatureUtil` library which implements the standard Ethereum message signing protocol. The message is constructed by concatenating the EVVM ID, action type, and parameters, then wrapped with the EIP-191 prefix: `"\x19Ethereum Signed Message:\n"` + message length + message content.
+To authorize payment operations, the user must generate a cryptographic signature compliant with the [EIP-191](https://eips.ethereum.org/EIPS/eip-191) standard using the Ethereum Signed Message format.
 
-The structure uses conditional logic to determine whether to use a direct address or identity string for the recipient.
+The signature verification is centralized in Core.sol, which validates the signature, checks nonce validity, and handles executor authorization in a single atomic operation.
 
-## Signed Message Format
+## Signature Format
 
-The signature verification uses the `SignatureUtil.verifySignature` function with the following structure:
+```
+{evvmId},{serviceAddress},{hashPayload},{executor},{nonce},{isAsyncExec}
+```
+
+**Components:**
+1. **evvmId**: Network identifier (uint256, typically `1`)
+2. **serviceAddress**: Core.sol contract address
+3. **hashPayload**: Hash of payment parameters (bytes32, from CoreHashUtils)
+4. **executor**: Address authorized to execute (address, `0x0...0` for unrestricted)
+5. **nonce**: User's centralized nonce from Core.sol (uint256)
+6. **isAsyncExec**: Execution mode - `true` for async, `false` for sync (boolean)
+
+## Hash Payload Generation
+
+The `hashPayload` is generated using **CoreHashUtils.hashDataForPay()**:
 
 ```solidity
-SignatureUtil.verifySignature(
-    evvmID,                              // EVVM ID as uint256
-    "pay",                               // Action type
-    string.concat(                       // Concatenated parameters
-        _receiverAddress == address(0)
-            ? _receiverIdentity
-            : AdvancedStrings.addressToString(_receiverAddress),
-        ",",
-        AdvancedStrings.addressToString(_token),
-        ",",
-        AdvancedStrings.uintToString(_amount),
-        ",",
-        AdvancedStrings.uintToString(_priorityFee),
-        ",",
-        AdvancedStrings.uintToString(_nonce),
-        ",",
-        _priorityFlag ? "true" : "false",
-        ",",
-        AdvancedStrings.addressToString(_executor)
-    ),
-    signature,
-    signer
+import {CoreHashUtils} from "@evvm/testnet-contracts/library/signature/CoreHashUtils.sol";
+
+bytes32 hashPayload = CoreHashUtils.hashDataForPay(
+    receiver,      // address or username (bytes32 hash)
+    token,         // ERC20 token address (0x0...0 for ETH)
+    amount,        // Amount in wei
+    priorityFee    // Fee amount in wei
 );
 ```
 
-### Internal Message Construction
+### Hash Generation Process
 
-Internally, the `SignatureUtil.verifySignature` function constructs the final message by concatenating:
+CoreHashUtils creates a deterministic hash:
 
 ```solidity
-string.concat(
-    AdvancedStrings.uintToString(evvmID), 
-    ",", 
-    functionName, 
-    ",", 
-    inputs
-)
+// Internal implementation (simplified)
+function hashDataForPay(
+    bytes32 receiver,
+    address token,
+    uint256 amount,
+    uint256 priorityFee
+) internal pure returns (bytes32) {
+    return keccak256(
+        abi.encodePacked(receiver, token, amount, priorityFee)
+    );
+}
 ```
 
-This results in a message format:
+**Key Points:**
+- `receiver` is **bytes32** (use `0x0...0` prefix for address, or username hash)
+- Hash is deterministic: same parameters → same hash
+- No function name embedded
+
+## Centralized Verification
+
+Core.sol verifies the signature using `validateAndConsumeNonce()`:
+
+```solidity
+// Called by services (internal to Core.sol payment functions)
+Core(coreAddress).validateAndConsumeNonce(
+    user,          // Signer's address
+    hashPayload,   // From CoreHashUtils
+    executor,      // Who can execute
+    nonce,         // User's nonce
+    isAsyncExec,   // Execution mode
+    signature      // EIP-191 signature
+);
 ```
-"{evvmID},pay,{receiver},{token},{amount},{priorityFee},{nonce},{priorityFlag},{executor}"
+
+**What validateAndConsumeNonce() Does:**
+1. Constructs full signature message with all 6 components
+2. Applies EIP-191 wrapping and hashing
+3. Recovers signer from signature using ecrecover
+4. Validates signer matches `user` parameter
+5. Checks nonce status (must be available for sync, reserved for async)
+6. Validates executor authorization (if not `0x0...0`)
+7. Marks nonce as consumed
+8. Optionally delegates to UserValidator contract
+
+## Message Construction
+
+The signature message is constructed internally by Core.sol:
+
+```solidity
+// Internal Core.sol message construction (simplified)
+string memory message = string.concat(
+    AdvancedStrings.uintToString(evvmId),              // "1"
+    ",",
+    AdvancedStrings.addressToString(address(this)),    // Core.sol address
+    ",",
+    AdvancedStrings.bytes32ToString(hashPayload),      // Hash from CoreHashUtils
+    ",",
+    AdvancedStrings.addressToString(executor),         // Authorized executor
+    ",",
+    AdvancedStrings.uintToString(nonce),               // User's nonce
+    ",",
+    isAsyncExec ? "true" : "false"                     // Execution mode
+);
 ```
 
 ### EIP-191 Message Hashing
 
-The message is then hashed according to EIP-191 standard:
+The message is then hashed according to EIP-191:
 
 ```solidity
 bytes32 messageHash = keccak256(
@@ -73,180 +125,187 @@ bytes32 messageHash = keccak256(
 );
 ```
 
-This creates the final hash that the user must sign with their private key.
+This creates the final hash that the user signs with their private key.
 
-## Message Components
+## Complete Example: Send 0.05 ETH
 
-The signature verification takes three main parameters:
+**Scenario:** User wants to send 0.05 ETH to `0x742d...82d8c` with synchronous execution
 
-**1. EVVM ID (String):**
-- The result of `AdvancedStrings.uintToString(evvmID)`
-- *Purpose*: Identifies the specific EVVM instance
+### Step 1: Generate Hash Payload
 
-**2. Action Type (String):**
-- Fixed value: `"pay"`
-- *Purpose*: Identifies this as a payment operation
+```solidity
+import {CoreHashUtils} from "@evvm/testnet-contracts/library/signature/CoreHashUtils.sol";
 
-**3. Concatenated Parameters (String):**
-The parameters are concatenated with comma separators:
+address receiver = 0x742d7b6b472c8f4bd58e6f9f6c82e8e6e7c82d8c;
+address token = address(0);  // ETH
+uint256 amount = 50000000000000000;  // 0.05 ETH
+uint256 priorityFee = 1000000000000000;  // 0.001 ETH
 
-**3.1. Recipient Identifier (String):**
-- If `_receiverAddress == address(0)`: Use `_receiverIdentity` string directly
-- If `_receiverAddress != address(0)`: Use `AdvancedStrings.addressToString(_receiverAddress)`
-- *Purpose*: Specifies the intended recipient using either address or identity
+// Convert address to bytes32 (left-padded)
+bytes32 receiverBytes = bytes32(uint256(uint160(receiver)));
 
-**3.2. Token Address (String):**
-- The result of `AdvancedStrings.addressToString(_token)`
-- *Purpose*: Identifies the token being transferred
+bytes32 hashPayload = CoreHashUtils.hashDataForPay(
+    receiverBytes,
+    token,
+    amount,
+    priorityFee
+);
 
-**3.3. Amount (String):**
-- The result of `AdvancedStrings.uintToString(_amount)`
-- *Purpose*: Specifies the quantity of the token to be transferred
+// Result: 0xa7f3c2d8e9b4f1a6c5d8e7f9b2a3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1
+```
 
-**3.4. Priority Fee (String):**
-- The result of `AdvancedStrings.uintToString(_priorityFee)`
-- *Purpose*: Specifies the fee paid to staking holders
-
-**3.5. Nonce (String):**
-- The result of `AdvancedStrings.uintToString(_nonce)`
-- *Purpose*: Provides replay protection for the transaction
-
-**3.6. Priority Flag (String):**
-- `"true"`: If `_priorityFlag` is `true` (asynchronous)
-- `"false"`: If `_priorityFlag` is `false` (synchronous)
-- *Purpose*: Explicitly includes the execution mode in the signed message
-
-**3.7. Executor Address (String):**
-- The result of `AdvancedStrings.addressToString(_executor)`
-- *Purpose*: Specifies the address authorized to submit this payment request
-
-## Example
-
-Here's a practical example of constructing a signature message for sending 0.05 ETH:
-
-**Scenario:** User wants to send 0.05 ETH to another user using synchronous processing
+### Step 2: Construct Signature Message
 
 **Parameters:**
-- `evvmID`: `1` (EVVM instance ID)
-- `_priorityFlag`: `false` (synchronous processing)
-- `_receiverAddress`: `0x742c7b6b472c8f4bd58e6f9f6c82e8e6e7c82d8c`
-- `_token`: `address(0)` (ETH)
-- `_amount`: `50000000000000000` (0.05 ETH in wei)
-- `_priorityFee`: `1000000000000000` (0.001 ETH in wei)
-- `_nonce`: `42`
-- `_executor`: `0x0000000000000000000000000000000000000000` (unrestricted)
+- `evvmId`: `1`
+- `serviceAddress`: `0xCoreContractAddress` (deployed Core.sol)
+- `hashPayload`: `0xa7f3c2d8e9b4f1a6c5d8e7f9b2a3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1`
+- `executor`: `0x0000000000000000000000000000000000000000` (unrestricted)
+- `nonce`: `42`
+- `isAsyncExec`: `false`
 
-**Signature verification call:**
-```solidity
-SignatureUtil.verifySignature(
-    1,  // evvmID as uint256
-    "pay", // action type
-    "0x742c7b6b472c8f4bd58e6f9f6c82e8e6e7c82d8c,0x0000000000000000000000000000000000000000,50000000000000000,1000000000000000,42,false,0x0000000000000000000000000000000000000000",
-    signature,
-    signer
-);
+**Final Message:**
+```
+1,0xCoreContractAddress,0xa7f3c2d8e9b4f1a6c5d8e7f9b2a3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1,0x0000000000000000000000000000000000000000,42,false
 ```
 
-**Final message to be signed (after internal concatenation):**
-```
-1,pay,0x742c7b6b472c8f4bd58e6f9f6c82e8e6e7c82d8c,0x0000000000000000000000000000000000000000,50000000000000000,1000000000000000,42,false,0x0000000000000000000000000000000000000000
-```
+### Step 3: EIP-191 Formatted Hash
 
-**EIP-191 formatted message hash:**
 ```
 keccak256(abi.encodePacked(
-    "\x19Ethereum Signed Message:\n145",
-    "1,pay,0x742c7b6b472c8f4bd58e6f9f6c82e8e6e7c82d8c,0x0000000000000000000000000000000000000000,50000000000000000,1000000000000000,42,false,0x0000000000000000000000000000000000000000"
+    "\x19Ethereum Signed Message:\n138",
+    "1,0xCoreContractAddress,0xa7f3c2d8e9b4f1a6c5d8e7f9b2a3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1,0x0000000000000000000000000000000000000000,42,false"
 ))
 ```
 
-**Concatenated parameters breakdown:**
-1. `0x742c7b6b472c8f4bd58e6f9f6c82e8e6e7c82d8c` - Receiver address
-2. `0x0000000000000000000000000000000000000000` - Token address (ETH)
-3. `50000000000000000` - Amount in wei (0.05 ETH)
-4. `1000000000000000` - Priority fee in wei (0.001 ETH)
-5. `42` - Nonce
-6. `false` - Priority flag (synchronous)
-7. `0x0000000000000000000000000000000000000000` - Executor (unrestricted)
+### Step 4: User Signs Message
+
+The user signs the message using MetaMask or another EIP-191 compatible wallet:
+
+```javascript
+// Frontend example (ethers.js)
+const message = "1,0xCoreAddress,0xa7f3...a0b1,0x0000...0000,42,false";
+const signature = await signer.signMessage(message);
+```
+
+### Step 5: Submit Transaction
+
+```solidity
+// Call Core.sol payment function
+Core(coreAddress).pay(
+    receiver,
+    receiverIdentity,  // Empty bytes32 when using address
+    token,
+    amount,
+    priorityFee,
+    executor,
+    nonce,
+    isAsyncExec,
+    signature
+);
+```
+
+Core.sol internally calls `validateAndConsumeNonce()` to verify the signature before processing payment.
 
 ## Example with Username
 
-Here's another example using a username instead of an address:
+**Scenario:** Send 0.05 ETH to username `alice` with async execution
 
-**Scenario:** User wants to send 0.05 ETH to username "example" using asynchronous processing
+### Step 1: Convert Username to Bytes32
 
-**Parameters:**
-- `evvmID`: `1` (EVVM instance ID)
-- `_priorityFlag`: `true` (asynchronous processing)
-- `_receiverAddress`: `address(0)` (using identity instead)
-- `_receiverIdentity`: `"example"`
-- `_token`: `address(0)` (ETH)
-- `_amount`: `50000000000000000` (0.05 ETH in wei)
-- `_priorityFee`: `2000000000000000` (0.002 ETH in wei)  
-- `_nonce`: `15`
-- `_executor`: `0x0000000000000000000000000000000000000000` (unrestricted)
-
-**Signature verification call:**
 ```solidity
-SignatureUtil.verifySignature(
-    1,  // evvmID as uint256
-    "pay", // action type
-    "example,0x0000000000000000000000000000000000000000,50000000000000000,2000000000000000,15,true,0x0000000000000000000000000000000000000000",
-    signature,
-    signer
+bytes32 usernameHash = keccak256(abi.encodePacked("alice"));
+// Result: 0x2b3e82d9a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1
+```
+
+### Step 2: Generate Hash Payload
+
+```solidity
+bytes32 hashPayload = CoreHashUtils.hashDataForPay(
+    usernameHash,  // Username as bytes32
+    address(0),    // ETH
+    50000000000000000,   // 0.05 ETH
+    2000000000000000     // 0.002 ETH fee
 );
 ```
 
-**Final message to be signed (after internal concatenation):**
+### Step 3: Construct Signature Message
+
+**Parameters:**
+- `evvmId`: `1`
+- `serviceAddress`: `0xCoreContractAddress`
+- `hashPayload`: `0xb4c2d8e9f1a6c5d8...` (from Step 2)
+- `executor`: `0x0000000000000000000000000000000000000000`
+- `nonce`: `15`
+- `isAsyncExec`: `true` (async)
+
+**Final Message:**
 ```
-1,pay,example,0x0000000000000000000000000000000000000000,50000000000000000,2000000000000000,15,true,0x0000000000000000000000000000000000000000
+1,0xCoreContractAddress,0xb4c2d8e9f1a6c5d8e7f9b2a3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3,0x0000000000000000000000000000000000000000,15,true
 ```
 
-**EIP-191 formatted message hash:**
+### Step 4: Sign and Submit
+
+```solidity
+Core(coreAddress).pay(
+    address(0),         // No direct address
+    usernameHash,       // Username identifier
+    address(0),         // ETH
+    50000000000000000,
+    2000000000000000,
+    address(0),         // Unrestricted
+    15,
+    true,               // Async
+    signature
+);
 ```
-keccak256(abi.encodePacked(
-    "\x19Ethereum Signed Message:\n134",
-    "1,pay,example,0x0000000000000000000000000000000000000000,50000000000000000,2000000000000000,15,true,0x0000000000000000000000000000000000000000"
-))
+
+## Parameter Formatting
+
+Use `AdvancedStrings` library for proper conversions:
+
+```solidity
+import {AdvancedStrings} from "@evvm/testnet-contracts/library/utils/AdvancedStrings.sol";
+
+// Convert types to strings
+AdvancedStrings.uintToString(42);                    // "42"
+AdvancedStrings.addressToString(0x742d...);          // "0x742d7b6b..."
+AdvancedStrings.bytes32ToString(0xa7f3...);          // "0xa7f3c2d8..."
 ```
 
-**Concatenated parameters breakdown:**
-1. `example` - Receiver identity (username)
-2. `0x0000000000000000000000000000000000000000` - Token address (ETH)
-3. `50000000000000000` - Amount in wei (0.05 ETH)
-4. `2000000000000000` - Priority fee in wei (0.002 ETH)
-5. `15` - Nonce
-6. `true` - Priority flag (asynchronous)
-7. `0x0000000000000000000000000000000000000000` - Executor (unrestricted)
-
-## Signature Implementation Details
-
-The `SignatureUtil` library performs signature verification in the following steps:
-
-1. **Message Construction**: Concatenates `evvmID`, `functionName`, and `inputs` with commas
-2. **EIP-191 Formatting**: Prepends `"\x19Ethereum Signed Message:\n"` + message length
-3. **Hashing**: Applies `keccak256` to the formatted message
-4. **Signature Parsing**: Splits the 65-byte signature into `r`, `s`, and `v` components
-5. **Recovery**: Uses `ecrecover` via `SignatureRecover.recoverSigner` to recover the signer's address
-6. **Verification**: Compares recovered address with expected signer
-
-### Signature Format Requirements
+## Signature Requirements
 
 - **Length**: Exactly 65 bytes
 - **Structure**: `[r (32 bytes)][s (32 bytes)][v (1 byte)]`
-- **V Value**: Must be 27 or 28 (automatically adjusted if < 27)
+- **V Value**: 27 or 28 (automatically adjusted by wallets)
+- **Standard**: EIP-191 compliant
 
-:::tip Technical Details
+## Best Practices
 
-- **Message Format**: The final message follows the pattern `"{evvmID},{functionName},{parameters}"`
-- **EIP-191 Compliance**: Uses `"\x19Ethereum Signed Message:\n"` prefix with message length
-- **Hash Function**: `keccak256` is used for the final message hash before signing
-- **Signature Recovery**: Uses `ecrecover` to verify the signature against the expected signer
-- **String Conversion**: 
-  - `AdvancedStrings.addressToString` converts addresses to lowercase hex with "0x" prefix
-  - `Strings.toString` converts numbers to decimal strings
-- **Priority Flag**: Determines execution mode (async=`true`, sync=`false`)
-- **Recipient Logic**: Uses `_receiverIdentity` if `_receiverAddress == address(0)`, otherwise uses the address
-- **EVVM ID**: Identifies the specific EVVM instance for signature verification
+### Security
+- **Never reuse nonces**: Each signature must have a unique nonce
+- **Validate parameters**: Check receiver, amount, token before signing
+- **Use async cautiously**: Async execution requires nonce reservation
 
+### Development
+- **Use CoreHashUtils**: Don't manually construct `hashPayload`
+- **Test signature generation**: Verify message format matches expected structure
+- **Track nonces**: Query Core.sol for next available nonce
+- **Handle executor properly**: Use `0x0...0` for public, specific address for restricted
+
+### Gas Optimization
+- **Prefer sync execution**: Async costs more gas due to nonce reservation
+- **Batch payments**: Use `batchPay()` for multiple recipients
+- **Cache hash payload**: Reuse for multiple signatures with same parameters
+
+## Related Operations
+
+- **[Batch Payment Signatures](./02-DispersePaySignatureStructure.md)** - Multiple recipients
+- **[Withdrawal Signatures](./03-WithdrawalPaymentSignatureStructure.md)** - Withdraw from Core balance
+- **[Core.sol Payment Functions](../../04-Contracts/01-EVVM/04-PaymentFunctions/01-pay.md)** - Function reference
+
+---
+
+:::tip Key Takeaway
+Signatures use **hash-based payload encoding** and centralized verification in Core.sol for improved security and gas efficiency.
 :::

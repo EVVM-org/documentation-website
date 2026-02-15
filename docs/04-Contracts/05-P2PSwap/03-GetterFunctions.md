@@ -6,6 +6,10 @@ sidebar_position: 3
 
 # Getter Functions
 
+:::info[Implementation Note]
+View functions remain fully backward compatible for querying market data, orders, and contract state. They do not use signature verification.
+:::
+
 The P2P Swap Contract provides a comprehensive set of getter functions for querying order information, market data, user balances, and administrative settings. These functions enable users and applications to interact effectively with the marketplace.
 
 ## Order Query Functions

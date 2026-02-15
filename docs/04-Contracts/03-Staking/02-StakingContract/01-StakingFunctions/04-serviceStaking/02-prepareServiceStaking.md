@@ -95,6 +95,3 @@ This function only records metadata and does not perform any token transfers. Th
 Failure to complete all three steps in the same transaction will result in permanent loss of Principal Tokens. Always ensure proper transaction atomicity when implementing service staking.
 
 :::
-
-![prepareServiceStaking Happy Path](./img/prepareServiceStaking_HappyPath.svg)
-![prepareServiceStaking Failed Path](./img/prepareServiceStaking_FailedPath.svg)

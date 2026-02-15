@@ -14,7 +14,7 @@ The `@evvm/testnet-contracts` package provides Solidity interfaces and implement
 
 Ready-to-use interfaces for all EVVM contracts:
 
-- **`IEvvm.sol`** - Core payment and transaction functions
+- **`ICore.sol`** - Core payment and transaction functions
 - **`INameService.sol`** - Identity management and username operations
 - **`IStaking.sol`** - Staking and reward distribution functions
 - **`IEstimator.sol`** - Economic calculation and estimation functions
@@ -27,7 +27,7 @@ Full contract implementations organized by service:
 
 #### **evvm/**
 
-- `Evvm.sol` - Main EVVM contract implementation
+- `Core.sol` - Main EVVM Core contract implementation
 - `EvvmLegacy.sol` - Legacy version compatibility
 - `lib/` - Supporting libraries
 
@@ -75,7 +75,7 @@ Utility libraries for contract development:
 For developers creating EVVM services, we strongly recommend using the interfaces rather than full contract implementations:
 
 ```solidity
-import "@evvm/testnet-contracts/interfaces/IEvvm.sol";
+import "@evvm/testnet-contracts/interfaces/ICore.sol";
 import "@evvm/testnet-contracts/interfaces/INameService.sol";
 
 contract MyService {
@@ -239,7 +239,7 @@ For developers who need more control or want to use individual utilities:
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
-import {IEvvm} from "@evvm/testnet-contracts/interfaces/IEvvm.sol";
+import {ICore} from "@evvm/testnet-contracts/interfaces/ICore.sol";
 import {SignatureUtil} from "@evvm/testnet-contracts/library/utils/SignatureUtil.sol";
 import {AsyncNonceService} from "@evvm/testnet-contracts/library/utils/service/AsyncNonceService.sol";
 import {AdvancedStrings} from "@evvm/testnet-contracts/library/utils/AdvancedStrings.sol";

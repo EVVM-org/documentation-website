@@ -53,9 +53,6 @@ The function processes two distinct operation types with different validation an
 5. **History Update**: Pushes `HistoryMetadata` with transaction type `bytes32(uint256(1))`, amount, timestamp, and total staked
 6. **Executor Rewards**: If `msg.sender` is a staker and `!account.IsAService`, pays `(getRewardAmount() * 2) + priorityFee_EVVM` via `makeCaPay()`
 
-![stakingBaseProcess Staking Happy Path](./img/stakingBaseProcess_Staking_HappyPath.svg)
-![stakingBaseProcess Staking Failed Path](./img/stakingBaseProcess_Staking_FailedPath.svg)
-
 ## Unstaking Process
 
 1. **Full Unstaking Validation**: If `amountOfStaking == getUserAmountStaked(account.Address)` (complete unstaking):
@@ -67,9 +64,6 @@ The function processes two distinct operation types with different validation an
 4. **Token Refund**: Calls `makeCaPay(PRINCIPAL_TOKEN_ADDRESS, account.Address, PRICE_OF_STAKING * amountOfStaking)` to return tokens
 5. **History Update**: Pushes `HistoryMetadata` with transaction type `bytes32(uint256(2))`, amount, timestamp, and remaining total staked
 6. **Executor Rewards**: If `msg.sender` is a staker and `!account.IsAService`, pays `(getRewardAmount() * 2) + priorityFee_EVVM` via `makeCaPay()`
-
-![stakingBaseProcess Unstaking Happy Path](./img/stakingBaseProcess_Unstaking_HappyPath.svg)
-![stakingBaseProcess Unstaking Failed Path](./img/stakingBaseProcess_Unstaking_FailedPath.svg)
 
 :::info
 

@@ -6,8 +6,12 @@ sidebar_position: 3
 
 # publicStaking
 
+:::info[Signature Verification]
+publicStaking uses Core.sol's centralized verification via `validateAndConsumeNonce()` with `StakingHashUtils.hashDataForPublicStake()`. Includes `originExecutor` parameter (EOA executor verified with tx.origin).
+:::
+
 **Function Type**: `external`  
-**Function Signature**: `publicStaking(address,bool,uint256,uint256,bytes,uint256,uint256,bool,bytes)`  
+**Function Signature**: `publicStaking(address user, bool isStaking, uint256 amountOfStaking, address originExecutor, uint256 nonce, bytes signature, uint256 priorityFee_EVVM, uint256 nonceEvvm, bytes signatureEvvm)`  
 **Function Selector**: `0x21cc1749`
 
 The `publicStaking` function enables universal access to MATE token staking when the `allowPublicStaking.flag` is enabled, regardless of presale participation status or account type.
@@ -25,8 +29,9 @@ Note: In this repository's contract implementation the constructor enables `allo
 | `user`              | address | User address                                         |
 | `isStaking`         | bool    | `true` = Stake, `false` = Unstake                    |
 | `amountOfStaking`   | uint256 | Amount of staking tokens to stake/unstake            |
-| `nonce`             | uint256 | Staking contract nonce for replay protection         |
-| `signature`         | bytes   | Staking contract signature for replay protection     |
+| `originExecutor`    | address | EOA that will execute the transaction (verified with tx.origin) |
+| `nonce`             | uint256 | Core nonce for this signature (prevents replay attacks) |
+| `signature`         | bytes   | User authorization signature                         |
 | `priorityFee_EVVM`  | uint256 | EVVM priority fee                                    |
 | `nonce_EVVM`        | uint256 | EVVM payment operation nonce                         |
 | `priorityFlag_EVVM` | bool    | EVVM execution mode (`true` = async, `false` = sync) |
@@ -48,41 +53,55 @@ The function supports two execution paths:
 ## Staking Process
 
 1. **Feature Status Verification**: Confirms `allowPublicStaking.flag` is enabled
-2. **Signature Verification**: Validates the authenticity of the user signature
-3. **Nonce Validation**: Calls internal `verifyAsyncNonce(user, nonce)` which reverts with `AsyncNonceAlreadyUsed()` if the nonce was already used; after successful execution the contract calls `markAsyncNonceAsUsed(user, nonce)` to prevent replays
-4. **Process Execution**: Calls the internal `stakingBaseProcess` function with:
+
+2. **Centralized Verification**: Validates signature and consumes nonce via Core.sol:
+```solidity
+core.validateAndConsumeNonce(
+    user,
+    Hash.hashDataForPublicStake(isStaking, amountOfStaking),
+    originExecutor,
+    nonce,
+    true,  // Always async
+    signature
+);
+```
+
+**Validates**:
+- Signature authenticity via EIP-191
+- Nonce hasn't been consumed
+- Executor is the specified EOA (via `tx.origin`)
+
+**On Failure**:
+- `Core__InvalidSignature()` - Invalid signature
+- `Core__NonceAlreadyUsed()` - Nonce consumed
+- `Core__InvalidExecutor()` - Executing EOA doesn't match originExecutor
+
+3. **Process Execution**: Calls the internal `stakingBaseProcess` function with:
    - User address and IsAService=false in AccountMetadata
    - Specified amount of staking tokens
    - Standard EVVM payment processing
    - Historical record updates and reward distribution
-5. **Nonce Update**: Marks the staking nonce as used to prevent replay attacks
 
 :::info
 
 For detailed information about the `stakingBaseProcess` function, refer to the [stakingBaseProcess](../02-InternalStakingFunctions/01-stakingBaseProcess.md).
 
 :::
-
-![publicStaking Staking Happy Path](./img/publicStaking_Staking_HappyPath.svg)
-![publicStaking Staking Failed Path](./img/publicStaking_Staking_FailedPath.svg)
 
 ## Unstaking Process
 
 1. **Feature Status Verification**: Confirms `allowPublicStaking.flag` is enabled  
-2. **Signature Verification**: Validates the authenticity of the user signature
-3. **Nonce Validation**: Calls internal `verifyAsyncNonce(user, nonce)` which reverts with `AsyncNonceAlreadyUsed()` if the nonce was already used; after successful execution the contract calls `markAsyncNonceAsUsed(user, nonce)` to prevent replays
-4. **Process Execution**: Calls the internal `stakingBaseProcess` function with:
+
+2. **Centralized Verification**: Validates signature and consumes nonce via Core.sol (same as staking)
+
+3. **Process Execution**: Calls the internal `stakingBaseProcess` function with:
    - User address and IsAService=false in AccountMetadata
    - Specified amount of staking tokens
    - Standard EVVM payment processing
    - Historical record updates and reward distribution
-5. **Nonce Update**: Marks the staking nonce as used to prevent replay attacks
 
 :::info
 
 For detailed information about the `stakingBaseProcess` function, refer to the [stakingBaseProcess](../02-InternalStakingFunctions/01-stakingBaseProcess.md).
 
 :::
-
-![publicStaking Unstaking Happy Path](./img/publicStaking_Unstaking_HappyPath.svg)
-![publicStaking Unstaking Failed Path](./img/publicStaking_Unstaking_FailedPath.svg)

@@ -41,10 +41,6 @@ For detailed information about the `stakingBaseProcess` implementation, refer to
 
 :::
 
-
-![goldenStaking Staking Happy Path](./img/goldenStaking_Staking_HappyPath.svg)
-![goldenStaking Staking Failed Path](./img/goldenStaking_Staking_FailedPath.svg)
-
 ### Unstaking Process
 
 1. **Authorization Validation**: Verifies caller is the designated `goldenFisher` address
@@ -59,6 +55,3 @@ For detailed information about the `stakingBaseProcess` implementation, refer to
 For detailed information about the `stakingBaseProcess` implementation, refer to the [stakingBaseProcess](../02-InternalStakingFunctions/01-stakingBaseProcess.md).
 
 :::
-
-![goldenStaking Unstaking Happy Path](./img/goldenStaking_Unstaking_HappyPath.svg)
-![goldenStaking Unstaking Failed Path](./img/goldenStaking_Unstaking_FailedPath.svg)

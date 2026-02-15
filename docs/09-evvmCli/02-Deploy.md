@@ -435,15 +435,15 @@ Generated at `./input/Inputs.sol`:
 ```solidity
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
-import {EvvmStructs} from "@evvm/testnet-contracts/contracts/evvm/lib/EvvmStructs.sol";
+import {CoreStructs} from "@evvm/testnet-contracts/library/structs/CoreStructs.sol";
 
 abstract contract Inputs {
     address admin = 0x...;
     address goldenFisher = 0x...;
     address activator = 0x...;
 
-    EvvmStructs.EvvmMetadata inputMetadata =
-        EvvmStructs.EvvmMetadata({
+    CoreStructs.EvvmMetadata inputMetadata =
+        CoreStructs.EvvmMetadata({
             EvvmName: "EVVM",
             EvvmID: 0,
             principalTokenName: "Mate Token",

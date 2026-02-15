@@ -1,7 +1,7 @@
 ---
 title: "StakingServiceUtils"
 description: "Abstract contract for simplified service staking integration"
-sidebar_position: 3
+sidebar_position: 2
 ---
 
 # StakingServiceUtils
@@ -208,9 +208,9 @@ contract AutoRestaker is StakingServiceUtils {
     
     function checkAndRestake() external {
         // Get current MATE balance
-        uint256 balance = IEvvm(staking.getEvvmAddress()).getBalance(
+        uint256 balance = ICore(staking.getCoreAddress()).getBalance(
             address(this),
-            IEvvm(staking.getEvvmAddress()).getPrincipalTokenAddress()
+            ICore(staking.getCoreAddress()).getPrincipalTokenAddress()
         );
         
         if (balance >= autoRestakeThreshold) {
@@ -287,9 +287,9 @@ IStaking(stakingAddress).prepareServiceStaking(amountToStake);
 
 // Step 2: Transfer MATE tokens
 uint256 cost = IStaking(stakingAddress).priceOfStaking() * amountToStake;
-IEvvm(evvmAddress).caPay(
+ICore(staking.getCoreAddress()).caPay(
     address(stakingAddress),
-    address(1), // MATE token
+    ICore(staking.getCoreAddress()).getPrincipalTokenAddress(),
     cost
 );
 
@@ -385,8 +385,8 @@ function getStakePrice() internal view returns (uint256) {
 
 // Acceptable but redundant - requery address
 function getStakePrice() internal view returns (uint256) {
-    address staking = IStaking(stakingHookAddress).getEvvmAddress();
-    return IStaking(staking).priceOfStaking();
+    address core = IStaking(stakingHookAddress).getCoreAddress();
+    return IStaking(stakingHookAddress).priceOfStaking();
 }
 ```
 

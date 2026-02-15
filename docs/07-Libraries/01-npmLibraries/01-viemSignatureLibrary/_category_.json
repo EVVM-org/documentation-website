@@ -1,8 +1,0 @@
-{
-  "label": "@evvm/viem-signature-library",
-  "position": 1,
-  "description": "A TypeScript library for generating and verifying dual signatures for Ethereum transactions using the viem framework.",
-  "link": {
-    "type": "generated-index"
-  }
-}

@@ -6,6 +6,10 @@ sidebar_position: 4
 
 # Administrative Functions
 
+:::info[Implementation Note]
+Administrative functions do **not** use Core.sol's `validateAndConsumeNonce()` pattern. They are directly protected by `onlyOwner` modifier and execute through standard transaction authentication via `msg.sender`.
+:::
+
 The P2P Swap Contract implements a comprehensive administrative system with time-delayed governance, secure owner management, and flexible configuration options. All administrative changes follow a proposal-acceptance pattern with mandatory waiting periods for security.
 
 ## Owner Management

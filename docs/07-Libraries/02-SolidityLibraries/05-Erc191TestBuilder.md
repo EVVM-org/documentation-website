@@ -268,7 +268,7 @@ pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
 import {Erc191TestBuilder} from "@evvm/testnet-contracts/library/Erc191TestBuilder.sol";
-import {Evvm} from "@evvm/testnet-contracts/contracts/evvm/Evvm.sol";
+import {Core} from "@evvm/testnet-contracts/contracts/core/Core.sol";
 
 contract EvvmPaymentTest is Test {
     Evvm evvm;

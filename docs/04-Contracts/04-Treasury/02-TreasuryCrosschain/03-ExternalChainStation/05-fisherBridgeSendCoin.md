@@ -5,11 +5,11 @@ sidebar_position: 5
 # fisherBridgeSendCoin
 
 **Function Type**: `external payable`  
-**Function Signature**: `fisherBridgeSendCoin(address,address,uint256,uint256,bytes)`  
+**Function Signature**: `fisherBridgeSendCoin(address,address,uint256,uint256,uint256,bytes)`  
 **Access Control**: `onlyFisherExecutor`  
 **Returns**: `void`
 
-Facilitates native coin deposits from external chain to EVVM through the fisher bridge system. This function validates user signatures, accepts native currency payments, and emits events for cross-chain processing coordination.
+Facilitates native coin deposits from external chain to EVVM through the fisher bridge system. This function validates user signatures using asyncNonce system, accepts native currency payments, and emits events for cross-chain processing coordination.
 
 ## Parameters
 
@@ -19,6 +19,7 @@ Facilitates native coin deposits from external chain to EVVM through the fisher 
 | `addressToReceive` | `address` | Recipient address for EVVM balance credit |
 | `priorityFee` | `uint256` | Fee amount paid to the fisher executor |
 | `amount` | `uint256` | Amount of native coins to deposit to EVVM |
+| `nonce` | `uint256` | User-managed sequential nonce for replay protection |
 | `signature` | `bytes` | Cryptographic signature ([EIP-191](https://eips.ethereum.org/EIPS/eip-191)) from the `from` address authorizing this deposit. |
 
 ## Access Control
@@ -36,18 +37,36 @@ Only addresses with the current `fisherExecutor` role can call this function.
 
 ## Workflow
 
-### 1. Signature Verification
+### 1. Nonce Validation
 ```solidity
-if (!SignatureUtils.verifyMessageSignedForFisherBridge(
-    from,
-    addressToReceive,
-    nextFisherExecutionNonce[from],
-    address(0), // Native coins represented as address(0)
-    priorityFee,
-    amount,
-    signature
-)) revert ErrorsLib.InvalidSignature();
+if (asyncNonce[from][nonce]) revert CoreError.AsyncNonceAlreadyUsed();
 ```
+
+Checks if nonce has already been used. The External Chain Station uses `asyncNonce[from][nonce]` mapping instead of Core.sol's nonce system.
+
+### 2. Signature Verification
+```solidity
+if (
+    SignatureRecover.recoverSigner(
+        AdvancedStrings.buildSignaturePayload(
+            evvmID,
+            hostChainAddress.currentAddress,
+            Hash.hashDataForFisherBridge(
+                addressToReceive,
+                address(0), // Native coins
+                priorityFee,
+                amount
+            ),
+            fisherExecutor.current,
+            nonce,
+            true
+        ),
+        signature
+    ) != from
+) revert CoreError.InvalidSignature();
+```
+
+Validates EIP-191 signature by recovering the signer and comparing to `from` address. Uses `SignatureRecover.recoverSigner()` with payload built by `AdvancedStrings.buildSignaturePayload()`.
 
 :::info
 
@@ -55,25 +74,23 @@ For more information about the signature structure, refer to the [Fisher Bridge 
 
 :::
 
-Note: Native coins are represented as `address(0)` in the signature.
-
-### 2. Payment Validation
+### 3. Payment Validation
 ```solidity
 if (msg.value != amount + priorityFee)
-    revert ErrorsLib.InsufficientBalance();
+    revert Error.InsufficientBalance();
 ```
 
 Ensures the fisher executor sends exactly the required amount:
 - `amount`: Native coins for deposit to EVVM
 - `priorityFee`: Fee paid to the fisher executor
 
-### 3. Nonce Management
+### 4. Mark Nonce as Used
 ```solidity
-nextFisherExecutionNonce[from]++;
+asyncNonce[from][nonce] = true;
 ```
-Increments the user's execution nonce to prevent replay attacks.
+Marks this nonce as consumed to prevent replay attacks.
 
-### 4. Event Emission
+### 5. Event Emission
 ```solidity
 emit FisherBridgeSend(
     from,
@@ -81,7 +98,7 @@ emit FisherBridgeSend(
     address(0), // Native coins
     priorityFee,
     amount,
-    nextFisherExecutionNonce[from] - 1
+    nonce
 );
 ```
 
@@ -150,8 +167,10 @@ The signature format includes `address(0)` for native coins, ensuring consistenc
 
 ### Signature Security
 - **EIP-191 Standard**: Uses Ethereum's signed message standard (see [signature format](../../../../05-SignatureStructures/04-Treasury/01-FisherBridgeSignatureStructure.md))
+- **SignatureRecover**: Uses `SignatureRecover.recoverSigner()` to validate signatures
+- **AdvancedStrings**: Payload built with `AdvancedStrings.buildSignaturePayload()`
 - **Native Coin Identifier**: `address(0)` clearly identifies native coin deposits
-- **Replay Protection**: Nonce-based prevention of signature reuse
+- **Replay Protection**: `asyncNonce` mapping prevents signature reuse
 - **Parameter Binding**: Signature tied to specific deposit parameters
 
 ### Payment Security
@@ -166,9 +185,10 @@ The signature format includes `address(0)` for native coins, ensuring consistenc
 ## Error Conditions
 
 | Error | Condition |
-|-------|-----------|
-| `InvalidSignature()` | Signature verification fails |
-| `InsufficientBalance` | `msg.value != amount + priorityFee` |
+|-------|-----------|  
+| `CoreError.AsyncNonceAlreadyUsed()` | Nonce has already been used for this user |
+| `CoreError.InvalidSignature()` | Signature verification fails |
+| `Error.InsufficientBalance()` | `msg.value != amount + priorityFee` |
 | Access Control Revert | Called by unauthorized address |
 
 ## Usage Flow
@@ -192,6 +212,7 @@ fisherBridgeSendCoin{value: 1.01 ether}(
     recipientAddress, 
     0.01 ether, // priorityFee
     1 ether,    // amount
+    userNonce,  // nonce
     signature
 );
 ```

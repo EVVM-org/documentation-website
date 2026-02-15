@@ -1,136 +1,316 @@
 ---
 title: "cancelOrder Function"
-description: "Detailed documentation of the P2P Swap Contract's order cancellation function for removing orders and reclaiming tokens."
+description: "Cancel P2P swap orders and reclaim locked tokens"
 sidebar_position: 2
 ---
 
-# cancelOrder Function
+# cancelOrder
 
-**Function Type**: `external`  
-**Function Signature**: `cancelOrder(address,MetadataCancelOrder,uint256,uint256,bool,bytes)`
-
-The `cancelOrder` function allows order creators to cancel their existing orders and reclaim their locked tokens. This function validates ownership, returns tokens to the original creator, and provides rewards to staker executors.
-
-**Key features:**
-
-- **Order Cancellation**: Removes existing orders from the marketplace
-- **Token Recovery**: Returns locked tokens to the original order creator
-- **Ownership Validation**: Ensures only order creators can cancel their orders
-- **Staker Rewards**: Executors who are stakers receive MATE token rewards
-- **Market Cleanup**: Updates market statistics after order removal
-
-### Parameters
-
-| Field               | Type                  | Description                                                                |
-| ------------------- | --------------------- | -------------------------------------------------------------------------- |
-| `user`              | `address`             | The address that created the original order and is requesting cancellation |
-| `metadata`          | `MetadataCancelOrder` | Struct containing cancellation details and embedded signature              |
-| `_priorityFee_Evvm` | `uint256`             | Priority fee for EVVM transaction processing (optional)                    |
-| `_nonce_Evvm`       | `uint256`             | Nonce for EVVM payment transaction                                         |
-| `_priority_Evvm`    | `bool`                | Priority flag for EVVM payment (sync/async)                                |
-| `_signature_Evvm`   | `bytes`               | EIP-191 signature for EVVM payment authorization                           |
-
-:::info 
-`_priorityFee_Evvm` is paid using principal tokens
+:::info[Signature Verification]
+cancelOrder uses Core.sol's centralized signature verification via `validateAndConsumeNonce()` with `P2PSwapHashUtils.hashDataForCancelOrder()`. Includes `originExecutor` parameter.
 :::
+
+**Function Signature**:
+```solidity
+function cancelOrder(
+    address user,
+    MetadataCancelOrder memory metadata,
+    uint256 priorityFeeEvvm,
+    uint256 nonceEvvm,
+    bytes memory signatureEvvm
+) external
+```
+
+Cancels an existing order and refunds locked tokenA to the order creator. Only the original order owner can cancel.
+
+## Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `user` | `address` | Order owner requesting cancellation |
+| `metadata` | `MetadataCancelOrder` | Cancellation details including originExecutor, nonce, and signature |
+| `priorityFeeEvvm` | `uint256` | Optional MATE priority fee for faster execution |
+| `nonceEvvm` | `uint256` | Nonce for Core payment transaction (for priority fee) |
+| `signatureEvvm` | `bytes` | Signature for Core payment authorization (if priority fee > 0) |
 
 ### MetadataCancelOrder Structure
 
-| Field       | Type      | Description                                                |
-| ----------- | --------- | ---------------------------------------------------------- |
-| `nonce`     | `uint256` | Unique nonce for P2P Swap replay protection                |
-| `tokenA`    | `address` | Token that was offered in the original order               |
-| `tokenB`    | `address` | Token that was requested in the original order             |
-| `orderId`   | `uint256` | ID of the order to be cancelled                            |
-| `signature` | `bytes`   | EIP-191 signature from `user` authorizing the cancellation |
+```solidity
+struct MetadataCancelOrder {
+    address tokenA;           // Token originally offered
+    address tokenB;           // Token originally requested
+    uint256 orderId;          // Order ID to cancel
+    address originExecutor;   // EOA that will execute (verified with tx.origin)
+    uint256 nonce;            // Core nonce for P2PSwap service
+    bytes signature;          // User's authorization signature
+}
+```
 
-### Execution Methods
+## Signature Requirements
 
-#### Fisher Execution
+:::note[Operation Hash]
+```solidity
+bytes32 hashPayload = P2PSwapHashUtils.hashDataForCancelOrder(
+    metadata.tokenA,
+    metadata.tokenB,
+    metadata.orderId
+);
+```
+:::
 
-1. User signs cancellation details and optional EVVM payment authorization
-2. Fisher captures the transaction and validates all signatures
-3. Fisher submits the transaction and receives staker rewards if eligible
-4. Order is cancelled and tokens are returned to the user
+**Signature Format**:
+```
+{evvmId},{p2pSwapAddress},{hashPayload},{originExecutor},{nonce},true
+```
 
-#### Direct Execution
+**Payment Signature** (if priorityFeeEvvm > 0): Separate MATE payment signature required.
 
-1. User or authorized service calls the function directly
-2. All signature validations are performed on-chain
-3. Order cancellation and token return happen immediately
-4. Staker benefits are distributed if executor qualifies
+## Execution Flow
 
-### Workflow
+### 1. Centralized Verification
+```solidity
+core.validateAndConsumeNonce(
+    user,
+    P2PSwapHashUtils.hashDataForCancelOrder(
+        metadata.tokenA,
+        metadata.tokenB,
+        metadata.orderId
+    ),
+    metadata.originExecutor,
+    metadata.nonce,
+    true,                      // Always async execution
+    metadata.signature
+);
+```
 
-1. **P2P Signature Verification**: Validates the embedded `metadata.signature` against the `user` address and cancellation parameters using `SignatureUtils.verifyMessageSignedForCancelOrder`. Reverts with `"Invalid signature"` on failure.
+**Validates**:
+- Signature authenticity via EIP-191
+- Nonce hasn't been consumed
+- Hash matches cancellation parameters
+- Executor is the specified EOA (via `tx.origin`)
 
-2. **Market Resolution**: Finds the market for the token pair using `findMarket(metadata.tokenA, metadata.tokenB)`.
+**On Failure**:
+- `Core__InvalidSignature()` - Invalid or mismatched signature
+- `Core__NonceAlreadyUsed()` - Nonce already consumed
+- `Core__InvalidExecutor()` - Executing EOA doesn't match originExecutor
 
-3. **Nonce Validation**: Checks if the P2P nonce has been used before by consulting `nonceP2PSwap[user][metadata.nonce]`. Reverts with `"Invalid nonce"` if the nonce was previously used.
+### 2. Market & Order Lookup
+```solidity
+uint256 market = findMarket(metadata.tokenA, metadata.tokenB);
 
-4. **Order Ownership Verification**: Validates that:
-   - The market exists (market != 0)
-   - The order exists and belongs to the requesting user
-   - Reverts with `"Invalid order"` if validation fails
+_validateOrderOwnership(market, metadata.orderId, user);
+```
 
-5. **Priority Fee Processing**: If `_priorityFee_Evvm > 0`, processes the priority fee payment using `makePay` with MATE tokens.
+**Validation**:
+- Market exists (market != 0)
+- Order exists (seller != address(0))
+- User owns the order (seller == user)
 
-6. **Token Return**: Returns the locked tokens to the order creator using `makeCaPay`, transferring `ordersInsideMarket[market][metadata.orderId].amountA` of `metadata.tokenA` back to `user`.
+**On Failure**:
+- `"Invalid order"` - Order doesn't exist or user not owner
 
-7. **Order Removal**: Marks the order as cancelled by setting the seller address to `address(0)`.
+### 3. Priority Fee Collection (Optional)
+```solidity
+if (priorityFeeEvvm > 0) {
+    requestPay(
+        user,
+        MATE_TOKEN_ADDRESS,
+        0,                     // No principal payment
+        priorityFeeEvvm,
+        nonceEvvm,
+        true,                  // Always async
+        signatureEvvm
+    );
+}
+```
 
-8. **Staker Reward Distribution**: If the executor (`msg.sender`) is a registered staker:
-   - **MATE Token Rewards**: Grants MATE tokens to the executor:
-     - 3x base reward amount + priority fee if priority fee was provided
-     - 2x base reward amount if no priority fee
+**Action**: If priority fee specified, collects MATE from user for executor reward.
 
-9. **Market Update**: Decrements the `ordersAvailable` counter for the market.
+### 4. Refund TokenA
+```solidity
+makeCaPay(
+    user,
+    metadata.tokenA,
+    ordersInsideMarket[market][metadata.orderId].amountA
+);
+```
 
-10. **Nonce Update**: Marks the P2P nonce as used to prevent replay attacks.
+**Action**: Returns original locked tokenA amount from Core.sol to user.
 
-### Example
+### 5. Clear Order
+```solidity
+_clearOrderAndUpdateMarket(market, metadata.orderId);
+```
 
-**Scenario:** User wants to cancel their order offering 100 USDC for 0.05 ETH
-
-**Parameters:**
-
-- `user`: `0x742c7b6b472c8f4bd58e6f9f6c82e8e6e7c82d8c`
-- `metadata.nonce`: `25`
-- `metadata.tokenA`: `0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48` (USDC)
-- `metadata.tokenB`: `0x0000000000000000000000000000000000000000` (ETH)
-- `metadata.orderId`: `3`
-- `_priorityFee_Evvm`: `0` (no priority fee)
-
-**Process:**
-
-1. User signs the cancellation details with their private key
-2. Fisher or user submits the transaction
-3. Contract validates signature and order ownership
-4. 100 USDC is returned to the user's balance
-5. Order #3 is marked as cancelled in the USDC/ETH market
-6. Staker executor receives 2x MATE reward (no priority fee)
-
-**Market Impact:**
-
-- Market's `ordersAvailable` count decreases by 1
+**State Changes**:
+- `ordersInsideMarket[market][orderId].seller = address(0)` - Marks order as deleted
+- `marketMetadata[market].ordersAvailable--` - Decrements active order count
 - Order slot becomes available for reuse
-- Market statistics reflect the cancellation
 
-**Token Recovery:**
+### 6. Staker Rewards
+```solidity
+if (core.isAddressStaker(msg.sender) && priorityFeeEvvm > 0) {
+    makeCaPay(msg.sender, MATE_TOKEN_ADDRESS, priorityFeeEvvm);
+}
 
-- Original 100 USDC locked in the order is returned to user
-- User can immediately use these tokens for other purposes
-- No fees charged for order cancellation
+_rewardExecutor(msg.sender, priorityFeeEvvm > 0 ? 3 : 2);
+```
 
-:::info
-For signature structure details, see [Cancel Order Signature Structure](../../../05-SignatureStructures/05-P2PSwap/02-CancelOrderSignatureStructure.md)
-:::
+**Rewards**:
+- **Priority Fee**: MATE tokens (if > 0)
+- **Base Reward**: 2x MATE (no priority) or 3x MATE (with priority)
+- **Requirement**: msg.sender must be registered staker
 
-:::tip
-**Want to create a new order?**  
-Use [makeOrder](./01-makeOrder.md) to create a new swap order with different parameters.
+## Complete Usage Example
 
-**Looking to fulfill someone else's order?**  
-Check [dispatchOrder](./03-dispatchOrder-proportional.md) to execute existing orders in the marketplace.
-:::
+```solidity
+// Scenario: Cancel order #5 in USDC/ETH market
+address user = 0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0;
+address usdc = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+address eth = 0x0000000000000000000000000000000000000000;
+address executor = 0x123...;  // Authorized executor
 
+// 1. Get current nonce
+uint256 nonce = core.getNonce(user, address(p2pSwap));
+
+// 2. Generate hash for signature
+bytes32 hashPayload = P2PSwapHashUtils.hashDataForCancelOrder(
+    usdc,
+    eth,
+    5  // orderId
+);
+
+// 3. Create signature message
+string memory message = string.concat(
+    Strings.toString(block.chainid), ",",
+    Strings.toHexString(address(p2pSwap)), ",",
+    Strings.toHexString(uint256(hashPayload)), ",",
+    Strings.toHexString(executor), ",",
+    Strings.toString(nonce), ",true"
+);
+
+// 4. User signs with EIP-191
+bytes memory signature = signMessage(message, userPrivateKey);
+
+// 5. Create metadata struct
+MetadataCancelOrder memory metadata = MetadataCancelOrder({
+    tokenA: usdc,
+    tokenB: eth,
+    orderId: 5,
+    originExecutor: executor,
+    nonce: nonce,
+    signature: signature
+});
+
+// 6. Generate payment signature for priority fee (optional)
+uint256 priorityFee = 2 ether;  // 2 MATE
+uint256 nonceEvvm = core.getNonce(user, address(core));
+bytes memory signatureEvvm = generatePaymentSignature(
+    user,
+    MATE_TOKEN_ADDRESS,
+    0,                  // No principal
+    priorityFee,
+    nonceEvvm,
+    true
+);
+
+// 7. Execute cancelOrder
+p2pSwap.cancelOrder(
+    user,
+    metadata,
+    priorityFee,
+    nonceEvvm,
+    signatureEvvm
+);
+
+// Result:
+// - Original locked USDC refunded to user
+// - Order #5 marked as deleted
+// - Market ordersAvailable decremented
+// - Staker executor receives 2 MATE (priority) + 3x MATE (reward)
+```
+
+## Gas Costs
+
+Estimated gas consumption:
+
+| Scenario | Gas Cost | Notes |
+|----------|----------|-------|
+| **No Priority Fee** | ~140,000 gas | Basic cancellation + refund |
+| **With Priority Fee** | ~180,000 gas | Includes MATE payment processing |
+| **First Market Cancellation** | ~150,000 gas | Additional storage updates |
+
+**Variable Factors**:
+- Token type (ERC20 vs ETH)
+- Priority fee (adds payment processing)
+- Market state (first vs subsequent cancellations)
+
+## Economic Model
+
+### User Costs
+- **Cancellation Fee**: None (only gas)
+- **Priority Fee**: Optional MATE payment for faster execution
+- **Refund**: Full tokenA amount returned
+
+### User Benefits
+- ✅ 100% refund of locked tokens
+- ✅ No cancellation penalty
+- ✅ Immediate token availability
+
+### Staker Revenue
+| Component | Amount | Condition |
+|-----------|--------|-----------|
+| **Priority Fee** | User-defined MATE | If priorityFeeEvvm > 0 |
+| **Base Reward** | 2x MATE | No priority fee |
+| **Enhanced Reward** | 3x MATE | With priority fee |
+
+**Profitability**: cancelOrder is moderately profitable for stakers with priority fees.
+
+## Error Handling
+
+### Core.sol Errors
+- `Core__InvalidSignature()` - Signature validation failed
+- `Core__NonceAlreadyUsed()` - Nonce already consumed
+- `Core__InvalidExecutor()` - Unauthorized executor attempting execution
+
+### P2PSwap Errors
+- `"Invalid order"` - Order doesn't exist, wrong user, or already cancelled
+- Market not found (internal validation)
+
+## State Changes
+
+**Order Cancelled**:
+- `ordersInsideMarket[market][orderId].seller = address(0)` - Order deleted
+- `marketMetadata[market].ordersAvailable--` - Active count decreased
+
+**Token Refunded**:
+- User's tokenA balance in Core.sol increased by original amountA
+
+**Slot Available**:
+- Order ID becomes available for reuse in future makeOrder calls
+
+## Use Cases
+
+### User Initiated
+- **Price Change**: Original exchange rate no longer favorable
+- **Need Liquidity**: Urgent need for locked tokens
+- **Market Shift**: Better opportunities elsewhere
+
+### Strategic Cancellation
+- **Before Expiry**: Cancel before market conditions worsen
+- **Partial Fill**: Cancel if only partial fills acceptable
+- **Update Terms**: Cancel and create new order with different parameters
+
+## Related Functions
+
+- [makeOrder](./01-makeOrder.md) - Create new order after cancellation
+- [dispatchOrder (Proportional)](./03-dispatchOrder-proportional.md) - Alternative: let order be filled
+- [dispatchOrder (Fixed)](./04-dispatchOrder-fixed.md) - Alternative: let order be filled
+- [Getter Functions](../03-GetterFunctions.md) - Query order details before cancelling
+
+---
+
+**License**: EVVM-NONCOMMERCIAL-1.0  
+**Gas Estimate**: 140k-180k gas  
+**Staker Reward**: 2-3x MATE  
+**Refund**: 100% tokenA

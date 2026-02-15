@@ -121,6 +121,3 @@ The function processes each payment in the `payData` array independently, allowi
 :::note
 Each payment is processed independently - failure of one payment (except for signature validation) doesn't affect others in the batch.
 :::
-
-![payMultiple Happy Path](./img/payMultiple_HappyPath.svg)
-![payMultiple Failed Path](./img/payMultiple_FailedPath.svg)

@@ -123,7 +123,7 @@ if (isAddressStaker(msg.sender)) {
 
 This automatic detection is used in:
 - `pay` (unified payment function)
-- `payMultiple` (for enhanced rewards)
+- `batchPay` (for enhanced rewards)
 - `dispersePay` (single-source multi-recipient)
 - Bridge operations
 

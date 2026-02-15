@@ -5,11 +5,11 @@ sidebar_position: 3
 # fisherBridgeReceive
 
 **Function Type**: `external`  
-**Function Signature**: `fisherBridgeReceive(address,address,address,uint256,uint256,bytes)`  
+**Function Signature**: `fisherBridgeReceive(address,address,address,uint256,uint256,uint256,bytes)`  
 **Access Control**: `onlyFisherExecutor`  
 **Returns**: `void`
 
-Receives and validates Fisher bridge transactions from host chain. Verifies EIP-191 signature and increments nonce but doesn't transfer tokens (validation-only function for external chain).
+Receives and validates Fisher bridge transactions from host chain. Verifies EIP-191 signature using asyncNonce system (independent from Core.sol) and marks nonce as used to prevent replay attacks.
 
 ## Parameters
 
@@ -20,6 +20,7 @@ Receives and validates Fisher bridge transactions from host chain. Verifies EIP-
 | `tokenAddress` | `address` | Token contract address or `address(0)` for native coin |
 | `priorityFee` | `uint256` | Fee amount paid to the fisher executor |
 | `amount` | `uint256` | Amount to transfer to the recipient |
+| `nonce` | `uint256` | User-managed sequential nonce for replay protection |
 | `signature` | `bytes` | Cryptographic signature ([EIP-191](https://eips.ethereum.org/EIPS/eip-191)) from the `from` address authorizing this transaction. |
 
 ## Access Control
@@ -37,27 +38,42 @@ Only addresses with the current `fisherExecutor` role can call this function.
 
 ## Workflow
 
-### 1. Signature Verification
+### 1. Nonce Validation
 ```solidity
-if (!SignatureUtils.verifyMessageSignedForFisherBridge(
-    EVVM_ID,
-    from,
-    addressToReceive,
-    nextFisherExecutionNonce[from],
-    tokenAddress,
-    priorityFee,
-    amount,
-    signature
-)) revert ErrorsLib.InvalidSignature();
+if (asyncNonce[from][nonce]) revert CoreError.AsyncNonceAlreadyUsed();
 ```
 
-Validates EIP-191 signature with EVVM ID integration using structured message format: `"{EVVM_ID},fisherBridge,{addressToReceive},{nonce},{tokenAddress},{priorityFee},{amount}"`.
+Checks if nonce has already been used. The External Chain Station uses `asyncNonce[from][nonce]` mapping instead of Core.sol's nonce system (which doesn't exist on external chains).
 
-### 2. Nonce Increment
+### 2. Signature Verification
 ```solidity
-nextFisherExecutionNonce[from]++;
+if (
+    SignatureRecover.recoverSigner(
+        AdvancedStrings.buildSignaturePayload(
+            evvmID,
+            hostChainAddress.currentAddress,
+            Hash.hashDataForFisherBridge(
+                addressToReceive,
+                tokenAddress,
+                priorityFee,
+                amount
+            ),
+            fisherExecutor.current,
+            nonce,
+            true
+        ),
+        signature
+    ) != from
+) revert CoreError.InvalidSignature();
 ```
-Increments Fisher bridge nonce to prevent replay attacks across cross-chain operations.
+
+Validates EIP-191 signature by recovering the signer and comparing to `from` address. Uses `SignatureRecover.recoverSigner()` with payload built by `AdvancedStrings.buildSignaturePayload()`.
+
+### 3. Mark Nonce as Used
+```solidity
+asyncNonce[from][nonce] = true;
+```
+Marks this nonce as consumed to prevent replay attacks.
 
 ## Validation-Only Function
 
@@ -88,16 +104,19 @@ For more information about the signature structure, refer to the [Fisher Bridge 
 5. **Execution**: Off-chain services execute the actual token transfer
 
 ### Nonce Synchronization
-Both host and external chain stations maintain synchronized nonce counters:
-- **Host Chain**: Increments nonce in `fisherBridgeSend`
-- **External Chain**: Increments nonce in `fisherBridgeReceive`
-- **Coordination**: Both must use the same nonce value for signature validation
+The External Chain Station uses an independent `asyncNonce[from][nonce]` mapping:
+- **NOT Core.sol**: External chains don't have Core.sol, so this is a separate nonce system
+- **User-Managed**: Each user maintains their own sequential nonces
+- **Replay Protection**: Once `asyncNonce[from][nonce]` is true, that signature cannot be reused
+- **Coordination**: Both host and external chain stations mark the same nonce as used
 
 ## Security Features
 
 ### Signature Security
 - **EIP-191 Compliance**: Standard Ethereum signed message format
-- **Replay Protection**: Nonce-based prevention of signature reuse
+- **SignatureRecover**: Uses `SignatureRecover.recoverSigner()` to validate signatures
+- **AdvancedStrings**: Payload built with `AdvancedStrings.buildSignaturePayload()`
+- **Replay Protection**: `asyncNonce` mapping prevents signature reuse
 - **User Authorization**: Cryptographic proof of user consent
 - **Address Binding**: Signature tied to specific sender address
 
@@ -106,9 +125,10 @@ Both host and external chain stations maintain synchronized nonce counters:
 - **Distributed Validation**: Same signature validates on both chains
 
 ### Nonce Management
-- **Sequential Increment**: Nonces increase monotonically
-- **Per-User Tracking**: Individual nonce counters for each user
-- **Cross-Chain Sync**: Coordination between host and external chains
+- **AsyncNonce System**: Uses `asyncNonce[from][nonce]` mapping (NOT Core.sol)
+- **Independent System**: External Chain doesn't have Core.sol
+- **Mark as Used**: Sets `asyncNonce[from][nonce] = true` after validation
+- **Per-User Tracking**: Individual nonce tracking for each user
 
 ## Integration with External Services
 
@@ -140,8 +160,9 @@ Based on validated parameters:
 ## Error Conditions
 
 | Error | Condition |
-|-------|-----------|
-| `InvalidSignature()` | Signature verification fails |
+|-------|-----------|  
+| `CoreError.AsyncNonceAlreadyUsed()` | Nonce has already been used for this user |
+| `CoreError.InvalidSignature()` | Signature verification fails |
 | Access Control Revert | Called by unauthorized address (not current fisher executor) |
 
 ## Usage Flow
@@ -172,6 +193,6 @@ For proper fisher bridge operation:
 This function only validates signatures and manages nonces. Actual token transfers on the external chain require off-chain services that coordinate between the validation and execution steps.
 :::
 
-:::warning[Nonce Synchronization Critical]
-Nonce values must remain synchronized between host and external chain stations. Mismatched nonces will cause signature validation failures and break the fisher bridge system.
+:::warning[AsyncNonce System]
+The External Chain Station uses `asyncNonce[from][nonce]` mapping instead of Core.sol's nonce system. This is because Core.sol doesn't exist on external chains. Users must manage their own sequential nonces, and each nonce can only be used once.
 :::

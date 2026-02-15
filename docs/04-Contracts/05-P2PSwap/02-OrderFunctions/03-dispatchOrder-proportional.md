@@ -1,153 +1,369 @@
 ---
-title: "dispatchOrder_fillPropotionalFee Function"
-description: "Detailed documentation of the P2P Swap Contract's proportional fee order fulfillment function."
+title: "dispatchOrder_fillPropotionalFee"
+description: "Fill P2P swap orders with percentage-based fees (5% default)"
 sidebar_position: 3
 ---
 
-# dispatchOrder_fillPropotionalFee Function
+# dispatchOrder_fillPropotionalFee
 
-**Function Type**: `external`  
-**Function Signature**: `dispatchOrder_fillPropotionalFee(address,MetadataDispatchOrder,uint256,uint256,bool,bytes)`
+:::info[Signature Verification]
+dispatchOrder_fillPropotionalFee uses Core.sol's centralized verification via `validateAndConsumeNonce()` with `P2PSwapHashUtils.hashDataForDispatchOrder()`. Includes `originExecutor` parameter.
+:::
 
-The `dispatchOrder_fillPropotionalFee` function fulfills existing swap orders using a proportional fee model where fees are calculated as a percentage of the order amount. This function handles token exchanges, fee distribution, and reward allocation.
+**Function Signature**:
+```solidity
+function dispatchOrder_fillPropotionalFee(
+    address user,
+    MetadataDispatchOrder memory metadata,
+    uint256 priorityFeeEvvm,
+    uint256 nonceEvvm,
+    bytes memory signatureEvvm
+) external
+```
 
-**Key features:**
-- **Order Fulfillment**: Executes existing swap orders from the marketplace
-- **Proportional Fees**: Fees calculated as a configurable percentage of order amount
-- **Three-Way Fee Split**: Fees distributed between seller, service, and MATE stakers
-- **Token Exchange**: Automatic token swap between buyer and seller
-- **Staker Rewards**: Enhanced rewards for staker executors
+Fills an existing order using a proportional fee model where fee = `(amountB × percentageFee) / 10,000`. Transfers tokenA to buyer, pays seller with tokenB + fee share, distributes remaining fees.
 
-### Parameters
+## Parameters
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `user` | `address` | The address fulfilling the order (buyer) whose signature is verified |
-| `metadata` | `MetadataDispatchOrder` | Struct containing dispatch details and embedded signature |
-| `_priorityFee_Evvm` | `uint256` | Priority fee for EVVM transaction processing |
-| `_nonce_Evvm` | `uint256` | Nonce for EVVM payment transaction |
-| `_priority_Evvm` | `bool` | Priority flag for EVVM payment (sync/async) |
-| `_signature_Evvm` | `bytes` | EIP-191 signature for EVVM payment authorization |
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `user` | `address` | Buyer address filling the order |
+| `metadata` | `MetadataDispatchOrder` | Dispatch details including originExecutor, nonce, and signature |
+| `priorityFeeEvvm` | `uint256` | Optional MATE priority fee for faster execution |
+| `nonceEvvm` | `uint256` | Nonce for Core payment transaction (collects tokenB + fee) |
+| `signatureEvvm` | `bytes` | Signature for Core payment authorization |
 
 ### MetadataDispatchOrder Structure
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `nonce` | `uint256` | Unique nonce for P2P Swap replay protection |
-| `tokenA` | `address` | Token offered in the original order |
-| `tokenB` | `address` | Token requested in the original order |
-| `orderId` | `uint256` | ID of the order to be fulfilled |
-| `amountOfTokenBToFill` | `uint256` | Amount of tokenB the buyer is providing (must cover order + fees) |
-| `signature` | `bytes` | EIP-191 signature from `user` authorizing the dispatch |
-
-### Fee Calculation
-
-The proportional fee is calculated as:
-```
-fee = (orderAmount * percentageFee) / 10_000
+```solidity
+struct MetadataDispatchOrder {
+    address tokenA;                // Token buyer will receive
+    address tokenB;                // Token buyer will pay
+    uint256 orderId;               // Order ID to fill
+    uint256 amountOfTokenBToFill;  // Amount to pay (must be >= amountB + fee)
+    address originExecutor;        // EOA that will execute (verified with tx.origin)
+    uint256 nonce;                 // Core nonce for P2PSwap service
+    bytes signature;               // User's authorization signature
+}
 ```
 
-Where `percentageFee` is configurable (default: 500 = 5%).
+## Signature Requirements
 
-### Fee Distribution
+:::note[Operation Hash]
+```solidity
+bytes32 hashPayload = P2PSwapHashUtils.hashDataForDispatchOrder(
+    metadata.tokenA,
+    metadata.tokenB,
+    metadata.orderId
+);
+```
 
-Fees are distributed according to the `rewardPercentage` structure:
-- **Seller Portion**: Added to the seller's payment as bonus
-- **Service Portion**: Accumulated in contract treasury
-- **MATE Staker Portion**: Distributed to the executor (if staker)
-
-### Execution Methods
-
-#### Fisher Execution
-1. User signs dispatch details and EVVM payment authorization
-2. Fisher captures the transaction and validates all signatures
-3. Fisher submits the transaction and receives enhanced rewards if staker
-4. Order is fulfilled and tokens are exchanged
-
-#### Direct Execution
-1. User or authorized service calls the function directly
-2. All signature validations are performed on-chain
-3. Order fulfillment and token exchange happen immediately
-4. Staker benefits are distributed if executor qualifies
-
-### Workflow
-
-1. **P2P Signature Verification**: Validates the embedded `metadata.signature` against the `user` address and dispatch parameters using `SignatureUtils.verifyMessageSignedForDispatchOrder`. Reverts with `"Invalid signature"` on failure.
-
-2. **Market Resolution**: Finds the market for the token pair using `findMarket(metadata.tokenA, metadata.tokenB)`.
-
-3. **Nonce Validation**: Checks if the P2P nonce has been used before by consulting `nonceP2PSwap[user][metadata.nonce]`. Reverts with `"Invalid nonce"` if the nonce was previously used.
-
-4. **Order Validation**: Verifies that:
-   - The market exists (market != 0)
-   - The order exists and is active (seller != address(0))
-   - Reverts if validation fails
-
-5. **Fee Calculation**: Calculates the proportional fee using `calculateFillPropotionalFee(ordersInsideMarket[market][metadata.orderId].amountB)`.
-
-6. **Amount Validation**: Ensures `metadata.amountOfTokenBToFill` is sufficient to cover the order amount plus fees. Reverts with `"Insuficient amountOfTokenToFill"` if insufficient.
-
-7. **Token Payment**: Processes the buyer's payment using `makePay`, transferring `metadata.amountOfTokenBToFill` of `metadata.tokenB` from `user` to the contract.
-
-8. **Excess Refund**: If the buyer provided more than required (order + fee), refunds the excess using `makeCaPay`.
-
-9. **Fee Distribution Setup**: Creates distribution array with:
-   - Seller payment: order amount + seller's fee portion
-   - Executor payment: priority fee + staker's fee portion
-
-10. **Service Fee Accumulation**: Adds the service portion of fees to `balancesOfContract[metadata.tokenB]`.
-
-11. **Payment Distribution**: Executes the distribution using `makeDisperseCaPay` to pay both seller and executor.
-
-12. **Token A Transfer**: Transfers the seller's tokenA to the buyer using `makeCaPay`.
-
-13. **Staker Reward Distribution**: If the executor is a staker:
-    - **Enhanced MATE Rewards**: Grants additional MATE tokens:
-      - 5x base reward if excess was refunded
-      - 4x base reward for standard fulfillment
-
-14. **Order Cleanup**: Marks the order as completed by setting seller to `address(0)` and decrements market's `ordersAvailable`.
-
-15. **Nonce Update**: Marks the P2P nonce as used to prevent replay attacks.
-
-### Example
-
-**Scenario:** User wants to fulfill an order offering 100 USDC for 0.05 ETH (5% fee)
-
-**Existing Order:**
-- Seller offers: 100 USDC
-- Seller wants: 0.05 ETH
-- Market: USDC/ETH, Order ID: 3
-
-**Parameters:**
-- `user`: `0x123...` (buyer)
-- `metadata.amountOfTokenBToFill`: `52500000000000000` (0.0525 ETH = 0.05 + 0.0025 fee)
-- `_priorityFee_Evvm`: `1000000000000000` (0.001 ETH)
-
-**Fee Calculation:**
-- Order amount: 0.05 ETH
-- Proportional fee (5%): 0.0025 ETH
-- Total required: 0.0525 ETH
-
-**Fee Distribution (assuming 50%/40%/10% split):**
-- Seller receives: 0.05 ETH + 0.00125 ETH (50% of fee) = 0.05125 ETH
-- Service treasury: 0.001 ETH (40% of fee)
-- Executor receives: 0.001 ETH (priority) + 0.00025 ETH (10% of fee) = 0.00125 ETH
-
-**Final Exchange:**
-- Buyer pays: 0.0525 ETH
-- Buyer receives: 100 USDC
-- Seller receives: 0.05125 ETH (order + bonus)
-- Executor receives: 0.00125 ETH + 4x MATE rewards
-
-:::info
-For signature structure details, see [Dispatch Order Signature Structure](../../../05-SignatureStructures/05-P2PSwap/03-DispatchOrderSignatureStructure.md)
+**Note**: Both proportional and fixed fee variants use the **same hash function**.
 :::
 
-:::tip
-**Want fixed fee protection?**  
-Use [dispatchOrder_fillFixedFee](./04-dispatchOrder-fixed.md) for capped fees on large orders.
+**Signature Format**:
+```
+{evvmId},{p2pSwapAddress},{hashPayload},{originExecutor},{nonce},true
+```
 
-**Looking for orders to fulfill?**  
-Check the [Getter Functions](../03-GetterFunctions.md) to browse available orders in different markets.
-:::
+**Payment Signature**: Separate signature required for paying tokenB + fee via Core.pay().
+
+## Fee Model
+
+### Calculation
+```solidity
+fee = (orderAmountB × percentageFee) / 10,000
+
+// Default: percentageFee = 500 (5%)
+// Example: 100 USDC order → 5 USDC fee
+```
+
+### Distribution (Default: seller 50%, service 40%, staker 10%)
+
+| Recipient | Share | Purpose |
+|-----------|-------|---------|
+| **Seller** | 50% | amountB + (fee × 50%) |
+| **Service Treasury** | 40% | fee × 40% (accumulated) |
+| **MATE Stakers** | 10% | fee × 10% (distributed) |
+
+**Total to Buyer**: Must pay `amountB + fee`  
+**Seller Receives**: `amountB + (fee × 50%)`  
+**Example** (100 USDC order, 5 USDC fee):
+- Buyer pays: 105 USDC
+- Seller gets: 100 USDC (order) + 2.5 USDC (50% of fee) = 102.5 USDC
+- Treasury: 2 USDC (40% of fee)
+- Stakers: 0.5 USDC (10% of fee)
+
+## Execution Flow
+
+### 1. Centralized Verification
+```solidity
+core.validateAndConsumeNonce(
+    user,
+    P2PSwapHashUtils.hashDataForDispatchOrder(
+        metadata.tokenA,
+        metadata.tokenB,
+        metadata.orderId
+    ),
+    metadata.originExecutor,
+    metadata.nonce,
+    true,                          // Always async execution
+    metadata.signature
+);
+```
+
+**Validates**:
+- Signature authenticity via EIP-191
+- Nonce hasn't been consumed
+- Executor is the specified EOA (via `tx.origin`)
+
+**On Failure**:
+- `Core__InvalidSignature()` - Invalid signature
+- `Core__NonceAlreadyUsed()` - Nonce consumed
+- `Core__InvalidExecutor()` - Executing EOA doesn't match originExecutor
+
+### 2. Market & Order Lookup
+```solidity
+uint256 market = findMarket(metadata.tokenA, metadata.tokenB);
+
+Order storage order = _validateMarketAndOrder(market, metadata.orderId);
+```
+
+**Validation**:
+- Market exists
+- Order exists (seller != address(0))
+- Order is active
+
+**On Failure**: Internal revert if invalid
+
+### 3. Fee Calculation & Validation
+```solidity
+uint256 fee = calculateFillPropotionalFee(order.amountB);
+// fee = (order.amountB * percentageFee) / 10_000
+
+uint256 requiredAmount = order.amountB + fee;
+
+if (metadata.amountOfTokenBToFill < requiredAmount) {
+    revert("Insuficient amountOfTokenToFill");
+}
+```
+
+**Required**: Buyer must provide at least `amountB + fee`
+
+### 4. Collect Payment
+```solidity
+requestPay(
+    user,
+    metadata.tokenB,
+    metadata.amountOfTokenBToFill,
+    priorityFeeEvvm,
+    nonceEvvm,
+    true,                          // Always async
+    signatureEvvm
+);
+```
+
+**Action**: Transfers `amountOfTokenBToFill` from buyer to Core.sol
+
+### 5. Overpayment Refund
+```solidity
+bool didRefund = _handleOverpaymentRefund(
+    user,
+    metadata.tokenB,
+    metadata.amountOfTokenBToFill,
+    requiredAmount
+);
+```
+
+**If overpaid**: Refunds `amountOfTokenBToFill - requiredAmount` via makeCaPay()  
+**Benefit**: Allows UI flexibility, user won't lose excess
+
+### 6. Fee Distribution
+```solidity
+_distributePayments(
+    metadata.tokenB,
+    order.amountB,
+    fee,
+    order.seller,
+    msg.sender,
+    priorityFeeEvvm
+);
+```
+
+**Internal Distribution**:
+```solidity
+// Calculate portions
+uint256 sellerFee = (fee × rewardPercentage.seller) / 10000;
+uint256 serviceFee = (fee × rewardPercentage.service) / 10000;
+uint256 stakerFee = (fee × rewardPercentage.mateStaker) / 10000;
+
+// Seller payment
+makeDisperseCaPay([{
+    recipient: seller,
+    token: tokenB,
+    amount: amountB + sellerFee
+}, {
+    recipient: executor,
+    token: MATE,
+    amount: priorityFee + stakerFee
+}]);
+
+// Service treasury (accumulated)
+balancesOfContract[tokenB] += serviceFee;
+```
+
+### 7. Transfer TokenA to Buyer
+```solidity
+makeCaPay(user, metadata.tokenA, order.amountA);
+```
+
+**Action**: Releases original locked tokenA from seller to buyer
+
+### 8. Staker Rewards
+```solidity
+_rewardExecutor(msg.sender, didRefund ? 5 : 4);
+```
+
+**Rewards** (MATE tokens):
+- **4x**: Standard fill
+- **5x**: Fill + handled refund correctly
+
+### 9. Clear Order
+```solidity
+_clearOrderAndUpdateMarket(market, metadata.orderId);
+```
+
+**State Changes**:
+- Order deleted (seller = address(0))
+- Market ordersAvailable decremented
+
+## Complete Usage Example
+
+```solidity
+// Scenario: Buy 1000 USDC for 0.5 ETH (with 5% fee)
+address buyer = 0x123...;
+address usdc = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+address eth = 0x0000000000000000000000000000000000000000;
+address executor = 0x456...;
+uint256 orderId = 7;
+
+// Order details: seller offers 1000 USDC, wants 0.5 ETH
+// Fee: 0.5 ETH × 5% = 0.025 ETH
+// Required: 0.5 + 0.025 = 0.525 ETH
+
+// 1. Get nonce
+uint256 nonce = core.getNonce(buyer, address(p2pSwap));
+
+// 2. Generate hash
+bytes32 hashPayload = P2PSwapHashUtils.hashDataForDispatchOrder(
+    usdc,
+    eth,
+    orderId
+);
+
+// 3. Create signature
+string memory message = string.concat(
+    Strings.toString(block.chainid), ",",
+    Strings.toHexString(address(p2pSwap)), ",",
+    Strings.toHexString(uint256(hashPayload)), ",",
+    Strings.toHexString(executor), ",",
+    Strings.toString(nonce), ",true"
+);
+bytes memory signature = signMessage(message, buyerPrivateKey);
+
+// 4. Create metadata
+MetadataDispatchOrder memory metadata = MetadataDispatchOrder({
+    tokenA: usdc,
+    tokenB: eth,
+    orderId: orderId,
+    amountOfTokenBToFill: 0.525 ether,  // 0.5 + 0.025 fee
+    originExecutor: executor,
+    nonce: nonce,
+    signature: signature
+});
+
+// 5. Generate payment signature
+uint256 nonceEvvm = core.getNonce(buyer, address(core));
+bytes memory signatureEvvm = generatePaymentSignature(
+    buyer,
+    eth,
+    0.525 ether,
+    0.5 ether,         // 0.5 MATE priority fee
+    nonceEvvm,
+    true
+);
+
+// 6. Execute dispatch
+p2pSwap.dispatchOrder_fillPropotionalFee(
+    buyer,
+    metadata,
+    0.5 ether,         // Priority fee
+    nonceEvvm,
+    signatureEvvm
+);
+
+// Result:
+// - Buyer pays: 0.525 ETH
+// - Buyer receives: 1000 USDC
+// - Seller receives: 0.5 ETH (order) + 0.0125 ETH (50% fee) = 0.5125 ETH
+// - Treasury accumulates: 0.01 ETH (40% fee)
+// - Stakers share: 0.0025 ETH (10% fee)
+// - Executor receives: 0.5 MATE (priority) + 4-5x MATE (reward)
+```
+
+## Gas Costs
+
+| Scenario | Gas Cost | Notes |
+|----------|----------|-------|
+| **Standard Fill** | ~280,000 gas | No overpayment |
+| **With Refund** | ~320,000 gas | Overpayment handled |
+| **With Priority** | ~300,000 gas | Includes MATE distribution |
+
+## Economic Model
+
+### Buyer Costs
+- **Order Amount**: amountB (what seller requested)
+- **Protocol Fee**: amountB × 5% (default)
+- **Total**: amountB × 1.05
+
+### Seller Revenue
+- **Base**: amountB (100% of requested amount)
+- **Fee Bonus**: fee × 50% (liquidity provider reward)
+- **Total**: amountB × 1.025
+
+### Staker Revenue
+| Component | Amount | Condition |
+|-----------|--------|-----------|
+| **Priority Fee** | User-defined MATE | If > 0 |
+| **Fee Share** | fee × 10% | Distributed to executor |
+| **Base Reward** | 4-5x MATE | Standard execution |
+
+**Example Profitability** (100 USDC order, 5% fee):
+- Executor receives: ~0.5 USDC (10% of 5 USDC) + priority + 4x MATE
+- **Very profitable for large orders**
+
+## Error Handling
+
+### Core.sol Errors
+- `Core__InvalidSignature()` - Signature failed
+- `Core__NonceAlreadyUsed()` - Nonce consumed
+- `Core__InvalidExecutor()` - Wrong executor
+- `Core__InsufficientBalance()` - Buyer lacks tokenB
+
+### P2PSwap Errors
+- `"Insuficient amountOfTokenToFill"` - Payment < required amount
+- Internal validation failures for market/order
+
+## Related Functions
+
+- [makeOrder](./01-makeOrder.md) - Create orders to be filled
+- [cancelOrder](./02-cancelOrder.md) - Cancel before filling
+- [dispatchOrder (Fixed)](./04-dispatchOrder-fixed.md) - Alternative with capped fees
+- [Getter Functions](../03-GetterFunctions.md) - Query available orders
+
+---
+
+**License**: EVVM-NONCOMMERCIAL-1.0  
+**Gas Estimate**: 280k-320k gas  
+**Staker Reward**: 4-5x MATE + fee share + priority  
+**Fee**: 5% proportional (default)

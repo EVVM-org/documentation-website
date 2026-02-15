@@ -1,88 +1,252 @@
 ---
 title: "preRegistrationUsername"
-description: "Detailed documentation of the NameService Contract's preRegistrationUsername function for preventing front-running via commitment-reveal scheme."
+description: "Username pre-registration using centralized verification via Core.sol"
 sidebar_position: 1
 ---
 
 # preRegistrationUsername
 
-**Function Type**: `public`  
-**Function Signature**: `preRegistrationUsername(address,bytes32,uint256,bytes,uint256,uint256,bool,bytes)`
+:::info[Centralized Verification]
+This function uses Core.sol's `validateAndConsumeNonce()` for signature verification. All NameService operations use **async execution** (`isAsyncExec = true`).
+:::
 
-Pre-registers a username hash to prevent front-running attacks during the registration process. This function creates a temporary reservation that can be registered after a 30-minute waiting period. The function uses a commitment-reveal scheme where users first commit to a hash of their desired username plus a secret number.
+**Function Type**: `external`  
+**Function Signature**: `preRegistrationUsername(address,bytes32,address,uint256,bytes,uint256,uint256,bytes)`
+
+Pre-registers a username hash to prevent front-running attacks during the registration process. This function creates a 30-minute reservation window using a commit-reveal scheme where users commit to a hash of their desired username plus a secret lock number.
 
 ## Parameters
 
 | Parameter                   | Type      | Description                                                                                                                     |
 | --------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | `user`                      | `address` | The address of the end-user initiating the pre-registration.                                                                    |
-| `hashPreRegisteredUsername` | `bytes32` | The pre-commitment hash calculated as `keccak256(abi.encodePacked(username, clowNumber))`.                                      |
-| `nonce`                     | `uint256` | The user's nonce specific to this NameService contract for replay protection of this pre-registration action.                           |
-| `signature`                 | `bytes`   | The EIP-191 signature from `user` authorizing this pre-registration action.                                                     |
-| `priorityFee_EVVM`          | `uint256` | Optional fee (in principal tokens) paid by `user` to the `msg.sender` (staker executing the transaction) via the EVVM contract. |
-| `nonce_EVVM`                | `uint256` | **Required if `priorityFee_EVVM > 0`**. `user`'s nonce for the EVVM payment function call used only to pay the priority fee.    |
-| `priorityFlag_EVVM`         | `bool`    | **Required if `priorityFee_EVVM > 0`**. Priority flag (sync/async) for the EVVM payment call paying the priority fee.           |
-| `signature_EVVM`            | `bytes`   | **Required if `priorityFee_EVVM > 0`**. `user`'s signature authorizing the EVVM payment call paying the priority fee.           |
+| `hashPreRegisteredUsername` | `bytes32` | The commitment hash calculated as `keccak256(abi.encodePacked(username, lockNumber))`.                                      |
+| `originExecutor`            | `address` | Optional tx.origin restriction (use `address(0)` for unrestricted execution).                                                   |
+| `nonce`                     | `uint256` | User's centralized nonce from Core.sol for this operation.                           |
+| `signature`                 | `bytes`   | EIP-191 signature authorizing this operation (verified by Core.sol).                                                     |
+| `priorityFeeEvvm`          | `uint256` | Optional fee (in Principal Tokens) paid to `msg.sender` (executor) if they are a staker. |
+| `nonceEvvm`                | `uint256` | **Required if `priorityFeeEvvm > 0`**. User's Core nonce for the payment operation.   |
+| `signatureEvvm`            | `bytes`   | **Required if `priorityFeeEvvm > 0`**. User's signature authorizing the Core payment.           |
 
-:::note
+:::note[Signature Requirements]
 
-- The EVVM payment signature (`signature_EVVM`) is only needed if paying a priority fee and follows the [Single Payment Signature Structure](../../../05-SignatureStructures/01-EVVM/01-SinglePaymentSignatureStructure.md).
-- The NameService pre-registration signature (`signature`) follows the [Pre-Registration Signature Structure](../../../05-SignatureStructures/02-NameService/01-preRegistrationUsernameStructure.md).
-- The EVVM parameters (`nonce_EVVM`, `priorityFlag_EVVM`, `signature_EVVM`) are only required and processed if `priorityFee_EVVM` is greater than zero.
+**NameService Signature** (`signature`):
+- Format: `{evvmId},{serviceAddress},{hashPayload},{executor},{nonce},{isAsyncExec}`
+- Uses `NameServiceHashUtils.hashDataForPreRegistrationUsername(hashPreRegisteredUsername)`'
+- Reference: [Pre-Registration Signature Structure](../../../05-SignatureStructures/02-NameService/01-preRegistrationUsernameStructure.md)
+
+**Payment Signature** (`signatureEvvm`) - if `priorityFeeEvvm > 0`:
+- Follows Core payment format
+- Uses `CoreHashUtils.hashDataForPay()`
+- Reference: [Payment Signature Structure](../../../05-SignatureStructures/01-EVVM/01-SinglePaymentSignatureStructure.md)
 
 :::
 
-## Hash Username Structure
+##Hash Username Structure
 
-The `hashPreRegisteredUsername` is calculated off-chain by the user using SHA3-256 (keccak256):
+The `hashPreRegisteredUsername` is calculated off-chain:
 
 ```solidity
-keccak256(abi.encodePacked(username, clowNumber));
+bytes32 hashPreRegisteredUsername = keccak256(abi.encodePacked(username, lockNumber));
 ```
 
-Where:
+**Components:**
+- `username` (string): The desired username (kept secret during commit phase)
+- `lockNumber` (uint256): Secret number (required later during `registrationUsername`)
 
-- `username` (string): The desired username.
-- `clowNumber` (uint256): A secret number chosen by the user, required later during the `registrationUsername` step to validate the commitment.
+**Security:** The hash conceals the actual username from front-runners. Only the user knows the `lockNumber` needed to complete registration.
+
+## Execution Flow
+
+### 1. Signature Verification (Core.sol)
+
+```solidity
+core.validateAndConsumeNonce(
+    user,                                                      // Signer
+    Hash.hashDataForPreRegistrationUsername(hashPreRegisteredUsername), // Hash payload
+    originExecutor,                                            // tx.origin check
+    nonce,                                                     // Core nonce
+    true,                                                      // Async
+    signature                                                  // EIP-191 signature
+);
+```
+
+**What Core.sol validates:**
+- ✅ Signature matches `user` address
+- ✅ Nonce is valid and available
+- ✅ `tx.origin` matches `originExecutor` (if specified)
+- ✅ Marks nonce as consumed
+- ✅ Optionally delegates to UserValidator
+
+### 2. Priority Fee Processing (if > 0)
+
+```solidity
+if (priorityFeeEvvm > 0) {
+    requestPay(user, 0, priorityFeeEvvm, nonceEvvm, signatureEvvm);
+}
+```
+
+Internally calls:
+```solidity
+core.pay(
+    user,                                  // Payer
+    address(this),                         // NameService
+    "",                                    // No identity
+    principalToken,                        // PT
+    priorityFeeEvvm,                       // Amount
+    priorityFeeEvvm,                       // Priority fee
+    address(this),                         // Executor
+    nonceEvvm,                             // Payment nonce
+    true,                                  // Async
+    signatureEvvm                          // Payment sig
+);
+```
+
+### 3. Commitment Storage
+
+Stores the commitment for 30 minutes:
+
+```solidity
+string memory key = string.concat("@", AdvancedStrings.bytes32ToString(hashPreRegisteredUsername));
+
+identityDetails[key] = IdentityBaseMetadata({
+    owner: user,
+    expirationDate: block.timestamp + 30 minutes,
+    customMetadataMaxSlots: 0,
+    offerMaxSlots: 0,
+    flagNotAUsername: 0x01                    // Marked as pre-registration
+});
+```
+
+**Key Format:** `@<hash_string>` (e.g., `@0xa7f3c2d8e9b4f1a6...`)
+
+### 4. Staker Rewards (if executor is staker)
+
+```solidity
+if (core.isAddressStaker(msg.sender)) {
+    makeCaPay(msg.sender, core.getRewardAmount() + priorityFeeEvvm);
+}
+```
+
+**Reward Breakdown:**
+- Base reward: 1x `core.getRewardAmount()`
+- Priority fee: Full `priorityFeeEvvm` amount
+- Distributed via `core.caPay()`
 
 ## Execution Methods
 
-This function can be executed by any address, with staker rewards only distributed to stakers.
+Can be executed by any address. Rewards only distributed if `msg.sender` is a staker.
 
-### Fisher Execution
+### Fisher Execution (Off-Chain Executors)
 
-When the executor is the fisher:
-
-1. The user sends the payment request to the fishing spot
-2. The fisher captures the transaction and validates all parameters
-3. The fisher submits the transaction to the contract for processing
+1. User signs operation and payment (if priority fee)
+2. Fisher captures and validates transaction
+3. Fisher submits to NameService contract
+4. If fisher is staker, receives rewards
 
 ### Direct Execution
 
-When the executor is the user or a service:
+1. User or service submits directly to contract
+2. If executor is staker, receives rewards
+3. No intermediary needed
 
-1. The user/service submits their transaction directly to the contract
+## Complete Example
 
-## Workflow
+**Scenario:** User wants to reserve username "alice" for 30 minutes
 
-1. **NameService Nonce Verification**: Calls internal `verifyAsyncNonce(user, nonce)` which reverts with `AsyncNonceAlreadyUsed()` if the nonce was already used.
+### Step 1: Generate Commitment
 
-2. **Pre-registration Signature Verification**: Verifies the `signature` provided by `user` using `verifyMessageSignedForPreRegistrationUsername`. Reverts with `InvalidSignatureOnNameService` if invalid.
+```solidity
+string memory username = "alice";
+uint256 lockNumber = 987654321;  // Keep secret!
 
-3. **Priority Fee Processing**: If `priorityFee_EVVM > 0`, calls the `makePay` function to process the priority fee payment through EVVM using the provided EVVM parameters.
+bytes32 hashPreRegisteredUsername = keccak256(
+    abi.encodePacked(username, lockNumber)
+);
+// Result: 0xa7f3c2d8e9b4f1a6c5d8e7f9b2a3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1
+```
 
-4. **Hash Storage**: Records the pre-registration by storing the `hashPreRegisteredUsername` with:
+### Step 2: Generate Operation Signature
 
-   - Key: `"@" + hashPreRegisteredUsername` (converted to string)
-   - Owner: `user`
-   - Expiration: `block.timestamp + 30 minutes`
-   - Flags: Marked as not a username (`flagNotAUsername = 0x01`)
+```solidity
+// Generate hash payload
+bytes32 hashPayload = NameServiceHashUtils.hashDataForPreRegistrationUsername(
+    hashPreRegisteredUsername
+);
 
-5. **Nonce Management**: Calls internal `markAsyncNonceAsUsed(user, nonce)` to mark the provided `nonce` as used and prevent replays.
+// Construct signature message (via Core)
+// Format: {evvmId},{nameServiceAddress},{hashPayload},{originExecutor},{nonce},{isAsyncExec}
+```
 
-6. **Staker Rewards**: If the executor (`msg.sender`) is a staker (`isAddressStaker(msg.sender)`), distributes rewards via `makeCaPay`:
-   - Base MATE reward (`getRewardAmount()`)
-   - Plus the `priorityFee_EVVM` amount
+### Step 3: Call Function
 
-![preRegistrationUsername Happy Path](./img/preRegistrationUsername_HappyPath.svg)
-![preRegistrationUsername Failed Path](./img/preRegistrationUsername_FailedPath.svg)
+```solidity
+nameService.preRegistrationUsername(
+    user,                                   // 0x742d...
+    hashPreRegisteredUsername,              // 0xa7f3...
+    address(0),                             // Unrestricted
+    nonce,                                  // 42
+    signature,                              // Operation sig
+    1000000000000000000,                    // 1 PT priority fee
+    nonceEvvm,                              // 43
+    signatureEvvm                           // Payment sig
+);
+```
+
+### Step 4: Wait 30 Minutes
+
+Commitment is now stored and valid for 30 minutes. Must complete registration within this window.
+
+## Important Notes
+
+### Time Window
+- **Valid for**: 30 minutes from commitment
+- **Must register**: Before `expirationDate` passes
+- **If expired**: Must submit new pre-registration
+
+### Lock Number Security
+- **Randomness**: Use cryptographically secure random number
+- **Secrecy**: Never share before registration
+- **Storage**: Store safely client-side
+- **Size**: uint256 (0 to 2^256-1)
+
+### Front-Running Protection
+```solidity
+// Commit phase: Only hash is public
+hashUsername = keccak256(abi.encodePacked("alice", 987654321))
+// Front-runners see: 0xa7f3c2d8e9b4f1a6c5d8e7f9b2a3c4d5...
+// Front-runners cannot determine: "alice"
+
+// Reveal phase (after 30 min): Username is revealed
+regist rationUsername(..., "alice", 987654321, ...)
+// Contract validates: keccak256("alice", 987654321) == stored hash
+```
+
+## Gas Costs
+
+**Estimated Gas Usage:**
+- Base operation: ~50,000 gas
+- Core verification: ~5,000 gas
+- Storage (commitment): ~20,000 gas
+- Payment (if priority fee): ~30,000 gas
+- **Total**: ~75,000 - 105,000 gas
+
+## Error Handling
+
+Common revert reasons:
+
+```solidity
+// From Core.sol validation
+"Invalid signature"                 // Signature verification failed
+"Nonce already used"                // Nonce was consumed
+"Invalid executor"                  // tx.origin doesn't match originExecutor
+
+// From payment processing (if priorityFeeEvvm > 0)
+"Insufficient balance"              // User lacks PT for fee
+"Payment signature invalid"         // Payment signature failed
+```
+
+## Related Functions
+
+- **[registrationUsername](./02-registrationUsername.md)** - Complete registration (reveal phase)
+- **[Core.validateAndConsumeNonce](../../01-EVVM/03-SignatureAndNonceManagement.md)** - Signature verification

@@ -39,39 +39,35 @@ modifier onlyFisherExecutor() {
 
 ### 1. Signature Verification
 ```solidity
-if (!SignatureUtils.verifyMessageSignedForFisherBridge(
-    EVVM_ID,
+core.validateAndConsumeNonce(
     from,
-    addressToReceive,
-    nextFisherExecutionNonce[from],
-    tokenAddress,
-    priorityFee,
-    amount,
+    Hash.hashDataForFisherBridge(
+        addressToReceive,
+        tokenAddress,
+        priorityFee,
+        amount
+    ),
+    fisherExecutor.current,
+    nonce,
+    true,
     signature
-)) revert ErrorsLib.InvalidSignature();
+);
 ```
 
-Validates EIP-191 signature using structured message format with EVVM ID integration. Message format: `"{EVVM_ID},fisherBridge,{addressToReceive},{nonce},{tokenAddress},{priorityFee},{amount}"`.
+Validates EIP-191 signature using Core contract's nonce system. The hash is generated using `TreasuryCrossChainHashUtils.hashDataForFisherBridge()` with the transaction parameters. The `async: true` parameter indicates this uses a separate nonce system from regular EVVM operations.
 
-### 2. Nonce Management
-```solidity
-nextFisherExecutionNonce[from]++;
-```
-Increments user's Fisher bridge nonce to prevent replay attacks across cross-chain operations.
-
-### 3. EVVM Balance Updates
+### 2. EVVM Balance Updates
 
 #### Recipient Credit
 ```solidity
-Evvm(evvmAddress).addAmountToUser(addressToReceive, tokenAddress, amount);
+core.addAmountToUser(addressToReceive, tokenAddress, amount);
 ```
 Adds the transfer amount to recipient's EVVM balance via core contract integration.
 
 #### Fisher Executor Fee
 ```solidity
-if (priorityFee > 0) {
-    Evvm(evvmAddress).addAmountToUser(msg.sender, tokenAddress, priorityFee);
-}
+if (priorityFee > 0)
+    core.addAmountToUser(msg.sender, tokenAddress, priorityFee);
 ```
 Credits priority fee to Fisher executor's EVVM balance as processing incentive.
 
@@ -88,7 +84,7 @@ For more information about the signature structure, refer to the [Fisher Bridge 
 The function directly integrates with the EVVM core contract for balance management:
 
 ```solidity
-Evvm(evvmAddress).addAmountToUser(addressToReceive, tokenAddress, amount);
+core.addAmountToUser(addressToReceive, tokenAddress, amount);
 ```
 
 This provides:
@@ -96,6 +92,7 @@ This provides:
 - **Token Type Support**: Handles both ERC20 tokens and native ETH (address(0))
 - **Atomic Operations**: Ensures consistent state between Treasury and EVVM core
 - **Fee Distribution**: Separates user funds from Fisher executor incentives
+- **Nonce Management**: Core contract validates and consumes nonces to prevent replay attacks
 
 ## Security Features
 

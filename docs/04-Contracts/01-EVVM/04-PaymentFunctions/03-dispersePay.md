@@ -7,7 +7,7 @@ sidebar_position: 3
 # dispersePay Function
 
 **Function Type**: `external`  
-**Function Signature**: `dispersePay(address,(uint256,address,string)[],address,uint256,uint256,uint256,bool,address,bytes)`
+**Function Signature**: `dispersePay(address,(uint256,address,string)[],address,uint256,uint256,address,uint256,bool,bytes)`
 
 Distributes tokens from a single sender to multiple recipients with efficient single-source multi-recipient payment distribution. This function uses a single signature to authorize distribution to multiple recipients, supports both direct addresses and identity-based recipients, and includes integrated priority fee and staker reward systems.
 
@@ -15,17 +15,17 @@ The signature structure for these payments is detailed in the [Disperse Payment 
 
 ## Parameters
 
-| Parameter      | Type                    | Description                                                                                                                       |
-| -------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `from`         | `address`               | The address of the payment sender whose funds will be distributed.                                                                |
-| `toData`       | `DispersePayMetadata[]` | An array detailing each recipient's address/identity and the amount they should receive. See struct below.                        |
-| `token`        | `address`               | The token address to be distributed.                                                                                              |
-| `amount`       | `uint256`               | The total amount of tokens to distribute across all recipients. Must equal the sum of individual amounts in `toData`.             |
-| `priorityFee`  | `uint256`               | Fee amount for the transaction executor (distributed to stakers as reward).                                                       |
-| `nonce`        | `uint256`               | Transaction nonce for replay protection. Usage depends on the `priorityFlag`.                                                     |
-| `priorityFlag` | `bool`                  | Determines nonce type: `true` for asynchronous (custom nonce), `false` for synchronous (sequential nonce).                        |
-| `executor`     | `address`               | Address authorized to execute this transaction. Use `address(0)` to allow any address to execute.                                 |
-| `signature`    | `bytes`                 | Cryptographic signature ([EIP-191](https://eips.ethereum.org/EIPS/eip-191)) from the `from` address authorizing the distribution. |
+| Parameter        | Type                    | Description                                                                                                                       |
+| ---------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `from`           | `address`               | The address of the payment sender whose funds will be distributed.                                                                |
+| `toData`         | `DispersePayMetadata[]` | An array detailing each recipient's address/identity and the amount they should receive. See struct below.                        |
+| `token`          | `address`               | The token address to be distributed.                                                                                              |
+| `amount`         | `uint256`               | The total amount of tokens to distribute across all recipients. Must equal the sum of individual amounts in `toData`.             |
+| `priorityFee`    | `uint256`               | Fee amount for the transaction executor (distributed to stakers as reward).                                                       |
+| `senderExecutor` | `address`               | Address authorized to execute this transaction. Use `address(0)` to allow any address to execute.                                 |
+| `nonce`          | `uint256`               | Transaction nonce for replay protection managed by Core.sol. Usage depends on `isAsyncExec`.                                                     |
+| `isAsyncExec`    | `bool`                  | Determines nonce type: `true` for asynchronous (parallel), `false` for synchronous (sequential).                        |
+| `signature`      | `bytes`                 | Cryptographic signature ([EIP-191](https://eips.ethereum.org/EIPS/eip-191)) from the `from` address authorizing the distribution. |
 
 :::info
 
@@ -70,32 +70,37 @@ This function can be executed by any address, with different behavior depending 
 - Staker executors receive priority fees and principal token rewards for processing.
 
 :::tip
-When using a service as the executor, we recommend specifying the service's address in the `executor` parameter for additional security.
+When using a service as the executor, we recommend specifying the service's address in the `senderExecutor` parameter for additional security.
 :::
 
 ## Workflow {#disperse-pay-workflow}
 
-1. **Signature Verification**: Validates the `signature` against the reconstructed message hash using `verifyMessageSignedForDispersePay`. The message includes a hash of the `toData` array for integrity. Uses the appropriate nonce based on `priorityFlag`. Reverts with `InvalidSignature` if validation fails.
+1. **Signature Verification**: Validates the `signature` using Core.sol's centralized signature verification:
+   - Constructs signature payload: `buildSignaturePayload(evvmId, address(this), hashPayload, senderExecutor, nonce, isAsyncExec)`
+   - `hashPayload` is generated via `CoreHashUtils.hashDataForDispersePay(toData, token, amount, priorityFee)`
+   - Recovers signer and compares with `from` address. Reverts with `InvalidSignature` on failure.
 
-2. **Executor Validation**: If `executor` is not `address(0)`, checks that `msg.sender` matches the `executor` address. Reverts with `SenderIsNotTheExecutor` if they don't match.
+2. **User Validation**: Checks if the user is allowed to execute transactions using `canExecuteUserTransaction(from)`. Reverts with `UserCannotExecuteTransaction` if not allowed.
 
-3. **Nonce Verification**: Depending on the `priorityFlag`:
-   - **Async (priorityFlag = true)**: Checks if the custom nonce hasn't been used by consulting the `asyncUsedNonce` mapping. Reverts with `AsyncNonceAlreadyUsed` if already used.
-   - **Sync (priorityFlag = false)**: Checks if the nonce matches the expected sequential nonce in `nextSyncUsedNonce`. Reverts with `SyncNonceMismatch` if they don't match.
+3. **Nonce Management**: Core.sol handles nonce verification and updates based on `isAsyncExec`:
+   - **Async (isAsyncExec = true)**: Checks if the nonce hasn't been used via `asyncNonceStatus(from, nonce)`, then marks it as used. Reverts with `AsyncNonceAlreadyUsed` if already used, or `AsyncNonceIsReservedByAnotherService` if reserved by another service.
+   - **Sync (isAsyncExec = false)**: Verifies the nonce matches `nextSyncNonce[from]`, then increments it. Reverts with `SyncNonceMismatch` on mismatch.
 
-4. **Staker Check**: Determines if the executor (`msg.sender`) is a registered staker using `isAddressStaker`.
+4. **Executor Validation**: If `senderExecutor` is not `address(0)`, checks that `msg.sender` matches the `senderExecutor` address. Reverts with `SenderIsNotTheSenderExecutor` if they don't match.
 
-5. **Balance Verification**: Checks that the `from` address has sufficient balance. The required balance depends on staker status:
+5. **Staker Check**: Determines if the executor (`msg.sender`) is a registered staker using `isAddressStaker`.
+
+6. **Balance Verification**: Checks that the `from` address has sufficient balance. The required balance depends on staker status:
    - If executor is a staker: `amount + priorityFee`
    - If executor is not a staker: `amount` only (priorityFee is not collected)
    
    Reverts with `InsufficientBalance` if insufficient.
 
-6. **Balance Deduction**: Subtracts the required amount from the sender's balance upfront:
+7. **Balance Deduction**: Subtracts the required amount from the sender's balance upfront:
    - If executor is a staker: deducts `amount + priorityFee`
    - If executor is not a staker: deducts `amount` only
 
-7. **Distribution Loop**: Iterates through each recipient in the `toData` array:
+8. **Distribution Loop**: Iterates through each recipient in the `toData` array:
 
    - **Amount Tracking**: Maintains a running total (`accumulatedAmount`) of distributed amounts
    - **Recipient Resolution**:
@@ -112,6 +117,3 @@ When using a service as the executor, we recommend specifying the service's addr
 10. **Nonce Update**: Marks the nonce as used to prevent replay attacks:
     - **Async (priorityFlag = true)**: Marks the custom nonce as used in `asyncUsedNonce`
     - **Sync (priorityFlag = false)**: Increments the sequential nonce in `nextSyncUsedNonce`
-
-![DispersePay Happy Path](./img/dispersePay_HappyPath.svg)
-![DispersePay Failed Path](./img/dispersePay_FailedPath.svg)

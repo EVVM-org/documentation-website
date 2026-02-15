@@ -79,7 +79,7 @@ Gets the authorized staking contract address that can modify staker status and r
 
 ## Nonce Management Functions
 
-### getNextCurrentSyncNonce
+### getNextCurrentSyncNonce {#getnextcurrentsyncnonce}
 
 **Function Type**: `view`  
 **Function Signature**: `getNextCurrentSyncNonce(address)`
@@ -100,7 +100,7 @@ Returns the expected nonce for the next synchronous payment transaction for a sp
 
 ---
 
-### getIfUsedAsyncNonce
+### getIfUsedAsyncNonce {#getifusedasyncnonce}
 
 **Function Type**: `view`  
 **Function Signature**: `getIfUsedAsyncNonce(address,uint256)`
@@ -119,6 +119,87 @@ Checks if a specific asynchronous nonce has been used by a user to prevent repla
 | Type   | Description                                          |
 | ------ | ---------------------------------------------------- |
 | `bool` | True if the nonce has been used, false if available |
+
+---
+
+### getAsyncNonceReservation {#getasyncnoncereservation}
+
+**Function Type**: `view`  
+**Function Signature**: `getAsyncNonceReservation(address,uint256)`
+
+Gets the service address that has reserved a specific async nonce for a user. Returns `address(0)` if the nonce is not reserved.
+
+#### Input Parameters
+
+| Parameter | Type      | Description                          |
+| --------- | --------- | ------------------------------------ |
+| `user`    | `address` | Address of the user who owns the nonce |
+| `nonce`   | `uint256` | Async nonce to check reservation for  |
+
+#### Return Value
+
+| Type      | Description                                                           |
+| --------- | --------------------------------------------------------------------- |
+| `address` | Service address that reserved the nonce, or `address(0)` if not reserved |
+
+#### Example
+
+```solidity
+// Check if nonce 100 is reserved for a user
+address reservedService = core.getAsyncNonceReservation(userAddress, 100);
+
+if (reservedService == address(0)) {
+    // Nonce is not reserved, any service can use it
+} else if (reservedService == nameServiceAddress) {
+    // Nonce is reserved for NameService
+} else {
+    // Nonce is reserved for another service
+}
+```
+
+---
+
+### asyncNonceStatus {#asyncnoncestatus}
+
+**Function Type**: `view`  
+**Function Signature**: `asyncNonceStatus(address,uint256)`
+
+Gets comprehensive status of an async nonce, indicating whether it's available, used, or reserved.
+
+#### Input Parameters
+
+| Parameter | Type      | Description                          |
+| --------- | --------- | ------------------------------------ |
+| `user`    | `address` | Address of the user who owns the nonce |
+| `nonce`   | `uint256` | Async nonce to check status for      |
+
+#### Return Value
+
+| Type     | Description                                                     |
+| -------- | --------------------------------------------------------------- |
+| `bytes1` | Status code: `0x00` (available), `0x01` (used), `0x02` (reserved) |
+
+#### Status Codes
+
+- **`0x00` (Available)**: Nonce can be used by any service
+- **`0x01` (Used)**: Nonce has been consumed and cannot be reused
+- **`0x02` (Reserved)**: Nonce is reserved for a specific service
+
+#### Example
+
+```solidity
+// Check status of nonce 200
+bytes1 status = core.asyncNonceStatus(userAddress, 200);
+
+if (status == 0x00) {
+    // Nonce is available
+} else if (status == 0x01) {
+    // Nonce has been used
+} else if (status == 0x02) {
+    // Nonce is reserved for a specific service
+    address reservedFor = core.getAsyncNonceReservation(userAddress, 200);
+}
+```
 
 ---
 
@@ -360,6 +441,64 @@ Gets the acceptance deadline for the pending admin change.
 | Type      | Description                                                    |
 | --------- | -------------------------------------------------------------- |
 | `uint256` | Timestamp when admin change can be executed (0 if no pending proposal) |
+
+---
+
+## UserValidator Functions
+
+### getUserValidatorAddress {#getuservalidatoraddress}
+
+**Function Type**: `view`  
+**Function Signature**: `getUserValidatorAddress()`
+
+Gets the current active UserValidator contract address. Returns `address(0)` if no validator is configured.
+
+#### Return Value
+
+| Type      | Description                                  |
+| --------- | -------------------------------------------- |
+| `address` | Address of active UserValidator contract or `address(0)` |
+
+:::info[What is UserValidator?]
+UserValidator is an optional contract that can filter which users are allowed to execute transactions in the EVVM ecosystem. See [UserValidator System](./03-SignatureAndNonceManagement.md#uservalidator-system) for details.
+:::
+
+---
+
+### getUserValidatorAddressDetails {#getuservalidatoraddressdetails}
+
+**Function Type**: `view`  
+**Function Signature**: `getUserValidatorAddressDetails()`
+
+Gets full details of the UserValidator proposal including current validator, proposed validator, and time-lock information.
+
+#### Return Value
+
+Returns an `AddressTypeProposal` struct containing:
+
+| Field           | Type      | Description                                        |
+| --------------- | --------- | -------------------------------------------------- |
+| `current`       | `address` | Current active UserValidator address               |
+| `proposal`      | `address` | Proposed validator address (zero if no proposal)   |
+| `timeToAccept`  | `uint256` | Timestamp when proposal can be accepted            |
+
+#### Example
+
+```solidity
+// Get full validator details
+ProposalStructs.AddressTypeProposal memory validatorDetails = 
+    core.getUserValidatorAddressDetails();
+
+if (validatorDetails.proposal != address(0)) {
+    // There's a pending proposal
+    if (block.timestamp >= validatorDetails.timeToAccept) {
+        // Proposal is ready to accept
+    } else {
+        // Still waiting for time-lock
+        uint256 timeRemaining = validatorDetails.timeToAccept - block.timestamp;
+    }
+}
+```
 
 ---
 

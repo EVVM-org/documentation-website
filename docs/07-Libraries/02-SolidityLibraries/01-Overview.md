@@ -16,25 +16,62 @@ All libraries are imported from `@evvm/testnet-contracts/library/` followed by t
 
 ### Core Service Contract
 
-- **EvvmService**: Base contract providing complete EVVM service functionality with built-in helpers for payments, signatures, nonces, and staking
+- **EvvmService**: Base contract providing complete EVVM service functionality with built-in helpers for payments, signatures, and staking
 
 ### Primitive Libraries
 
 - **Math**: Standard mathematical operations with overflow protection (OpenZeppelin-based)
 - **SignatureRecover**: EIP-191 signature recovery and verification primitives
+- **IERC20**: Standard ERC20 token interface
 
 ### Utility Libraries
 
+#### String & Type Conversion
 - **AdvancedStrings**: Type conversion utilities (uint/address/bytes to string)
+
+#### Signature Verification
 - **SignatureUtil**: High-level signature verification for EVVM messages
-- **GovernanceUtils**: Time-delayed governance helpers (`AdminControlled`)
+
+#### Hash Generation
+- **CoreHashUtils**: Hash generation for Core.sol payment operations
+- **NameServiceHashUtils**: Hash generation for NameService operations
+- **StakingHashUtils**: Hash generation for Staking operations
+- **P2PSwapHashUtils**: Hash generation for P2PSwap operations
+- **TreasuryCrossChainHashUtils**: Hash generation for cross-chain Treasury operations
+
+#### Contract Utilities
+- **CAUtils**: Contract address verification utilities (distinguishes CAs from EOAs)
+
+#### Governance
+- **Admin**: Time-delayed admin governance with propose/accept pattern
+- **ProposalStructs**: Data structures for governance proposals
+
+:::info[HashUtils Libraries]
+The HashUtils libraries generate deterministic `hashPayload` values for the centralized signature verification architecture. Each service has its own HashUtils library.
+:::
 
 ### Service Utilities
 
-- **AsyncNonce**: Async nonce tracking and validation
-- **SyncNonce**: Sequential nonce management
-- **EvvmPayments**: Payment processing helpers
+- **CoreExecution**: Abstract contract providing Core.sol payment processing interface
 - **StakingServiceUtils**: Service staking integration utilities
+
+### Error Libraries
+
+- **CoreError**: Error definitions for Core.sol operations
+- **CrossChainTreasuryError**: Errors for cross-chain treasury operations
+- **NameServiceError**: Errors for NameService operations
+- **StakingError**: Errors for Staking operations
+- **TreasuryError**: Errors for Treasury operations
+
+### Struct Libraries
+
+Data structure definitions for EVVM services:
+- **CoreStructs**: Core.sol data structures
+- **ExternalChainStationStructs**: External chain treasury structures
+- **HostChainStationStructs**: Host chain treasury structures
+- **NameServiceStructs**: NameService data structures
+- **P2PSwapStructs**: P2PSwap data structures
+- **StakingStructs**: Staking data structures
 
 ## Quick Start
 
@@ -47,31 +84,19 @@ import {EvvmService} from "@evvm/testnet-contracts/library/EvvmService.sol";
 
 contract MyService is EvvmService {
     constructor(
-        address evvmAddress,
+        address coreAddress,
         address stakingAddress
-    ) EvvmService(evvmAddress, stakingAddress) {}
+    ) EvvmService(coreAddress, stakingAddress) {}
 
     function myFunction(
         address user,
         string memory data,
-        uint256 nonce,
-        bytes memory signature,
-        uint256 priorityFee,
-        uint256 evvmNonce,
-        bool useAsync,
-        bytes memory paymentSig
+        bytes memory signature
     ) external {
         // Validate signature
         validateServiceSignature("myFunction", data, signature, user);
 
-        // Check nonce
-        verifyAsyncNonce(user, nonce);
-
-        // Process payment
-        requestPay(user, getEtherAddress(), 1 ether, priorityFee, evvmNonce, useAsync, paymentSig);
-
-        // Mark nonce as used
-        markAsyncNonceAsUsed(user, nonce);
+        // Your service logic here
     }
 }
 ```
@@ -83,9 +108,12 @@ For more granular control, use individual libraries:
 ```solidity
 import {SignatureUtil} from "@evvm/testnet-contracts/library/utils/SignatureUtil.sol";
 import {AdvancedStrings} from "@evvm/testnet-contracts/library/utils/AdvancedStrings.sol";
-import {AsyncNonce} from "@evvm/testnet-contracts/library/utils/nonces/AsyncNonce.sol";
+import {CoreExecution} from "@evvm/testnet-contracts/library/utils/service/CoreExecution.sol";
 
-contract MyCustomService is AsyncNonce {
+contract MyCustomService is CoreExecution {
+    
+    constructor(address coreAddress) CoreExecution(coreAddress) {}
+    
     function verifyUser(address user, bytes memory sig) internal view {
         bool valid = SignatureUtil.verifySignature(
             evvmId,
@@ -106,10 +134,9 @@ contract MyCustomService is AsyncNonce {
 Complete all-in-one solution for building EVVM services with:
 
 - Signature validation
-- Payment processing
-- Nonce management
-- Service staking
-- EVVM/Staking integration
+- Payment processing via Core.sol
+- Service staking integration
+- EVVM/Staking contract references
 
 **Best for**: New services, quick prototyping, standard use cases
 
@@ -127,25 +154,34 @@ Low-level utilities for fundamental operations:
 
 Modular helpers for specific service functionalities:
 
-- Nonce tracking (async/sync)
-- Payment processing
-- Staking integration
+- Core.sol payment processing (CoreExecution)
+- Staking integration (StakingServiceUtils)
+- Admin governance (Admin)
 
 **Best for**: Custom service architectures, mixing and matching functionality
 
-## Design Patterns
+### 4. Hash Utilities
 
-### Pattern 1: Full EvvmService Integration
-```solidity
-contract Service is EvvmService {
-    // Inherit all functionality - fastest development
+Service-specific hash generation for signature payloads:
+
+- CoreHashUtils, NameServiceHashUtils, StakingHashUtils, P2PSwapHashUtils, TreasuryCrossChainHashUtils
+
+**Best for**: Creating deterministic hash payloads for EVVM's centralized signature system
+    constructor(address coreAddress, address stakingAddress) 
+        EvvmService(coreAddress, stakingAddress) {}
 }
 ```
 
 ### Pattern 2: Modular Composition
 ```solidity
-contract Service is AsyncNonce, MakeServicePaymentOnEvvm {
+import {CoreExecution} from "@evvm/testnet-contracts/library/utils/service/CoreExecution.sol";
+import {StakingServiceUtils} from "@evvm/testnet-contracts/library/utils/service/StakingServiceUtils.sol";
+
+contract Service is CoreExecution, StakingServiceUtils {
     // Mix utilities as needed - granular control
+    constructor(address coreAddress, address stakingAddress) 
+        CoreExecution(coreAddress)
+        StakingServiceUtils(stakingAddress) {}
 }
 ```
 
@@ -153,49 +189,73 @@ contract Service is AsyncNonce, MakeServicePaymentOnEvvm {
 ```solidity
 import {SignatureUtil} from "@evvm/testnet-contracts/library/utils/SignatureUtil.sol";
 import {AdvancedStrings} from "@evvm/testnet-contracts/library/utils/AdvancedStrings.sol";
+import {CoreHashUtils} from "@evvm/testnet-contracts/library/utils/signature/CoreHashUtils.sol";
+
+contract Service {
+    // Pure library usage - maximum flexibility
+    function verify(bytes memory data, bytes memory sig, address user) internal pure {
+        bytes32 hash = CoreHashUtils.hashDataForPay(...);
+        // Use libraries as needed
+    }
+import {SignatureUtil} from "@evvm/testnet-contracts/library/utils/SignatureUtil.sol";
+import {AdvancedStrings} from "@evvm/testnet-contracts/library/utils/AdvancedStrings.sol";
 
 contract Service {
     using SignatureUtil for bytes;
     using AdvancedStrings for uint256;
-    // Pure library usage - maximum flexibility
-}
-```
-
-## Common Use Cases
-
-### Standard EVVM Service
-Use `EvvmService` for complete service functionality:
-
-```solidity
-contract CoffeeShop is EvvmService {
-    function orderCoffee(...) external {
-        validateServiceSignature(...);
-        verifyAsyncNonce(...);
-        requestPay(...);
-        markAsyncNonceAsUsed(...);
+    constructor(address coreAddress, address stakingAddress)
+        EvvmService(coreAddress, stakingAddress) {}
+        
+    function orderCoffee(
+        string memory order,
+        bytes memory signature
+    ) external {
+        validateServiceSignature("orderCoffee", order, signature, msg.sender);
+        // Process order...
     }
 }
 ```
 
 ### Read-Only Service
-Use `SignatureUtil` for signature verification:
+Use `SignatureUtil` for signature verification only:
 
 ```solidity
 import {SignatureUtil} from "@evvm/testnet-contracts/library/utils/SignatureUtil.sol";
 
 contract Validator {
-    function isValidSignature(bytes memory sig, address user) public pure returns (bool) {
-        return SignatureUtil.verifySignature(evvmId, "action", params, sig, user);
+    uint256 evvmId;
+    
+    function isValidSignature(
+        bytes memory sig,
+        address user,
+        string memory action
+    ) public view returns (bool) {
+        return SignatureUtil.verifySignature(evvmId, action, "", sig, user);
     }
 }
 ```
 
-### Custom Nonce Strategy
-Inherit both nonce services:
+### Payment Processing Service
+Use `CoreExecution` for Core.sol integration:
 
 ```solidity
-import {AsyncNonce} from "@evvm/testnet-contracts/library/utils/nonces/AsyncNonce.sol";
-import {SyncNonceService} from "@evvm/testnet-contracts/library/utils/service/SyncNonceService.sol";
+import {CoreExecution} from "@evvm/testnet-contracts/library/utils/service/CoreExecution.sol";
+
+contract PaymentService is CoreExecution {
+    constructor(address coreAddress) CoreExecution(coreAddress) {}
+    
+    function processPayment(address from, address token, uint256 amount) external {
+        // Request payment via Core.sol
+        requestPay(
+            from,
+            token,
+            amount,
+            0, // priority fee
+            msg.sender,
+            0, // nonce
+            false, // async
+            "" // signature
+        stnet-contracts/library/utils/service/SyncNonceService.sol";
 
 contract HybridService is AsyncNonce, SyncNonceService {
     function actionWithSyncNonce(...) external {
@@ -211,9 +271,12 @@ contract HybridService is AsyncNonce, SyncNonceService {
 }
 ```
 
-## Installation
+## Installation3-StakingServiceUtils.md)** - Modular service components for Core.sol and Staking integration
 
-```bash
+**Essential Libraries**: 
+- [CoreHashUtils](./04-Utils/05-CoreHashUtils.md) - Hash generation for Core.sol signatures
+- [CAUtils](./04-Utils/07-CAUtils.md) - Contract address detection
+- [SignatureUtil](./04-Utils/02-SignatureUtil.md) - High-level signature verification
 # Clone repository
 git clone --recursive https://github.com/EVVM-org/Testnet-Contracts.git
 
@@ -235,8 +298,10 @@ Explore individual library documentation:
 
 1. **[EvvmService](./02-EvvmService.md)** - Complete service development framework
 2. **[Primitives](./03-Primitives/01-Math.md)** - Low-level mathematical and cryptographic operations
-3. **[Utils](./04-Utils/01-AdvancedStrings.md)** - String conversions and signature verification
-4. **[Service Utilities](./04-Utils/03-Service/01-AsyncNonceService.md)** - Modular service components (see `AsyncNonce` for async nonce management)
+3. **[Utils](./04-Utils/01-AdvancedStrings.md)** - String conversions, hash generation, signature verification, and contract detection
+4. **[Service Utilities](./04-Utils/03-Service/02-StakingServiceUtils.md)** - Modular service components for staking integration
+
+**Essential Libraries**: [CoreHashUtils](./04-Utils/05-CoreHashUtils.md), [CAUtils](./04-Utils/07-CAUtils.md) - Essential for understanding the centralized signature system
 
 ---
 

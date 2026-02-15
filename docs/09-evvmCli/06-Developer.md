@@ -66,7 +66,7 @@ This command will:
 **Output:**
 ```
 Generating contract interfaces...
-✓ IEvvm.sol
+✓ ICore.sol
 ✓ INameService.sol
 ✓ IStaking.sol
 ✓ IEstimator.sol

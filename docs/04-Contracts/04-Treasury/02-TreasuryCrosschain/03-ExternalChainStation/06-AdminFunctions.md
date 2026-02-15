@@ -118,21 +118,19 @@ Returns the complete admin state including current admin, proposed admin, and ac
 
 Returns the complete fisher executor state.
 
-### getNextFisherExecutionNonce
+### getIfUsedAsyncNonce
 
 **Function Type**: `external view`  
-**Function Signature**: `getNextFisherExecutionNonce(address)`  
-**Returns**: `uint256`
+**Function Signature**: `getIfUsedAsyncNonce(address, uint256)`  
+**Returns**: `bool`
 
-Returns the next nonce value for a specific user's fisher bridge operations.
+Checks if a specific nonce has been used for a user's Fisher bridge operations.
 
-### getEvvmAddress
-
-**Function Type**: `external view`  
-**Function Signature**: `getEvvmAddress()`  
-**Returns**: `address`
-
-Returns the address of the connected EVVM core contract (used for reference, not direct interaction).
+#### Parameters
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `user` | `address` | User address to query |
+| `nonce` | `uint256` | Nonce value to check |
 
 ### Configuration Getters
 

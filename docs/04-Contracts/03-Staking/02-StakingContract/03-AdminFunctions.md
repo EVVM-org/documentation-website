@@ -4,6 +4,10 @@ sidebar_position: 3
 
 # Administrative Functions
 
+:::info[Implementation Note]
+Administrative functions do **not** use Core.sol's `validateAndConsumeNonce()` pattern. They are directly protected by `onlyOwner` modifier and execute through standard transaction authentication via `msg.sender`.
+:::
+
 This section details all administrative functions in the contract, which implement a secure time-delayed governance system to ensure safe management of critical contract parameters and roles.
 
 :::info Time-Delayed Governance

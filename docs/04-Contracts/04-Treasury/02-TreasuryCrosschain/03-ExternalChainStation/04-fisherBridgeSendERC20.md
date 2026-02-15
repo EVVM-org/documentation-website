@@ -5,11 +5,11 @@ sidebar_position: 4
 # fisherBridgeSendERC20
 
 **Function Type**: `external`  
-**Function Signature**: `fisherBridgeSendERC20(address,address,address,uint256,uint256,bytes)`  
+**Function Signature**: `fisherBridgeSendERC20(address,address,address,uint256,uint256,uint256,bytes)`  
 **Access Control**: `onlyFisherExecutor`  
 **Returns**: `void`
 
-Processes Fisher bridge ERC20 token transfers to host chain. Validates signature, deposits tokens, and emits tracking event for cross-chain coordination.
+Processes Fisher bridge ERC20 token transfers to host chain. Validates signature using asyncNonce system, deposits tokens, and emits tracking event for cross-chain coordination.
 
 ## Parameters
 
@@ -20,6 +20,7 @@ Processes Fisher bridge ERC20 token transfers to host chain. Validates signature
 | `tokenAddress` | `address` | ERC20 token contract address |
 | `priorityFee` | `uint256` | Fee amount paid to the fisher executor |
 | `amount` | `uint256` | Amount to deposit to EVVM |
+| `nonce` | `uint256` | User-managed sequential nonce for replay protection |
 | `signature` | `bytes` | Cryptographic signature ([EIP-191](https://eips.ethereum.org/EIPS/eip-191)) from the `from` address authorizing this deposit. |
 
 ## Access Control
@@ -37,23 +38,38 @@ Only addresses with the current `fisherExecutor` role can call this function.
 
 ## Workflow
 
-### 1. Signature Verification
+### 1. Nonce Validation
 ```solidity
-if (!SignatureUtils.verifyMessageSignedForFisherBridge(
-    EVVM_ID,
-    from,
-    addressToReceive,
-    nextFisherExecutionNonce[from],
-    tokenAddress,
-    priorityFee,
-    amount,
-    signature
-)) revert ErrorsLib.InvalidSignature();
+if (asyncNonce[from][nonce]) revert CoreError.AsyncNonceAlreadyUsed();
 ```
 
-Validates EIP-191 signature with EVVM ID integration using structured message format for Fisher bridge operations.
+Checks if nonce has already been used. The External Chain Station uses `asyncNonce[from][nonce]` mapping instead of Core.sol's nonce system.
 
-### 2. Token Transfer
+### 2. Signature Verification
+```solidity
+if (
+    SignatureRecover.recoverSigner(
+        AdvancedStrings.buildSignaturePayload(
+            evvmID,
+            hostChainAddress.currentAddress,
+            Hash.hashDataForFisherBridge(
+                addressToReceive,
+                tokenAddress,
+                priorityFee,
+                amount
+            ),
+            fisherExecutor.current,
+            nonce,
+            true
+        ),
+        signature
+    ) != from
+) revert CoreError.InvalidSignature();
+```
+
+Validates EIP-191 signature by recovering the signer and comparing to `from` address. Uses `SignatureRecover.recoverSigner()` with payload built by `AdvancedStrings.buildSignaturePayload()`.
+
+### 3. Token Transfer
 ```solidity
 // Implementation calls:
 verifyAndDepositERC20(tokenAddress, amount);
@@ -67,13 +83,13 @@ verifyAndDepositERC20(tokenAddress, amount);
 
 Transfers the deposit `amount` from the user to the contract using `transferFrom` (the implementation validates allowance and performs `transferFrom`). **Note:** the `priorityFee` is not transferred here — it is represented in the emitted event and will be credited to the fisher executor on the host chain when the message is processed.
 
-### 3. Nonce Increment
+### 4. Mark Nonce as Used
 ```solidity
-nextFisherExecutionNonce[from]++;
+asyncNonce[from][nonce] = true;
 ```
-Increments Fisher bridge nonce to prevent replay attacks.
+Marks this nonce as consumed to prevent replay attacks.
 
-### 4. Event Emission
+### 5. Event Emission
 ```solidity
 emit FisherBridgeSend(
     from,
@@ -81,7 +97,7 @@ emit FisherBridgeSend(
     tokenAddress,
     priorityFee,
     amount,
-    nextFisherExecutionNonce[from] - 1
+    nonce
 );
 ```
 
@@ -101,7 +117,7 @@ The function validates and executes the token transfer:
 function verifyAndDepositERC20(address token, uint256 amount) internal {
     if (token == address(0)) revert();
     if (IERC20(token).allowance(msg.sender, address(this)) < amount)
-        revert ErrorsLib.InsufficientBalance();
+        revert Error.InsufficientBalance();
     
     IERC20(token).transferFrom(msg.sender, address(this), amount);
 }
@@ -157,8 +173,9 @@ The same signature used here should be processable by the host chain station's `
 
 ### Signature Security
 - **EIP-191 Standard**: Uses Ethereum's signed message standard (see [signature format](../../../../05-SignatureStructures/04-Treasury/01-FisherBridgeSignatureStructure.md))
-- **Replay Protection**: Nonce-based prevention of signature reuse
-- **User Authorization**: Cryptographic proof of user consent
+- **SignatureRecover**: Uses `SignatureRecover.recoverSigner()` to validate signatures
+- **AdvancedStrings**: Payload built with `AdvancedStrings.buildSignaturePayload()`
+- **Replay Protection**: `asyncNonce` mapping prevents signature reuse
 - **Parameter Binding**: Signature tied to specific transfer parameters
 
 ### Token Security
@@ -173,9 +190,10 @@ The same signature used here should be processable by the host chain station's `
 ## Error Conditions
 
 | Error | Condition |
-|-------|-----------|
-| `InvalidSignature()` | Signature verification fails |
-| `InsufficientBalance` | Insufficient ERC20 allowance |
+|-------|-----------|  
+| `CoreError.AsyncNonceAlreadyUsed()` | Nonce has already been used for this user |
+| `CoreError.InvalidSignature()` | Signature verification fails |
+| `Error.InsufficientBalance()` | Insufficient ERC20 allowance |
 | ERC20 Transfer Failure | Token transfer reverts (insufficient balance, paused token, etc.) |
 | Access Control Revert | Called by unauthorized address |
 
@@ -194,7 +212,7 @@ The same signature used here should be processable by the host chain station's `
 ### Off-Chain Services
 - **Event Monitoring**: Listen for `FisherBridgeSend` events
 - **Cross-Chain Messaging**: Send deposit instructions to host chain
-- **Nonce Tracking**: Maintain synchronization with host chain nonces
+- **Nonce Tracking**: Track used nonces in `asyncNonce[from][nonce]` mapping
 
 ### Token Handling
 - **Custody Management**: External station holds tokens until cross-chain processing

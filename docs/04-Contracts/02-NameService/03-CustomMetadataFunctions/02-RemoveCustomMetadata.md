@@ -1,18 +1,19 @@
 ---
-title: Remove Custom Metadata Function
-description: Detailed documentation of the Name Service Contract's removeCustomMetadata function for removing custom metadata associated with registered identities.
+title: "removeCustomMetadata"
+description: "Remove a specific custom metadata entry by slot index with automatic array shifting"
 sidebar_position: 2
 ---
 
-# Remove Custom Metadata Function
+# removeCustomMetadata
 
-This section details the `removeCustomMetadata` function within the name service. This function allows the current owner (`user`) of a registered identity (`identity`, typically a username) to remove a specific custom metadata entry identified by its index (`key`).
+:::info[Signature Verification]
+This function uses **Core.sol's centralized signature verification** via `validateAndConsumeNonce()`. All NameService operations use the universal signature format with `NameServiceHashUtils` for hash generation.
+:::
 
-To remove custom metadata, the identity owner must authorize the action with a signature and pay a fee (10 times the current reward amount, determined by `getPriceToRemoveCustomMetadata()`) via the EVVM contract. An optional priority fee can also be paid to the executor. This function can be executed by any address.
+**Function Type**: External  
+**Function Signature**: `removeCustomMetadata(address user, string memory identity, uint256 key, address originExecutor, uint256 nonce, bytes memory signature, uint256 priorityFeeEvvm, uint256 nonceEvvm, bytes memory signatureEvvm) external`
 
-**Function Type**: `public`  
-**Function Signature**: `removeCustomMetadata(address,string,uint256,uint256,bytes,uint256,uint256,bool,bytes)`  
-**Function Selector**: `0x8001a999`
+Removes a specific custom metadata entry identified by its slot index. If the removed entry is not the last slot, all subsequent entries are shifted down to maintain array continuity (no gaps). This ensures efficient iteration and consistent slot indexing.
 
 ## Parameters
 
@@ -64,6 +65,3 @@ Failure at validation steps typically reverts the transaction. The steps execute
 9.  **Reward Distribution (to Executor)**: If the executor (`msg.sender`) is an sMATE staker, calls an internal helper function (`makeCaPay`) to distribute rewards in principal tokens directly to `msg.sender`. The rewards consist of:
     - 5 times the base reward amount (`5 * Evvm(evvmAddress.current).getRewardAmount()`).
     - The full `priorityFee_EVVM`, if it was greater than zero and successfully paid in Step 5.
-
-![removeCustomMetadata Happy Path](./img/removeCustomMetadata_HappyPath.svg)
-![removeCustomMetadata Failed Path](./img/removeCustomMetadata_FailedPath.svg)

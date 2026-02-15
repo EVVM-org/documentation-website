@@ -273,7 +273,7 @@ function verifySignature(
 
 **Impact**: Not relevant for EVVM (we verify signer, not signature uniqueness)
 
-**Note**: If you need signature uniqueness, use nonces (handled by `AsyncNonce`) 
+**Note**: If you need signature uniqueness, use nonces (handled centrally by Core.sol)
 
 ### 2. Message Prefix
 **Important**: Always use EIP-191 prefix (automatic with this library)

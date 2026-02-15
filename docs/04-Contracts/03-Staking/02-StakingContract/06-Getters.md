@@ -4,6 +4,10 @@ sidebar_position: 6
 
 # Getter Functions
 
+:::info[Implementation Note]
+View functions remain fully backward compatible for querying staking state, user history, and contract configuration. They do not use signature verification.
+:::
+
 This section details all available getter functions in the contract, providing comprehensive information about the contract's state and configuration.
 
 ---

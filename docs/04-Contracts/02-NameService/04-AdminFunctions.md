@@ -1,12 +1,16 @@
 ---
 title: Admin Functions
-description: "Detailed documentation of the Name Service Contract's administrative functions for managing admin role transfers, fee withdrawals, and EVVM contract address updates."
+description: "Detailed documentation of the Name Service Contract's administrative functions for managing admin role transfers, fee withdrawals, and Core contract address updates."
 sidebar_position: 4
 ---
 
 # Admin Functions
 
-This section details the administrative functions available in the Name Service contract, which are restricted to the current admin address. These functions facilitate the secure transfer of the admin role, the withdrawal of collected protocol fees, and the updating of core contract dependencies like the EVVM address.
+:::info[Implementation Note]
+Admin functions do NOT use the new centralized signature verification system. These are restricted `onlyAdmin` functions that execute directly. References to "EVVM" in function names remain for backward compatibility, but now refer to the **Core.sol** contract.
+:::
+
+This section details the administrative functions available in the Name Service contract, which are restricted to the current admin address. These functions facilitate the secure transfer of the admin role, the withdrawal of collected protocol fees, and the updating of core contract dependencies like the Core contract address.
 
 ---
 

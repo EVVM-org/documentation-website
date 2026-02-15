@@ -155,10 +155,10 @@ Returns the next nonce value for a specific user's fisher bridge operations.
 |-----------|------|-------------|
 | `user` | `address` | User address to query nonce for |
 
-### getEvvmAddress
+### getCoreAddress
 
 **Function Type**: `external view`  
-**Function Signature**: `getEvvmAddress()`  
+**Function Signature**: `getCoreAddress()`  
 **Returns**: `address`
 
 Returns the address of the connected EVVM core contract.
