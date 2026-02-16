@@ -1,4 +1,6 @@
 ---
+title: "Username Pre-Registration Signature Structure"
+description: "EIP-191 signature format for the commit phase of username registration using commit-reveal scheme"
 sidebar_position: 1
 ---
 

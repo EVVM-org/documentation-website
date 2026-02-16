@@ -1,4 +1,5 @@
 ---
+description: "View function checking if a specific chain ID is whitelisted for EVVM registration"
 sidebar_position: 6
 ---
 

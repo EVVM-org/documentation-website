@@ -1,4 +1,6 @@
 ---
+title: "Getter Functions"
+description: "View functions for querying staking contract state, user history, and configuration"
 sidebar_position: 6
 ---
 

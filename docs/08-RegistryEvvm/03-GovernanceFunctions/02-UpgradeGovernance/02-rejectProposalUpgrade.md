@@ -1,4 +1,5 @@
 ---
+description: "Cancels pending upgrade proposals at any time during the governance period"
 sidebar_position: 2
 ---
 

@@ -1,3 +1,7 @@
+---
+description: "Next.js web application for constructing, signing, and executing EVVM transactions with EIP-191 signature support"
+---
+
 # EVVM Frontend Tooling
 
 The EVVM Signature Constructor Frontend provides a comprehensive web application infrastructure for constructing, signing, and executing EVVM transactions. Built on Next.js with TypeScript, it implements the complete EIP-191 signature specification and transaction lifecycle management for the EVVM ecosystem.

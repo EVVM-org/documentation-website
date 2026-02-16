@@ -1,4 +1,5 @@
 ---
+description: "EIP-191 signature structure for authorizing cross-chain treasury operations through the Fisher Bridge system"
 sidebar_position: 1
 ---
 

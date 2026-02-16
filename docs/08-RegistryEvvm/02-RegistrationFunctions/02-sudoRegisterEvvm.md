@@ -1,4 +1,5 @@
 ---
+description: "SuperUser registration function for assigning whitelisted EVVM IDs in the reserved range (1-999)"
 sidebar_position: 2
 ---
 

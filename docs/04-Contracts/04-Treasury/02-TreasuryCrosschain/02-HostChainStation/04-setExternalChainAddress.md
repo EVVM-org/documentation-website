@@ -1,4 +1,5 @@
 ---
+description: "Time-delayed proposal system for configuring external chain station addresses across cross-chain protocols"
 sidebar_position: 4
 ---
 

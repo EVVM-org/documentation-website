@@ -1,4 +1,5 @@
 ---
+description: "Receives and validates Fisher bridge transactions from host chain on external chains"
 sidebar_position: 3
 ---
 

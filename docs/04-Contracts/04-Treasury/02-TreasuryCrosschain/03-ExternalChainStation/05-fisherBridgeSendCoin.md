@@ -1,4 +1,5 @@
 ---
+description: "Facilitates native coin transfers from external chain to EVVM through Fisher bridge"
 sidebar_position: 5
 ---
 

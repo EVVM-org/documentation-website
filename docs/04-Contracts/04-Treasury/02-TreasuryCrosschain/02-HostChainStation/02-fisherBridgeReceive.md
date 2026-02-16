@@ -1,4 +1,5 @@
 ---
+description: "Receives Fisher bridge transactions from external chains and credits EVVM balances"
 sidebar_position: 2
 ---
 

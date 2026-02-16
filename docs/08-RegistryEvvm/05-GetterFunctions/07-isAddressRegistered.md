@@ -1,4 +1,5 @@
 ---
+description: "View function checking if a specific EVVM address is already registered on a given chain"
 sidebar_position: 7
 ---
 

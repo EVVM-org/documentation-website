@@ -1,4 +1,5 @@
 ---
+description: "Completes the superUser transition after the 7-day acceptance period has elapsed"
 sidebar_position: 3
 ---
 

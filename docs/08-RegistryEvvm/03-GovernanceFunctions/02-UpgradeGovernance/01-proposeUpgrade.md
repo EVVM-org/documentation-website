@@ -1,4 +1,5 @@
 ---
+description: "Initiates contract upgrade proposals with a mandatory 7-day time delay before execution"
 sidebar_position: 1
 ---
 

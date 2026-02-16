@@ -1,4 +1,5 @@
 ---
+description: "View function retrieving complete metadata for a specific EVVM ID including chain ID and contract address"
 sidebar_position: 1
 ---
 

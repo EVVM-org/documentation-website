@@ -1,4 +1,6 @@
 ---
+title: "Testnet Exclusive Functions"
+description: "Development faucet functions exclusively available in testnet deployments for testing and demonstration purposes"
 sidebar_position: 10
 ---
 

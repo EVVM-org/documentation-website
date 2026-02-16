@@ -1,4 +1,5 @@
 ---
+description: "Public registration function for registering EVVM deployments on whitelisted testnet chains with automatic ID assignment"
 sidebar_position: 1
 ---
 

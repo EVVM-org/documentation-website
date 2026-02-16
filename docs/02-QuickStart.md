@@ -1,4 +1,5 @@
 ---
+description: "Step-by-step guide to deploy your EVVM virtual blockchain in minutes using the EVVM CLI"
 sidebar_position: 2
 ---
 

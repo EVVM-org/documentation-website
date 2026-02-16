@@ -1,4 +1,5 @@
 ---
+description: "View function retrieving all active public EVVM IDs in the public range (1000+)"
 sidebar_position: 3
 ---
 

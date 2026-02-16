@@ -1,4 +1,6 @@
 ---
+title: "Disperse Payment Signature Structure"
+description: "EIP-191 signature format for disperse payment operations splitting tokens to multiple recipients"
 sidebar_position: 2
 ---
 

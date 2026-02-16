@@ -1,4 +1,5 @@
 ---
+description: "EIP-191 signature structure for authorizing the registrationUsername operation, the reveal phase following pre-registration"
 sidebar_position: 2
 ---
 

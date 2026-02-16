@@ -1,4 +1,5 @@
 ---
+description: "Processes Fisher bridge ERC20 token transfers from external chain to host chain"
 sidebar_position: 4
 ---
 

@@ -1,4 +1,5 @@
 ---
+description: "Administrative functions for Treasury Host Chain Station with time-delayed governance"
 sidebar_position: 5
 ---
 

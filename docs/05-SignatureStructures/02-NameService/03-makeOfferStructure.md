@@ -1,4 +1,5 @@
 ---
+description: "EIP-191 signature structure for authorizing makeOffer operations to place offers on registered usernames"
 sidebar_position: 3
 ---
 

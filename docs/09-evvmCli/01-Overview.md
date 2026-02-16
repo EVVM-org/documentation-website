@@ -1,4 +1,5 @@
 ---
+description: "Overview of the EVVM CLI for deploying, registering, and managing EVVM instances with automated configuration"
 sidebar_position: 1
 ---
 

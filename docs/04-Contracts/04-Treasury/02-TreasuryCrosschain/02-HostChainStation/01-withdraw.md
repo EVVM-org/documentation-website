@@ -1,4 +1,5 @@
 ---
+description: "Withdraw tokens from EVVM balance and bridge them to external chains via cross-chain protocols"
 sidebar_position: 1
 ---
 
