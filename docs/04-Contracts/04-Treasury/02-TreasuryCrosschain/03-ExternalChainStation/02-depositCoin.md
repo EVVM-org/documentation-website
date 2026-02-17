@@ -1,4 +1,5 @@
 ---
+description: "Deposit native coins to host chain via selected cross-chain protocol with fee coverage"
 sidebar_position: 2
 ---
 

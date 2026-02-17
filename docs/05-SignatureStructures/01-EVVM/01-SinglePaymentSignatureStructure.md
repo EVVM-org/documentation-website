@@ -1,4 +1,6 @@
 ---
+title: "Single Payment Signature Structure"
+description: "EIP-191 signature format for single payment operations verified by Core.sol"
 sidebar_position: 1
 ---
 

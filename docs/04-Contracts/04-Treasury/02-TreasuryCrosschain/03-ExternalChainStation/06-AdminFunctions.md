@@ -1,4 +1,5 @@
 ---
+description: "Administrative functions for Treasury External Chain Station with time-delayed governance"
 sidebar_position: 6
 ---
 

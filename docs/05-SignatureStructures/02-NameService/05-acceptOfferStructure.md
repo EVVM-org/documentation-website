@@ -1,6 +1,6 @@
 ---
+description: "EIP-191 signature structure for username owners to authorize acceptOffer operations, transferring ownership"
 sidebar_position: 5
-
 ---
 
 # Accept Offer Signature Structure

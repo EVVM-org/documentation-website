@@ -1,4 +1,6 @@
 ---
+title: "Administrative Functions"
+description: "Staking contract administrative functions with time-delayed governance for managing critical contract parameters and roles"
 sidebar_position: 3
 ---
 

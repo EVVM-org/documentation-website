@@ -1,5 +1,6 @@
 ---
 title: "Registry EVVM Contract Overview"
+description: "Central registry for EVVM deployments across testnets with dual-tier registration and time-delayed governance"
 sidebar_position: 1
 ---
 

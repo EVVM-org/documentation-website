@@ -1,5 +1,6 @@
 ---
 title: "Crosschain Treasury Overview"
+description: "Overview of the Crosschain Treasury architecture enabling secure asset transfers between EVVM and external blockchains"
 sidebar_position: 1
 ---
 

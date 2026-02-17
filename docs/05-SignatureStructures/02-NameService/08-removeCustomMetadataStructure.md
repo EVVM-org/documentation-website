@@ -1,4 +1,5 @@
 ---
+description: "EIP-191 signature structure for username owners to authorize removal of specific custom metadata entries"
 sidebar_position: 8
 ---
 

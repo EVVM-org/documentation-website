@@ -1,4 +1,6 @@
 ---
+title: "Standard Staking/Unstaking Signature Structure"
+description: "EIP-191 signature format for standard staking and unstaking operations verified by Core.sol"
 sidebar_position: 1
 ---
 

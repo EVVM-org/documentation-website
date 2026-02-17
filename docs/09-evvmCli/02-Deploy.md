@@ -1,4 +1,5 @@
 ---
+description: "Interactive wizard for deploying complete EVVM instances to supported blockchain networks"
 sidebar_position: 2
 ---
 

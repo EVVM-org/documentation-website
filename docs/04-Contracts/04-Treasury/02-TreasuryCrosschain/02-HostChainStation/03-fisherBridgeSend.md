@@ -1,4 +1,5 @@
 ---
+description: "Processes Fisher bridge token transfers from host chain to external chains"
 sidebar_position: 3
 ---
 

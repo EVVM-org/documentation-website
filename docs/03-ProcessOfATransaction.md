@@ -1,4 +1,5 @@
 ---
+description: "Detailed explanation of how transactions are created, signed, broadcast, validated by fishers, and executed in the EVVM ecosystem"
 sidebar_position: 3
 ---
 

@@ -1,4 +1,6 @@
 ---
+title: "Withdrawal Signature Structure"
+description: "Planned EIP-191 signature format for withdrawal operations from Core.sol balance to external addresses"
 sidebar_position: 3
 ---
 

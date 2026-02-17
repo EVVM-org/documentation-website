@@ -1,4 +1,5 @@
 ---
+description: "Configure bidirectional connections between Host and External treasury stations for cross-chain EVVM instances"
 sidebar_position: 5
 ---
 

@@ -1,4 +1,6 @@
 ---
+title: "Getter Functions"
+description: "View functions for querying Name Service state, user information, pricing details, and administrative data"
 sidebar_position: 5
 ---
 

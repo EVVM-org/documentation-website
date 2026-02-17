@@ -1,4 +1,5 @@
 ---
+description: "EVVM software license terms based on PolyForm Noncommercial 1.0.0 with share-alike requirements for noncommercial use"
 sidebar_position: 99
 ---
 

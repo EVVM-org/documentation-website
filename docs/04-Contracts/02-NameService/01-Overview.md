@@ -1,5 +1,6 @@
 ---
 title: "Name Service Overview"
+description: "Decentralized username management system providing human-readable identities across the EVVM ecosystem with built-in marketplace functionality"
 sidebar_position: 1
 ---
 

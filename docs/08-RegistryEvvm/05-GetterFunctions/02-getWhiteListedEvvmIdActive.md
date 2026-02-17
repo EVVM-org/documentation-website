@@ -1,4 +1,5 @@
 ---
+description: "View function retrieving all active whitelisted EVVM IDs in the reserved range (1-999)"
 sidebar_position: 2
 ---
 

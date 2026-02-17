@@ -1,4 +1,5 @@
 ---
+description: "Tutorial on building gasless smart contract services using EVVM, demonstrated through a coffee shop example"
 sidebar_position: 8
 ---
 

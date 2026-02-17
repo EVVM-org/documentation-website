@@ -1,5 +1,8 @@
 ---
+title: "_authorizeUpgrade"
+description: "Internal UUPS authorization function ensuring only authorized parties can upgrade the contract implementation"
 sidebar_position: 2
+slug: /RegistryEvvm/AdminFunctions/authorizeUpgrade
 ---
 
 # _authorizeUpgrade

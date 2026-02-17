@@ -1,4 +1,5 @@
 ---
+description: "EIP-191 signature structure for username owners to authorize complete removal of their username registration"
 sidebar_position: 10
 ---
 

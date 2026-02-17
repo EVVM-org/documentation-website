@@ -1,4 +1,5 @@
 ---
+description: "Comprehensive history tracking system and time-based restrictions ensuring fair and secure staking operations"
 sidebar_position: 7
 ---
 

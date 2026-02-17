@@ -1,5 +1,6 @@
 ---
 title: "Simple Treasury Overview"
+description: "Single-chain treasury for direct asset deposit and withdrawal within the EVVM ecosystem using standard blockchain transactions"
 sidebar_position: 1
 ---
 

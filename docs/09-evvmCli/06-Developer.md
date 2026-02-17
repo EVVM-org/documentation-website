@@ -1,4 +1,5 @@
 ---
+description: "Developer utilities for generating interfaces, running tests, and other EVVM contract development workflows"
 sidebar_position: 6
 ---
 
