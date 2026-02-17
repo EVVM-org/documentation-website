@@ -13,10 +13,9 @@ The `Staking` service provides helpers to build signed staking-related actions.
 Creates and signs a `presaleStaking` action.
 
 - **Parameters:**
-  - `user` (HexString, optional): User address. Defaults to signer's address.
   - `isStaking` (boolean): Whether the user is staking or unstaking.
-  - `amountOfStaking` (bigint, optional): The amount to stake. Defaults to `0n`.
   - `nonce` (bigint): The stake nonce.
+  - `originExecutor` (HexString, optional): Optional executor address included in the signed message (defaults to zero address).
   - `evvmSignedAction` (`SignedAction<IPayData>`, optional): An optional EVVM `pay` signed action.
 - **Returns:** `Promise<SignedAction<IPresaleStakingData>>`
 
@@ -25,10 +24,10 @@ Creates and signs a `presaleStaking` action.
 Creates and signs a `publicStaking` action.
 
 - **Parameters:**
-  - `user` (HexString, optional): User address. Defaults to signer's address.
   - `isStaking` (boolean): Whether the user is staking or unstaking.
   - `amountOfStaking` (bigint): The amount to stake.
   - `nonce` (bigint): The stake nonce.
+  - `originExecutor` (HexString, optional): Optional executor address included in the signed message (defaults to zero address).
   - `evvmSignedAction` (`SignedAction<IPayData>`, optional): An optional EVVM `pay` signed action.
 - **Returns:** `Promise<SignedAction<IPublicStakingData>>`
 

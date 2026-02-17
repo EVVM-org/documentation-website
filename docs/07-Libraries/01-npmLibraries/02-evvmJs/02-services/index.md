@@ -10,7 +10,7 @@ sidebar_label: Overview
 
 Common services:
 
-- `EVVM` — core payment helpers: `pay()` and `dispersePay()`.
+- `Core` — core payment helpers: `pay()` and `dispersePay()`.
 - `NameService` — identity creation and management helpers.
 - `Staking` — stake/unstake and reward helpers.
 - `P2PSwap` — utilities for peer-to-peer swaps.
@@ -20,20 +20,24 @@ Common services:
 In order to use services, the user must first create a signer, please refer to the [signers documentation](/docs/Libraries/npmLibraries/evvmJs/signers) to learn how to create signers using either ethersjs or viem.
 After successfully creating a signer, a new service instance can be created, and used to create [SignedActions](#signed-actions) and use [nonces](#nonce-management).
 
-Example: create an `EVVM` service and sign a payment
+Example: create a `Core` service and sign a payment
 
 ```ts
-import { EVVM } from "@evvm/evvm-js";
+import { Core } from "@evvm/evvm-js";
 
-const evvm = new EVVM(signer, "EVVM_CONTRACT_ADDRESS");
+const core = new Core({
+  signer,
+  address: "EVVM_CONTRACT_ADDRESS",
+  chainId: 1,
+});
 
-const action = await evvm.pay({
-  to: "0xRecipient",
+const action = await core.pay({
+  toAddress: "0xRecipient",
   tokenAddress: "0xToken",
   amount: 100n,
   priorityFee: 0n,
   nonce: 1n,
-  priorityFlag: false,
+  isAsyncExec: false,
 });
 
 // `action` is a SignedAction — serialize or pass to `execute()`
@@ -50,22 +54,26 @@ It is up to the user to provide the nonce in every signature creation function c
 
 ### Sync nonce
 
-Example: get the next sync nonce for the EVVM service
+Example: get the next sync nonce for the Core service
 
 ```ts
-import { EVVM } from "@evvm/evvm-js";
+import { Core } from "@evvm/evvm-js";
 
-const evvm = new EVVM(signer, "EVVM_CONTRACT_ADDRESS");
+const core = new Core({
+  signer,
+  address: "EVVM_CONTRACT_ADDRESS",
+  chainId: 1,
+});
 
-const nonce = await evvm.getSyncNonce();
+const nonce = await core.getSyncNonce();
 
-const signedAction = await evvm.pay({
-  to: "0xRecipient",
+const signedAction = await core.pay({
+  toAddress: "0xRecipient",
   tokenAddress: "0xToken",
   amount: 100n,
   priorityFee: 0n,
   nonce,
-  priorityFlag: false, // false, because we are using sync nonces
+  isAsyncExec: false, // false, because we are using sync nonces
 });
 ```
 
@@ -74,21 +82,25 @@ const signedAction = await evvm.pay({
 Example: use an arbitrary async nonce
 
 ```ts
-import { EVVM } from "@evvm/evvm-js";
+import { Core } from "@evvm/evvm-js";
 
-const evvm = new EVVM(signer, "EVVM_CONTRACT_ADDRESS");
+const core = new Core({
+  signer,
+  address: "EVVM_CONTRACT_ADDRESS",
+  chainId: 1,
+});
 const nonce = BigInt(getRandomNumber());
-const isValidNonce = await evvm.isValidAsyncNonce(nonce);
+const isValidNonce = await core.isValidAsyncNonce(nonce);
 
 if (!isValidNonce) throw new Error("Nonce invalid, has been used before");
 
-const signedAction = await evvm.pay({
-  to: "0xRecipient",
+const signedAction = await core.pay({
+  toAddress: "0xRecipient",
   tokenAddress: "0xToken",
   amount: 100n,
   priorityFee: 0n,
   nonce,
-  priorityFlag: true, // true, because we are using async nonces
+  isAsyncExec: true, // true, because we are using async nonces
 });
 ```
 
