@@ -70,7 +70,9 @@ const core = new Core({
 
 Returned from `createSignerWithViem()` and `createSignerWithEthers()` utilities. It includes:
 
-- `address` and `chainId` properties
+- `address` — connected address
+- `getChainId()` — returns the active chain the signer is connected to
+- `switchChain(chainId)` — switch to a new chain using the id provided
 - `signMessage(message)` — low-level message sign
 - `signGenericEvvmMessage(evvmId, functionName, inputs)` — convenience
 - `readContract()` and `writeContract()` — adapter methods to interact with contracts
@@ -87,16 +89,13 @@ interface ISendTransactionParams {
 
 interface ISigner {
   address: HexString;
-  chainId: number;
-  signMessage(message: string): Promise<string>; // signature
-  signGenericEvvmMessage(
-    evvmId: bigint,
-    functionName: string,
-    inputs: string,
-  ): Promise<string>;
-  writeContract(params: ISendTransactionParams): Promise<HexString>; // txHash
+  getChainId(): Promise<number>;
+  switchChain(chainId: number): Promise<void>;
+  signMessage(message: string): Promise<string>;
+  signGenericEvvmMessage( evvmId: bigint, functionName: string, inputs: string,): Promise<string>;
+  writeContract(params: ISendTransactionParams): Promise<HexString>;
   readContract<T>(params: ISendTransactionParams): Promise<T>;
 }
-```
+````
 
 > These interfaces can be imported from `@evvm/evvm-js`

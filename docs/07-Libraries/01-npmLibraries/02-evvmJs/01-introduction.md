@@ -96,4 +96,3 @@ const core = new Core({
 
 // Continue with steps 3 and 4 exactly as shown in the ethers.js example
 ```
-

@@ -31,3 +31,21 @@ const serializedSignedAction = JSON.stringify(signedAction);
 // when serialized for transport (through http for example)
 const txHash = await execute(signer, serializedSignedAction);
 ```
+
+### Options
+
+`execute()` can be called with optional arguments:
+
+```ts
+const txHash = await execute(signer, signedAction, {
+  gas: 10_000,
+});
+```
+
+where
+
+```ts
+interface IExecuteOptions {
+  gas?: number;
+}
+```
