@@ -1,18 +1,19 @@
 ---
-title: Flush Username Function
-description: "Detailed documentation of the Name Service Contract's flushUsername function for permanently deleting a registered username and its associated data."
+title: "flushUsername"
+description: "Permanently delete username and all data, making it available for re-registration"
 sidebar_position: 4
 ---
 
-# Flush Username Function
+# flushUsername
 
-This section details the `flushUsername` function within the Name Service. This function allows the current owner (`user`) of a registered identity (`username`, typically a username) to **permanently delete the username registration and all of its associated data**. This is an irreversible action that makes the username available for registration again by others.
+:::info[Signature Verification]
+This function uses **Core.sol's centralized signature verification** via `validateAndConsumeNonce()`. All NameService operations use the universal signature format with `NameServiceHashUtils` for hash generation.
+:::
 
-To flush a username, the owner must authorize the action with their signature and pay a fee via the EVVM contract (determined by `getPriceToFlushUsername(username)`). An optional priority fee can also be paid to the executor. This function can be executed by any address.
+**Function Type**: External  
+**Function Signature**: `flushUsername(address user, string memory username, address originExecutor, uint256 nonce, bytes memory signature, uint256 priorityFeeEvm, uint256 nonceEvvm, bytes memory signatureEvvm) external`
 
-**Function Type**: `public`  
-**Function Signature**: `flushUsername(address,string,uint256,bytes,uint256,uint256,bool,bytes)`  
-**Function Selector**: `0xd22c816c`
+Permanently deletes a username registration and all associated data. This is **irreversible** - the username becomes immediately available for others to register. All custom metadata is deleted, ownership is reset, and the username returns to initial state (except offerMaxSlots is preserved for historical tracking).
 
 ## Parameters
 
@@ -71,6 +72,3 @@ Failure at validation steps typically reverts the transaction. The steps execute
     - Preserves existing `offerMaxSlots`
     - Sets `flagNotAUsername` to `0x00` (making it available for re-registration)
 9.  **Nonce Management**: Calls internal `markAsyncNonceAsUsed(user, nonce)` to mark the provided `nonce` as used and prevent replays.
-
-![flushUsername Happy Path](./img/flushUsername_HappyPath.svg)
-![flushUsername Failed Path](./img/flushUsername_FailedPath.svg)

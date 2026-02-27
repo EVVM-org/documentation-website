@@ -1,4 +1,5 @@
 ---
+description: "Tutorial on building gasless smart contract services using EVVM, demonstrated through a coffee shop example"
 sidebar_position: 8
 ---
 
@@ -30,12 +31,14 @@ contract EVVMCafe {
         string memory coffeeType,
         uint256 quantity,
         uint256 totalPrice,
+        address originExecutor,
         uint256 nonce,
+        bool isAsyncExec,
         bytes memory signature,
-        uint256 priorityFee_EVVM,
-        uint256 nonce_EVVM,
-        bool priorityFlag_EVVM,
-        bytes memory signature_EVVM
+        uint256 priorityFeeEvvm,
+        uint256 nonceEvvm,
+        bool isAsyncExecEvvm,
+        bytes memory signatureEvvm
     ) external {
         // 1. Customer signed this off-chain (no gas!)
         // 2. Fisher executes this function (gets rewarded)
@@ -94,8 +97,8 @@ import {AdvancedStrings} from "@evvm/testnet-contracts/library/utils/AdvancedStr
 contract EVVMCafe is EvvmService {
     address ownerOfShop;
     
-    constructor(address _evvmAddress, address _stakingAddress, address _owner) 
-        EvvmService(_evvmAddress, _stakingAddress) 
+    constructor(address _coreAddress, address _stakingAddress, address _owner) 
+        EvvmService(_coreAddress, _stakingAddress) 
     {
         ownerOfShop = _owner;
     }
@@ -105,7 +108,7 @@ contract EVVMCafe is EvvmService {
 **What we did:**
 - Import `EvvmService` (gives us helper functions)
 - Set owner address
-- Connect to EVVM and Staking contracts
+- Connect to Core and Staking contracts
 
 ### Step 2: Order Coffee Function
 
@@ -115,57 +118,53 @@ function orderCoffee(
     string memory coffeeType,
     uint256 quantity,
     uint256 totalPrice,
+    address originExecutor,
     uint256 nonce,
+    bool isAsyncExec,
     bytes memory signature,
-    uint256 priorityFee_EVVM,
-    uint256 nonce_EVVM,
-    bool useAsync,
-    bytes memory signature_EVVM
+    uint256 priorityFeeEvvm,
+    uint256 nonceEvvm,
+    bool isAsyncExecEvvm,
+    bytes memory signatureEvvm
 ) external {
-    // 1. Verify customer's signature
-    validateServiceSignature(
-        "orderCoffee",
-        string.concat(
-            coffeeType, ",",
-            AdvancedStrings.uintToString(quantity), ",",
-            AdvancedStrings.uintToString(totalPrice), ",",
-            AdvancedStrings.uintToString(nonce)
-        ),
-        signature,
-        clientAddress
+    // 1. Verify customer's signature and consume nonce (prevents replay attacks)
+    core.validateAndConsumeNonce(
+        clientAddress,
+        keccak256(abi.encode(
+            "orderCoffee",
+            coffeeType,
+            quantity,
+            totalPrice
+        )),
+        originExecutor,
+        nonce,
+        isAsyncExec,
+        signature
     );
     
-    // 2. Check nonce not used (prevents replay attacks)
-    verifyAsyncServiceNonce(clientAddress, nonce);
-    
-    // 3. Process payment through EVVM
+    // 2. Process payment through EVVM
     requestPay(
         clientAddress,
         getEtherAddress(),
         totalPrice,
-        priorityFee_EVVM,
-        nonce_EVVM,
-        useAsync,
-        signature_EVVM
+        priorityFeeEvvm,
+        nonceEvvm,
+        isAsyncExecEvvm,
+        signatureEvvm
     );
     
-    // 4. Reward the fisher (if shop is staker)
-    if (evvm.isAddressStaker(address(this))) {
-        makeCaPay(msg.sender, getEtherAddress(), priorityFee_EVVM);
-        makeCaPay(msg.sender, getPrincipalTokenAddress(), evvm.getRewardAmount() / 2);
+    // 3. Reward the fisher (if shop is staker)
+    if (core.isAddressStaker(address(this))) {
+        makeCaPay(msg.sender, getEtherAddress(), priorityFeeEvvm);
+        makeCaPay(msg.sender, getPrincipalTokenAddress(), core.getRewardAmount() / 2);
     }
-    
-    // 5. Mark nonce as used
-    markAsyncServiceNonceAsUsed(clientAddress, nonce);
 }
 ```
 
 **What each part does:**
-1. **Verify signature** - Make sure customer approved this order
-2. **Check nonce** - Prevent someone from replaying this transaction
-3. **Process payment** - Customer pays shop through EVVM
-4. **Reward fisher** - Give fisher incentive to execute (if shop is staker)
-5. **Mark nonce used** - Can't use this nonce again
+1. **Validate and consume nonce** - Verify customer signature and prevent replay attacks in one call
+2. **Process payment** - Customer pays shop through EVVM
+3. **Reward fisher** - Give fisher incentive to execute (if shop is staker)
 
 ### Step 3: Staking & Withdrawals
 
@@ -182,13 +181,13 @@ function unstake(uint256 amount) external onlyOwner {
 
 // Withdraw coffee sale funds
 function withdrawFunds(address to) external onlyOwner {
-    uint256 balance = evvm.getBalance(address(this), getEtherAddress());
+    uint256 balance = core.getBalance(address(this), getEtherAddress());
     makeCaPay(to, getEtherAddress(), balance);
 }
 
 // Withdraw accumulated rewards
 function withdrawRewards(address to) external onlyOwner {
-    uint256 balance = evvm.getBalance(address(this), getPrincipalTokenAddress());
+    uint256 balance = core.getBalance(address(this), getPrincipalTokenAddress());
     makeCaPay(to, getPrincipalTokenAddress(), balance);
 }
 ```
@@ -254,13 +253,11 @@ function customRewardAction(address user, bytes signature) external {
 
 **From EvvmService:**
 ```solidity
-// Signature & nonce
-validateServiceSignature(functionName, params, signature, signer);
-verifyAsyncServiceNonce(user, nonce);
-markAsyncServiceNonceAsUsed(user, nonce);
+// Signature & nonce validation (validates signature and consumes nonce in one call)
+core.validateAndConsumeNonce(user, hashPayload, originExecutor, nonce, isAsyncExec, signature);
 
 // Payments
-requestPay(from, token, amount, priorityFee, nonce, useAsync, signature);
+requestPay(from, token, amount, priorityFee, nonce, isAsyncExec, signature);
 makeCaPay(to, token, amount);
 
 // Addresses
@@ -272,24 +269,33 @@ _makeStakeService(amount);
 _makeUnstakeService(amount);
 
 // Check balances
-evvm.getBalance(address, token);
-evvm.isAddressStaker(address);
-evvm.getRewardAmount();
+core.getBalance(address, token);
+core.isAddressStaker(address);
+core.getRewardAmount();
 ```
 
 ## Frontend Example
 
 ```javascript
 // User signs off-chain (no gas!)
-async function orderCoffee(coffeeType, quantity, totalPrice) {
+async function orderCoffee(coffeeType, quantity, totalPrice, originExecutor) {
     const nonce = Date.now();
-    const message = `${evvmId},orderCoffee,${coffeeType},${quantity},${totalPrice},${nonce}`;
+    const hashPayload = ethers.keccak256(
+        ethers.AbiCoder.defaultAbiCoder().encode(
+            ["string", "string", "uint256", "uint256"],
+            ["orderCoffee", coffeeType, quantity, totalPrice]
+        )
+    );
+    const message = `${evvmId},${serviceAddress},${hashPayload},${originExecutor},${nonce},true`;
     const signature = await signer.signMessage(message);
     
     // Send to fisher
     await fetch('/api/fisher', {
         method: 'POST',
-        body: JSON.stringify({ clientAddress, coffeeType, quantity, totalPrice, nonce, signature })
+        body: JSON.stringify({ 
+            clientAddress, coffeeType, quantity, totalPrice, 
+            originExecutor, nonce, isAsyncExec: true, signature 
+        })
     });
 }
 ```

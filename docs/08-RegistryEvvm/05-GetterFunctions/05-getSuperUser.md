@@ -1,4 +1,5 @@
 ---
+description: "View function retrieving the current superUser address for the Registry EVVM contract"
 sidebar_position: 5
 ---
 

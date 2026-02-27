@@ -1,4 +1,5 @@
 ---
+description: "Internal function facilitating payment processing through EVVM with automatic routing to synchronous or asynchronous execution paths"
 sidebar_position: 5
 ---
 

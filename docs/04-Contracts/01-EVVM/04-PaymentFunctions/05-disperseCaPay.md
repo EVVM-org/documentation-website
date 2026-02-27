@@ -59,7 +59,4 @@ struct DisperseCaPayMetadata {
 
 5. **Final Amount Validation**: Verifies that the total distributed amount exactly matches the specified `amount` parameter. Reverts with `InvalidAmount` if there's a mismatch.
 
-6. **Staker Reward**: If the calling contract is a registered staker (`isAddressStaker(msg.sender)`), grants 1 principal token reward using `_giveReward`. 
-
-![disperseCaPay Function Happy Path](./img/disperseCaPay_HappyPath.svg)
-![disperseCaPay Function Failed Path](./img/disperseCaPay_FailedPath.svg)
+6. **Staker Reward**: If the calling contract is a registered staker (`isAddressStaker(msg.sender)`), grants 1 principal token reward using `_giveReward`.

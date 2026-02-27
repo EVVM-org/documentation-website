@@ -21,3 +21,4 @@ yarn-error.log*
 
 # Claude Code
 CLAUDE.md
+.claude/

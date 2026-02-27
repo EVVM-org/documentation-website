@@ -1,4 +1,5 @@
 ---
+description: "Withdraw tokens from EVVM balance and bridge them to external chains via cross-chain protocols"
 sidebar_position: 1
 ---
 
@@ -30,9 +31,9 @@ Withdraws tokens from EVVM balance and sends them to external chain via selected
 ## Workflow
 
 ### Initial Validations
-1. **Principal Token Protection**: Validates token is not the Principal Token (MATE) using `Evvm(evvmAddress).getEvvmMetadata().principalTokenAddress`. Reverts with `ErrorsLib.PrincipalTokenIsNotWithdrawable()` if attempted.
-2. **Balance Verification**: Confirms user has sufficient EVVM balance using `Evvm(evvmAddress).getBalance(msg.sender, token)`. Reverts with `ErrorsLib.InsufficientBalance()` if insufficient.
-3. **EVVM Balance Deduction**: Calls `Evvm(evvmAddress).removeAmountFromUser(msg.sender, token, amount)` to deduct from user's virtual balance.
+1. **Principal Token Protection**: Validates token is not the Principal Token (MATE) using `core.getEvvmMetadata().principalTokenAddress`. Reverts with `Error.PrincipalTokenIsNotWithdrawable()` if attempted.
+2. **Balance Verification**: Confirms user has sufficient EVVM balance using `core.getBalance(msg.sender, token)`. Reverts with `Error.InsufficientBalance()` if insufficient.
+3. **EVVM Balance Deduction**: Calls `core.removeAmountFromUser(msg.sender, token, amount)` to deduct from user's virtual balance.
 
 ### Protocol-Specific Execution
 
@@ -128,8 +129,8 @@ The transaction will revert if insufficient native tokens are provided to cover 
 ## Security Features
 
 - **User Authorization**: Only holders can withdraw from their own EVVM balances
-- **Principal Token Protection**: `ErrorsLib.PrincipalTokenIsNotWithdrawable()` prevents MATE token withdrawal
-- **Balance Verification**: `ErrorsLib.InsufficientBalance()` protection with EVVM balance checks
+- **Principal Token Protection**: `Error.PrincipalTokenIsNotWithdrawable()` prevents MATE token withdrawal
+- **Balance Verification**: `Error.InsufficientBalance()` protection with EVVM balance checks
 - **Protocol Validation**: Reverts for invalid protocol identifiers
 - **Cross-Chain Security**: Each protocol validates sender authorization on message receipt
 

@@ -1,4 +1,5 @@
 ---
+description: "Register an existing EVVM instance in the official EVVM Registry to receive a unique EVVM ID"
 sidebar_position: 3
 ---
 

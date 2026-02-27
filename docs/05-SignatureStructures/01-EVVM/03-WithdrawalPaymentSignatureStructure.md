@@ -1,123 +1,86 @@
 ---
+title: "Withdrawal Signature Structure"
+description: "Planned EIP-191 signature format for withdrawal operations from Core.sol balance to external addresses"
 sidebar_position: 3
 ---
 
-# Withdrawal Signature Structure 
+# Withdrawal Signature Structure (Coming Soon)
 
-:::warning
+:::warning[Not Yet Implemented]
+**Withdrawal functionality is planned for a future release.**
 
-**Currently Not Implemented in SignatureUtils.sol**
-
-The withdrawal signature verification functionality is not currently implemented in the `SignatureUtils.sol` library. The current implementation only includes:
-- `verifyMessageSignedForPay` - for single payment operations
-- `verifyMessageSignedForDispersePay` - for disperse payment operations
-
-This documentation is preserved for reference and will be updated when withdrawal signature verification is implemented.
-
+Withdrawal signatures will follow the centralized verification pattern when implemented, using Core.sol's `validateAndConsumeNonce()` system.
 :::
 
-To authorize withdrawal operations from the EVVM protocol, the user whose funds are being withdrawn (`from`) must generate a cryptographic signature compliant with the [EIP-191](https://eips.ethereum.org/EIPS/eip-191) standard.
+Withdrawal operations will allow users to withdraw funds from their Core.sol balance to external addresses. When implemented, withdrawals will use the same signature architecture as other EVVM operations.
 
-This signature proves the user's intent and authorization to withdraw a specific `amount` of a `token` to a designated external `addressToReceive` (if any), according to the parameters included in the signed message.
+## Expected Signature Format
 
-## Expected Signed Message Format
+When implemented, withdrawal signatures will follow the standard format:
 
-Based on the pattern established in the current SignatureUtils.sol implementation, withdrawal signature verification would likely follow this structure:
+```
+{evvmId},{serviceAddress},{hashPayload},{executor},{nonce},{isAsyncExec}
+```
+
+**Components:**
+1. **evvmId**: Network identifier (uint256, typically `1`)
+2. **serviceAddress**: Core.sol contract address
+3. **hashPayload**: Hash of withdrawal parameters (bytes32, from CoreHashUtils)
+4. **executor**: Address authorized to execute (address, `0x0...0` for unrestricted)
+5. **nonce**: User's centralized nonce from Core.sol (uint256)
+6. **isAsyncExec**: Execution mode - `true` for async, `false` for sync (boolean)
+
+## Expected Hash Payload Generation
+
+A future `CoreHashUtils.hashDataForWithdraw()` function will likely generate the hash payload:
 
 ```solidity
-SignatureRecover.signatureVerification(
-    AdvancedStrings.uintToString(evvmID),        // EVVM ID as string
-    "withdraw",                      // Action type (expected)
-    string.concat(                   // Concatenated parameters
-        AdvancedStrings.addressToString(addressToReceive),
-        ",",
-        AdvancedStrings.addressToString(_token),
-        ",",
-        AdvancedStrings.uintToString(_amount),
-        ",",
-        AdvancedStrings.uintToString(_priorityFee),
-        ",",
-        AdvancedStrings.uintToString(_nonce),
-        ",",
-        _priorityFlag ? "true" : "false",
-        ",",
-        AdvancedStrings.addressToString(_executor)
-    ),
-    signature,
-    signer
+// Expected implementation (not yet available)
+bytes32 hashPayload = CoreHashUtils.hashDataForWithdraw(
+    recipient,      // External address to receive withdrawal
+    token,          // ERC20 token address (0x0...0 for ETH)
+    amount,         // Amount to withdraw
+    priorityFee     // Fee amount
 );
 ```
 
-### Expected Internal Message Construction
+## Expected Verification
 
-Following the `SignatureRecover` pattern, the function would construct the final message by concatenating:
-
-```solidity
-string.concat(evvmID, ",", functionName, ",", inputs)
-```
-
-This would result in a message format:
-```
-"{evvmID},withdraw,{addressToReceive},{token},{amount},{priorityFee},{nonce},{priorityFlag},{executor}"
-```
-
-### Expected EIP-191 Message Hashing
-
-The message would be hashed according to EIP-191 standard:
+Core.sol will verify withdrawal signatures using the standard `validateAndConsumeNonce()` function:
 
 ```solidity
-bytes32 messageHash = keccak256(
-    abi.encodePacked(
-        "\x19Ethereum Signed Message:\n",
-        AdvancedStrings.uintToString(bytes(message).length),
-        message
-    )
+// Expected implementation
+Core(coreAddress).validateAndConsumeNonce(
+    user,          // Signer's address
+    hashPayload,   // From CoreHashUtils
+    executor,      // Who can execute
+    nonce,         // User's nonce
+    isAsyncExec,   // Execution mode
+    signature      // EIP-191 signature
 );
 ```
 
-## Expected Message Components
+## Implementation Status
 
-**1. EVVM ID (String):**
-- The result of `AdvancedStrings.uintToString(evvmID)`
-- *Purpose*: Identifies the specific EVVM instance
+**Current Status:** Not yet implemented
 
-**2. Action Type (String):**
-- Expected value: `"withdraw"`
-- *Purpose*: Identifies this as a withdrawal operation
+**Planned Features:**
+- Withdraw from Core.sol balance to external addresses
+- Centralized signature verification via Core.sol
+- Integration with cross-chain bridges (Axelar, LayerZero)
+- Support for both ETH and ERC20 tokens
+- Username resolution for withdrawal destinations
 
-**3. Concatenated Parameters (String):**
-The parameters would be concatenated with comma separators:
+## Related Operations
 
-**3.1. Recipient Address (String):**
-- The result of `AdvancedStrings.addressToString(addressToReceive)`
-- *Purpose*: The destination address on the external network where the withdrawn tokens should be sent via the bridge
+- **[Single Payment Signatures](./01-SinglePaymentSignatureStructure.md)** - Standard payments
+- **[Disperse Payment Signatures](./02-DispersePaySignatureStructure.md)** - Multi-recipient payments
+- **[Core.sol Payment Functions](../../04-Contracts/01-EVVM/04-PaymentFunctions/01-pay.md)** - Current payment operations
 
-**3.2. Token Address (String):**
-- The result of `AdvancedStrings.addressToString(_token)`
-- *Purpose*: The ERC20 token contract address being withdrawn
+---
 
-**3.3. Amount (String):**
-- The result of `AdvancedStrings.uintToString(_amount)`
-- *Purpose*: The quantity of the token the user authorizes to be withdrawn
-
-**3.4. Priority Fee (String):**
-- The result of `AdvancedStrings.uintToString(_priorityFee)`
-- *Purpose*: The fee included in the transaction authorization
-
-**3.5. Nonce (String):**
-- The result of `AdvancedStrings.uintToString(_nonce)`
-- *Purpose*: Provides replay protection for the transaction
-
-**3.6. Priority Flag (String):**
-- `"true"`: If `_priorityFlag` is `true` (asynchronous)
-- `"false"`: If `_priorityFlag` is `false` (synchronous)  
-- *Purpose*: Explicitly includes the execution mode in the signed message
-
-**3.7. Executor Address (String):**
-- The result of `AdvancedStrings.addressToString(_executor)`
-- *Purpose*: Specifies the address authorized to submit this withdrawal request
-
-:::warning Expected Technical Details
+:::info[Stay Updated]
+This documentation will be updated when withdrawal functionality is implemented in a future EVVM release. The signature format will follow the centralized verification architecture.
 
 **This structure is speculative** and based on the pattern used in the implemented payment functions:
 

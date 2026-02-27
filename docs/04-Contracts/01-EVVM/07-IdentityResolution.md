@@ -88,7 +88,7 @@ address to = !Strings.equal(to_identity, "")
 
 ### Batch Payment Functions
 
-In `payMultiple`, each payment in the batch undergoes individual identity resolution:
+In `batchPay`, each payment in the batch undergoes individual identity resolution:
 
 ```solidity
 to_aux = !Strings.equal(payData[iteration].to_identity, "")
@@ -227,7 +227,7 @@ evvm.pay(
     amount,
     priorityFee,
     nonce,
-    priorityFlag,        // async/sync flag
+    isAsyncExec,        // async/sync flag
     executor,
     signature
 );
@@ -245,7 +245,7 @@ evvm.pay(
     amount,
     priorityFee,
     0,                    // nonce (example)
-    false,                // priorityFlag (sync example)
+    false,                // isAsyncExec (sync example)
     executor,
     signature
 );
@@ -276,7 +276,7 @@ payments[1] = PayData({
     // ... other fields
 });
 
-evvm.payMultiple(payments);
+evvm.batchPay(payments);
 ```
 
 ## Integration Benefits

@@ -1,4 +1,5 @@
 ---
+description: "SuperUser function to register chain IDs to the whitelist, enabling EVVM registration on specific blockchain networks"
 sidebar_position: 1
 ---
 

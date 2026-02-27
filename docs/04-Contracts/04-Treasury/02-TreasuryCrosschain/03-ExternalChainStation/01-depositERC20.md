@@ -1,4 +1,5 @@
 ---
+description: "Deposit ERC20 tokens to host chain via cross-chain protocols"
 sidebar_position: 1
 ---
 
@@ -29,22 +30,17 @@ Deposits ERC20 tokens and sends them to host chain via selected cross-chain prot
 
 ## Workflow
 
-### 1. Input Validation
-```solidity
-if (amount == 0) revert ErrorsLib.DepositAmountMustBeGreaterThanZero();
-```
-Ensures meaningful deposit amounts and prevents zero-value transactions.
-
-### 2. Token Transfer
-```solidity
-IERC20(token).transferFrom(msg.sender, address(this), amount);
-```
-
-### 3. Payload Encoding
+### 1. Payload Encoding
 ```solidity
 bytes memory payload = PayloadUtils.encodePayload(token, toAddress, amount);
 ```
 Creates standardized cross-chain message payload using PayloadUtils library.
+
+### 2. Token Transfer and Validation
+```solidity
+verifyAndDepositERC20(token, amount);
+```
+Internally verifies token approval and executes `transferFrom` to custody tokens in this contract.
 
 ### 3. Protocol-Specific Cross-Chain Execution
 
@@ -109,10 +105,15 @@ gateway().callContract(
 ## Token Requirements
 
 ### ERC20 Transfer Process
-The function uses SafeTransferLib for secure and gas-optimized token transfers:
+The function uses an internal validation function for secure token transfers:
 ```solidity
-SafeTransferLib.safeTransferFrom(token, msg.sender, address(this), amount);
+verifyAndDepositERC20(token, amount);
 ```
+
+This internally:
+1. Verifies token is not `address(0)`
+2. Checks user has approved this contract for the deposit amount
+3. Executes `IERC20(token).transferFrom(msg.sender, address(this), amount)`
 
 ### Prerequisites
 - **Token Approval**: Users must approve the External Chain Station contract for the deposit amount
@@ -129,7 +130,7 @@ bytes memory payload = PayloadUtils.encodePayload(token, toAddress, amount);
 ### Host Chain Processing
 Upon successful cross-chain message delivery:
 1. **Payload Decoding**: `PayloadUtils.decodePayload()` extracts transfer parameters
-2. **EVVM Integration**: `Evvm(evvmAddress).addAmountToUser(toAddress, token, amount)`  
+2. **EVVM Integration**: `core.addAmountToUser(toAddress, token, amount)`  
 3. **Balance Credit**: Recipient's EVVM balance immediately reflects the deposited tokens
 
 ## Gas Requirements
@@ -147,8 +148,9 @@ Use the respective quote functions to estimate required amounts:
 ## Security Features
 
 ### Input Validation
-- **Amount Check**: `ErrorsLib.DepositAmountMustBeGreaterThanZero()` prevents zero deposits
-- **Safe Transfer**: `SafeTransferLib.safeTransferFrom()` handles transfer edge cases
+- **Token Address**: `verifyAndDepositERC20()` prevents `address(0)` deposits
+- **Allowance Check**: Function reverts with `Error.InsufficientBalance()` if insufficient approval
+- **Safe Transfer**: Standard `IERC20.transferFrom()` with approval verification
 - **Protocol Support**: Validates supported protocol identifiers (0x01, 0x02, 0x03)
 
 ### Cross-Chain Security  
@@ -160,8 +162,8 @@ Use the respective quote functions to estimate required amounts:
 
 | Error | Condition |
 |-------|-----------|
-| `DepositAmountMustBeGreaterThanZero()` | Amount parameter is zero |
-| SafeTransfer Revert | Token transfer fails (insufficient balance, approval, etc.) |
+| `Error.InsufficientBalance()` | User hasn't approved sufficient tokens |
+| Generic Revert | Token address is `address(0)` |
 | Protocol Revert | Invalid `protocolToExecute` value |
 | Insufficient Gas | `msg.value` doesn't cover cross-chain messaging costs |
 

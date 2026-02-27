@@ -1,18 +1,19 @@
 ---
-title: Flush Custom Metadata Function
-description: Detailed documentation of the Name Service Contract's flushCustomMetadata function for removing all custom metadata associated with registered identities.
+title: "flushCustomMetadata"
+description: "Delete all custom metadata entries in a single transaction with batch pricing"
 sidebar_position: 3
 ---
 
-# Flush Custom Metadata Function
+# flushCustomMetadata
 
-This section details the `flushCustomMetadata` function within the Name Service. This function allows the current owner (`user`) of a registered identity (`identity`, typically a username) to remove **all** custom metadata entries associated with that identity in a single transaction.
+:::info[Signature Verification]
+This function uses **Core.sol's centralized signature verification** via `validateAndConsumeNonce()`. All NameService operations use the universal signature format with `NameServiceHashUtils` for hash generation.
+:::
 
-To flush all custom metadata, the identity owner must authorize the action with their signature and pay a fee via the EVVM contract. This fee is calculated dynamically as 10 times the current reward amount per metadata entry via `getPriceToFlushCustomMetadata(identity)`. An optional priority fee can also be paid to the executor. This function can be executed by any address.
+**Function Type**: External  
+**Function Signature**: `flushCustomMetadata(address user, string memory identity, address originExecutor, uint256 nonce, bytes memory signature, uint256 priorityFeeEvvm, uint256 nonceEvvm, bytes memory signatureEvvm) external`
 
-**Function Type**: `public`  
-**Function Signature**: `flushCustomMetadata(address,string,uint256,bytes,uint256,uint256,bool,bytes)`  
-**Function Selector**: `0x3e7899a1`
+Removes all custom metadata entries for a username in one transaction. More gas-efficient than calling `removeCustomMetadata` multiple times. The cost is calculated per entry, making it proportional to the amount of metadata being deleted.
 
 ## Parameters
 
@@ -60,6 +61,3 @@ Failure at validation steps typically reverts the transaction. The steps execute
     - The full `priorityFee_EVVM`, if it was greater than zero and successfully paid in Step 5.
 8.  **Reset Metadata Counter**: Sets `identityDetails[identity].customMetadataMaxSlots = 0` to reflect that all metadata has been removed.
 9.  **Nonce Management**: Calls internal `markAsyncNonceAsUsed(user, nonce)` to mark the provided `nonce` as used and prevent replays.
-
-![flushCustomMetadata Happy Path](./img/flushCustomMetadata_HappyPath.svg)
-![flushCustomMetadata Failed Path](./img/flushCustomMetadata_FailedPath.svg)

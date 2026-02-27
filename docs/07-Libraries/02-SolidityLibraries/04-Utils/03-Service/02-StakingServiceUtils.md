@@ -1,7 +1,7 @@
 ---
 title: "StakingServiceUtils"
 description: "Abstract contract for simplified service staking integration"
-sidebar_position: 3
+sidebar_position: 2
 ---
 
 # StakingServiceUtils
@@ -25,12 +25,10 @@ The `StakingServiceUtils` abstract contract provides simplified helpers for serv
 
 ```solidity
 abstract contract StakingServiceUtils {
-    address stakingHookAddress;
-    address evvmHookAddress;
-    
-    constructor(address _stakingAddress) {
-        stakingHookAddress = _stakingAddress;
-        evvmHookAddress = IStaking(stakingHookAddress).getEvvmAddress();
+    IStaking internal staking;
+
+    constructor(address stakingAddress) {
+        staking = IStaking(stakingAddress);
     }
     
     // Staking functions
@@ -40,27 +38,16 @@ abstract contract StakingServiceUtils {
 
 ## State Variables
 
-### `stakingHookAddress`
+### `staking`
 ```solidity
-address stakingHookAddress;
+IStaking internal staking;
 ```
 
-**Description**: Address of the Staking contract
+**Description**: Internal interface to the Staking contract
 
 **Visibility**: Internal
 
 **Initialized**: In constructor
-
-### `evvmHookAddress`
-```solidity
-address evvmHookAddress;
-```
-
-**Description**: Address of the EVVM contract (fetched from Staking contract)
-
-**Visibility**: Internal
-
-**Initialized**: Automatically from `IStaking(stakingHookAddress).getEvvmAddress()`
 
 ## Functions
 
@@ -143,18 +130,16 @@ function unstake(uint256 amount) external {
 
 ### `_changeStakingAddress`
 ```solidity
-function _changeStakingAddress(address newStakingAddress) internal
+function _changeStakingAddress(address newStakingAddress) internal virtual
 ```
 
-**Description**: Updates both the Staking contract address and automatically fetches the new EVVM address
+**Description**: Updates the Staking contract address
 
 **Parameters**:
 - `newStakingAddress`: New Staking contract address
 
 **Process**:
-1. Updates `stakingHookAddress` to new address
-2. Queries new Staking contract for EVVM address
-3. Updates `evvmHookAddress` automatically
+1. Updates `staking` interface to new address
 
 **Use Case**: When Staking contract is upgraded via proxy
 
@@ -163,26 +148,6 @@ function _changeStakingAddress(address newStakingAddress) internal
 function updateStakingAddress(address newAddr) external {
     require(msg.sender == owner, "Not owner");
     _changeStakingAddress(newAddr);
-}
-```
-
-### `_changeEvvmHookAddress`
-```solidity
-function _changeEvvmHookAddress(address newEvvmAddress) internal
-```
-
-**Description**: Manually updates the EVVM contract address
-
-**Parameters**:
-- `newEvvmAddress`: New EVVM contract address
-
-**Use Case**: When EVVM contract is upgraded but Staking contract hasn't updated its reference yet
-
-**Example**:
-```solidity
-function updateEvvmHookAddress(address newAddr) external {
-    require(msg.sender == owner, "Not owner");
-    _changeEvvmHookAddress(newAddr);
 }
 ```
 
@@ -243,9 +208,9 @@ contract AutoRestaker is StakingServiceUtils {
     
     function checkAndRestake() external {
         // Get current MATE balance
-        uint256 balance = IEvvm(evvmHookAddress).getBalance(
+        uint256 balance = ICore(staking.getCoreAddress()).getBalance(
             address(this),
-            address(1) // MATE token
+            ICore(staking.getCoreAddress()).getPrincipalTokenAddress()
         );
         
         if (balance >= autoRestakeThreshold) {
@@ -257,7 +222,7 @@ contract AutoRestaker is StakingServiceUtils {
     }
     
     function getStakePrice() internal view returns (uint256) {
-        return IStaking(stakingHookAddress).priceOfStaking();
+        return staking.priceOfStaking();
     }
 }
 ```
@@ -280,7 +245,7 @@ contract ServiceWithEmergency is StakingServiceUtils {
     }
     
     function getCurrentStake() internal view returns (uint256) {
-        return IStaking(stakingHookAddress).getUserAmountStaked(address(this));
+        return staking.getUserAmountStaked(address(this));
     }
 }
 ```
@@ -322,9 +287,9 @@ IStaking(stakingAddress).prepareServiceStaking(amountToStake);
 
 // Step 2: Transfer MATE tokens
 uint256 cost = IStaking(stakingAddress).priceOfStaking() * amountToStake;
-IEvvm(evvmAddress).caPay(
+ICore(staking.getCoreAddress()).caPay(
     address(stakingAddress),
-    address(1), // MATE token
+    ICore(staking.getCoreAddress()).getPrincipalTokenAddress(),
     cost
 );
 
@@ -420,8 +385,8 @@ function getStakePrice() internal view returns (uint256) {
 
 // Acceptable but redundant - requery address
 function getStakePrice() internal view returns (uint256) {
-    address staking = IStaking(stakingHookAddress).getEvvmAddress();
-    return IStaking(staking).priceOfStaking();
+    address core = IStaking(stakingHookAddress).getCoreAddress();
+    return IStaking(stakingHookAddress).priceOfStaking();
 }
 ```
 

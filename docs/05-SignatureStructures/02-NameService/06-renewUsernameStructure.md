@@ -1,4 +1,5 @@
 ---
+description: "EIP-191 signature structure for username owners to authorize renewUsername operations extending registration validity"
 sidebar_position: 6
 ---
 

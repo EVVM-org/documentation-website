@@ -1,4 +1,5 @@
 ---
+description: "EIP-191 signature structure for authorizing withdrawOffer operations to cancel previously placed username offers"
 sidebar_position: 4
 ---
 

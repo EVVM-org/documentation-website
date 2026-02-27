@@ -1,60 +1,58 @@
 ---
 title: "EvvmService"
-description: "Complete base contract for building EVVM services with built-in payment processing, signature verification, nonce management, and service staking"
+description: "Complete base contract for building EVVM services with built-in payment processing, service staking, and Core.sol integration"
 sidebar_position: 2
 ---
 
 # EvvmService
 
-The `EvvmService` abstract contract is the recommended foundation for building EVVM services. It provides a complete, production-ready implementation of common service patterns including signature verification, payment processing, nonce management, and service staking.
+The `EvvmService` abstract contract is the recommended foundation for building EVVM services. It combines `CoreExecution` for Core.sol payment processing and `StakingServiceUtils` for simplified service staking into a single, production-ready base contract.
 
 ## Overview
 
 **Contract Type**: Abstract base contract  
-**Inheritance**: `AsyncNonce`, `StakingServiceUtils`, `EvvmPayments`  
+**Inheritance**: `CoreExecution`, `StakingServiceUtils`  
 **License**: EVVM-NONCOMMERCIAL-1.0  
 **Import Path**: `@evvm/testnet-contracts/library/EvvmService.sol`
 
 ### Key Features
 
-- **Built-in signature verification** with EVVM ID validation
-- **Simplified payment processing** through EVVM
-- **Automatic nonce management** (async pattern)
-- **Service staking integration** in single function calls
-- **Contract balance transfers** for rewards and withdrawals
-- **EVVM/Staking address management** for upgradability
+- **Direct Core.sol integration** for payment processing (via CoreExecution)
+- **Simplified service staking** in single function calls (via StakingServiceUtils)
+- **EVVM ID access** for signature generation
+- **Principal Token queries** for MATE operations
+- **Minimal dependencies** - no nonce management or redundant abstractions
 
 ## Contract Structure
 
 ```solidity
-abstract contract EvvmService is AsyncNonce, StakingServiceUtils, EvvmPayments {
+abstract contract EvvmService is CoreExecution, StakingServiceUtils {
     error InvalidServiceSignature();
 
-    // NOTE: `evvm` and `staking` are provided by base contracts:
-    // - `EvvmPayments` defines `IEvvm internal evvm;`
+    // NOTE: `core` and `staking` are provided by base contracts:
+    // - `CoreExecution` defines `Core public core;`
     // - `StakingServiceUtils` defines `IStaking internal staking;`
 
-    constructor(address evvmAddress, address stakingAddress)
+    constructor(address coreAddress, address stakingAddress)
         StakingServiceUtils(stakingAddress)
-        EvvmPayments(evvmAddress)
+        CoreExecution(coreAddress)
     {}
 
-    // Signature verification
-    // Payment processing
-    // Service staking
     // Helper functions
+    function getEvvmID() internal view returns (uint256);
+    function getPrincipalTokenAddress() internal view returns (address);
 }
 ```
 
-## State Variables
+## Inherited State Variables
 
-The `EvvmService` relies on state variables declared in its base libraries rather than redeclaring them:
+The `EvvmService` relies on state variables declared in its base contracts:
 
-### From `EvvmPayments`
+### From `CoreExecution`
 ```solidity
-IEvvm internal evvm;
+Core public core;
 ```
-An `IEvvm` handle for payment processing and balance queries.
+A `Core` handle for payment processing, nonce validation, and balance operations.
 
 ### From `StakingServiceUtils`
 ```solidity
@@ -62,48 +60,57 @@ IStaking internal staking;
 ```
 A `IStaking` handle for service staking operations.
 
+
 ## Functions
 
-### Signature Verification
+EvvmService provides two helper functions for accessing Core.sol metadata:
 
-#### `validateServiceSignature`
+### `getEvvmID`
 ```solidity
-function validateServiceSignature(
-    string memory functionName,
-    string memory inputs,
-    bytes memory signature,
-    address expectedSigner
-) internal view virtual
+function getEvvmID() internal view returns (uint256)
 ```
 
-Validates that a signature was created by the expected signer for a specific function call.
+**Description**: Gets the unique EVVM instance identifier for signature validation
 
-**Parameters**:
-- `functionName`: Name of the function being called (e.g., "orderCoffee")
-- `inputs`: Comma-separated string of function parameters (e.g., "latte,2,1000000000000000")
-- `signature`: EIP-191 signature bytes
-- `expectedSigner`: Address that should have created the signature
+**Returns**: Unique blockchain instance identifier from Core.sol
 
-**Message Format**: `"<evvmID>,<functionName>,<inputs>"`
-
-**Reverts**: `InvalidServiceSignature()` if signature is invalid
+**Usage**: Prevents cross-chain replay attacks by including this ID in signatures
 
 **Example**:
 ```solidity
-validateServiceSignature(
-    "orderCoffee",
-    string.concat(
-        "latte,",
-        AdvancedStrings.uintToString(2),
-        ",",
-        AdvancedStrings.uintToString(1 ether)
-    ),
-    userSignature,
-    customerAddress
-);
+function generateMessage(string memory action) internal view returns (string memory) {
+    return string.concat(
+        Strings.toString(getEvvmID()), ",",
+        Strings.toHexString(address(this)), ",",
+        action
+    );
+}
 ```
 
-### Payment Processing
+### `getPrincipalTokenAddress`
+```solidity
+function getPrincipalTokenAddress() internal view returns (address)
+```
+
+**Description**: Gets the Principal Token (MATE) address
+
+**Returns**: Address of the MATE token contract
+
+**Usage**: Required for MATE payment operations and staking
+
+**Example**:
+```solidity
+function stakeMate(uint256 amount) external {
+    address mate = getPrincipalTokenAddress();
+    // Use MATE address for operations
+}
+```
+
+## Inherited Functions
+
+### From CoreExecution
+
+The following payment functions are available through `CoreExecution` inheritance:
 
 #### `requestPay`
 ```solidity
@@ -113,34 +120,24 @@ function requestPay(
     uint256 amount,
     uint256 priorityFee,
     uint256 nonce,
-    bool priorityFlag,
+    bool isAsyncExec,
     bytes memory signature
-) internal virtual
+) internal
 ```
 
-Processes a payment through EVVM from a user to this service contract.
+Requests payment from a user via Core.sol with signature validation.
 
-**Parameters**:
-- `from`: Address sending the payment
-- `token`: Token address (`address(0)` for ETH, `address(1)` for MATE)
-- `amount`: Amount to transfer
-- `priorityFee`: Fee paid to fisher executing the transaction
-- `nonce`: EVVM payment nonce
-- `priorityFlag`: `true` for async nonce, `false` for sync nonce
-- `signature`: Payment authorization signature from `from` address
-
-**Recipient**: Always `address(this)` (the service contract)  
-**Executor**: Always `address(this)` (service executes on behalf of itself)
+**Documentation**: See [CoreExecution](./04-Utils/03-Service/01-CoreExecution.md)
 
 **Example**:
 ```solidity
 requestPay(
     customerAddress,
-    getEtherAddress(),
+    address(0),             // ETH
     1 ether,
-    0.001 ether, // priority fee
-    12345,
-    true, // async nonce
+    0.001 ether,            // Priority fee
+    nonce,
+    true,                   // isAsyncExec
     paymentSignature
 );
 ```
@@ -151,55 +148,51 @@ function makeCaPay(
     address to,
     address token,
     uint256 amount
-) internal virtual
+) internal
 ```
 
-Transfers tokens from the service contract's EVVM balance to another address.
+Sends tokens from service's balance to recipient via contract authorization (no signature required).
 
-**Parameters**:
-- `to`: Recipient address
-- `token`: Token address to transfer
-- `amount`: Amount to transfer
-
-**Use Cases**:
-- Withdrawing service funds
-- Distributing fisher rewards
-- Transferring accumulated rewards
+**Documentation**: See [CoreExecution](./04-Utils/03-Service/01-CoreExecution.md)
 
 **Example**:
 ```solidity
 // Withdraw ETH balance
-uint256 balance = evvm.getBalance(address(this), getEtherAddress());
-makeCaPay(owner, getEtherAddress(), balance);
+makeCaPay(owner, address(0), balance);
 
-// Reward fisher
+// Reward user
 makeCaPay(msg.sender, getPrincipalTokenAddress(), rewardAmount);
 ```
 
-### Service Staking
+#### `makeCaBatchPay`
+```solidity
+function makeCaBatchPay(
+    address[] memory to,
+    address token,
+    uint256[] memory amounts
+) internal
+```
+
+Sends tokens to multiple recipients via contract authorization (batch version).
+
+**Documentation**: See [CoreExecution](./04-Utils/03-Service/01-CoreExecution.md)
+
+### From StakingServiceUtils
+
+The following staking functions are available through `StakingServiceUtils` inheritance:
 
 #### `_makeStakeService`
 ```solidity
 function _makeStakeService(uint256 amountToStake) internal
 ```
 
-Stakes tokens to make this service contract a staker in one transaction.
+Stakes MATE tokens to make this service contract a staker in one transaction.
 
-**Parameters**:
-- `amountToStake`: Number of stake units to purchase
-
-**Process**:
-1. Calls `staking.prepareServiceStaking(amountToStake)`
-2. Transfers `priceOfStaking * amountToStake` MATE tokens to staking contract
-3. Calls `staking.confirmServiceStaking()`
-
-**Requirements**:
-- Service must have sufficient MATE tokens in EVVM balance
-- Service must not have pending staking operations
+**Documentation**: See [StakingServiceUtils](./04-Utils/03-Service/02-StakingServiceUtils.md)
 
 **Example**:
 ```solidity
-function stake(uint256 amount) external onlyOwner {
+function stake(uint256 amount) external onlyAdmin {
     _makeStakeService(amount);
 }
 ```
@@ -209,47 +202,16 @@ function stake(uint256 amount) external onlyOwner {
 function _makeUnstakeService(uint256 amountToUnstake) internal
 ```
 
-Unstakes tokens from the service staking position.
+Unstakes MATE tokens from the service staking position.
 
-**Parameters**:
-- `amountToUnstake`: Number of stake units to release
-
-**Requirements**:
-- Service must have staked tokens
-- Cannot unstake more than current stake
+**Documentation**: See [StakingServiceUtils](./04-Utils/03-Service/02-StakingServiceUtils.md)
 
 **Example**:
 ```solidity
-function unstake(uint256 amount) external onlyOwner {
+function unstake(uint256 amount) external onlyAdmin {
     _makeUnstakeService(amount);
 }
 ```
-
-### Address Management
-
-#### `_changeEvvmAddress`
-```solidity
-function _changeEvvmAddress(address newEvvmAddress) internal
-```
-
-Updates the EVVM contract address (for upgrades).
-
-**Parameters**:
-- `newEvvmAddress`: New EVVM contract address
-
-**Use Case**: When EVVM contract is upgraded via proxy
-
-#### `_changeStakingAddress`
-```solidity
-function _changeStakingAddress(address newStakingAddress) internal
-```
-
-Updates the Staking contract address (for upgrades).
-
-**Parameters**:
-- `newStakingAddress`: New Staking contract address
-
-**Use Case**: When Staking contract is upgraded
 
 ### Helper Functions
 
@@ -271,200 +233,159 @@ Returns the ETH token address used in EVVM.
 
 **Returns**: `address(0)` (ETH representation)
 
-## Inherited Functionality
-
-From `AsyncNonce`:
-
-### `verifyAsyncNonce`
-```solidity
-function verifyAsyncNonce(address user, uint256 nonce) internal view virtual
-```
-
-Checks if an async nonce has been used.
-
-**Reverts**: `AsyncNonceAlreadyUsed()` if nonce was already used
-
-### `markAsyncNonceAsUsed`
-```solidity
-function markAsyncNonceAsUsed(address user, uint256 nonce) internal virtual
-```
-
-Marks an async nonce as consumed to prevent replay attacks.
-
-### `getIfUsedAsyncNonce`
-```solidity
-function getIfUsedAsyncNonce(address user, uint256 nonce) public view virtual returns (bool)
-```
-
-Public function to check nonce availability.
-
-**Returns**: `true` if nonce has been used, `false` if still available
-
 ## Complete Usage Example
 
 ```solidity
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.13;
+// SPDX-License-Identifier: EVVM-NONCOMMERCIAL-1.0
+pragma solidity ^0.8.0;
 
 import {EvvmService} from "@evvm/testnet-contracts/library/EvvmService.sol";
-import {AdvancedStrings} from "@evvm/testnet-contracts/library/utils/AdvancedStrings.sol";
+import {Admin} from "@evvm/testnet-contracts/library/utils/governance/Admin.sol";
 
-contract CoffeeShop is EvvmService {
-    error Unauthorized();
+contract CoffeeShop is EvvmService, Admin {
+    // Events
+    event CoffeeOrdered(address indexed customer, string coffeeType, uint256 quantity);
     
-    address public owner;
+    uint256 public constant COFFEE_PRICE = 0.001 ether;
     
     constructor(
-        address evvmAddress,
+        address coreAddress,
         address stakingAddress,
-        address _owner
-    ) EvvmService(evvmAddress, stakingAddress) {
-        owner = _owner;
-    }
-    
-    modifier onlyOwner() {
-        if (msg.sender != owner) revert Unauthorized();
-        _;
-    }
+        address initialAdmin
+    ) 
+        EvvmService(coreAddress, stakingAddress) 
+        Admin(initialAdmin)
+    {}
     
     /**
-     * @notice Process coffee order with EVVM payment
+     * @notice Process coffee order with Core.sol payment
      * @param customer Customer address
-     * @param coffeeType Type of coffee (e.g., "latte", "espresso")
+     * @param coffeeType Type of coffee (e.g., "latte")
      * @param quantity Number of coffees
-     * @param price Total price in wei
-     * @param nonce Unique nonce for replay protection
-     * @param signature Customer's signature
-     * @param priorityFee Fee for fisher
-     * @param evvmNonce EVVM payment nonce
-     * @param useAsync Use async nonce for EVVM payment
-     * @param paymentSig Payment authorization signature
+     * @param priorityFee Fee for fisher (in MATE)
+     * @param originExecutor EOA that will execute (verified with tx.origin)
+     * @param nonce Core.sol nonce for customer
+     * @param signature Customer's payment authorization signature
      */
     function orderCoffee(
         address customer,
         string memory coffeeType,
         uint256 quantity,
-        uint256 price,
-        uint256 nonce,
-        bytes memory signature,
         uint256 priorityFee,
-        uint256 evvmNonce,
-        bool useAsync,
-        bytes memory paymentSig
+        uint256 nonce,
+        bytes memory signature
     ) external {
-        // 1. Validate customer signature
-        validateServiceSignature(
-            "orderCoffee",
-            string.concat(
-                coffeeType,
-                ",",
-                AdvancedStrings.uintToString(quantity),
-                ",",
-                AdvancedStrings.uintToString(price),
-                ",",
-                AdvancedStrings.uintToString(nonce)
-            ),
-            signature,
-            customer
-        );
+        uint256 totalPrice = COFFEE_PRICE * quantity;
         
-        // 2. Check nonce hasn't been used
-        verifyAsyncNonce(customer, nonce);
-        
-        // 3. Process payment
+        // Request payment via Core.sol (validates signature and consumes nonce)
         requestPay(
             customer,
-            getEtherAddress(),
-            price,
+            address(0),             // ETH payment
+            totalPrice,
             priorityFee,
-            evvmNonce,
-            useAsync,
-            paymentSig
+            nonce,
+            true,                   // Always async
+            signature
         );
         
-        // 4. Reward fisher if service is staker
-        if (evvm.isAddressStaker(address(this))) {
-            makeCaPay(msg.sender, getEtherAddress(), priorityFee);
-            makeCaPay(msg.sender, getPrincipalTokenAddress(), evvm.getRewardAmount() / 2);
-        }
-        
-        // 5. Mark nonce as used
-        markAsyncNonceAsUsed(customer, nonce);
-        
-        // 6. Prepare coffee (off-chain)
-        // emit CoffeeOrdered(customer, coffeeType, quantity);
+        // Emit event for off-chain processing
+        emit CoffeeOrdered(customer, coffeeType, quantity);
     }
     
     /**
-     * @notice Stake service to earn rewards
+     * @notice Refund a customer (admin only)
+     * @param customer Customer to refund
+     * @param amount Amount to refund
      */
-    function stake(uint256 amount) external onlyOwner {
+    function refundCustomer(address customer, uint256 amount) external onlyAdmin {
+        // Send refund from service balance (no signature needed)
+        makeCaPay(customer, address(0), amount);
+    }
+    
+    /**
+     * @notice Stake service to earn rewards (admin only)
+     * @param amount Number of stake units
+     */
+    function stake(uint256 amount) external onlyAdmin {
         _makeStakeService(amount);
     }
     
     /**
-     * @notice Unstake service tokens
+     * @notice Unstake service tokens (admin only)
+     * @param amount Number of stake units
      */
-    function unstake(uint256 amount) external onlyOwner {
+    function unstake(uint256 amount) external onlyAdmin {
         _makeUnstakeService(amount);
     }
     
     /**
-     * @notice Withdraw ETH earnings
+     * @notice Withdraw ETH earnings (admin only)
+     * @param to Recipient address
      */
-    function withdrawFunds(address to) external onlyOwner {
-        uint256 balance = evvm.getBalance(address(this), getEtherAddress());
-        makeCaPay(to, getEtherAddress(), balance);
+    function withdrawFunds(address to) external onlyAdmin {
+        uint256 balance = core.getBalance(address(this), address(0));
+        makeCaPay(to, address(0), balance);
     }
     
     /**
-     * @notice Withdraw MATE rewards
+     * @notice Withdraw MATE rewards (admin only)
+     * @param to Recipient address
      */
-    function withdrawRewards(address to) external onlyOwner {
-        uint256 balance = evvm.getBalance(address(this), getPrincipalTokenAddress());
-        makeCaPay(to, getPrincipalTokenAddress(), balance);
+    function withdrawRewards(address to) external onlyAdmin {
+        address mate = getPrincipalTokenAddress();
+        uint256 balance = core.getBalance(address(this), mate);
+        makeCaPay(to, mate, balance);
+    }
+    
+    /**
+     * @notice Update Core.sol address (admin only)
+     * @param newCoreAddress New Core contract address
+     */
+    function updateCoreAddress(address newCoreAddress) external override onlyAdmin {
+        core = Core(newCoreAddress);
     }
 }
 ```
 
 ## Best Practices
 
-### 1. Always Validate Signatures
+### 1. Always Use Core.sol for Payment Validation
 ```solidity
-// Good
-validateServiceSignature("action", params, signature, user);
+// Good - Core.sol validates signature and nonce
+```solidity
+// Good - Core.sol validates signature and nonce
+requestPay(user, token, amount, priorityFee, nonce, true, signature);
+
+// Bad - Manual validation is redundant and error-prone
+// Don't implement your own signature/nonce validation
+```
 
 // Bad - no validation
 // Process without checking signature
 ```
 
-### 2. Check Nonces Before Payment
+### 2. Let Core.sol Handle Nonce Management
 ```solidity
-// Good - check nonce first
-verifyAsyncNonce(user, nonce);
-requestPay(...);
-markAsyncNonceAsUsed(user, nonce);
+// Good - Core.sol validates and consumes nonce
+requestPay(user, token, amount, priorityFee, nonce, true, signature);
 
-// Bad - payment before nonce check (wastes gas on replay)
-requestPay(...);
-verifyAsyncNonce(user, nonce);
+// Bad - Don't implement your own nonce tracking
+// Core.sol manages nonces centrally
 ```
 
-### 3. Reward Fishers Appropriately
+### 3. Use isAsyncExec Appropriately
 ```solidity
-// Good - check if service is staker
-if (evvm.isAddressStaker(address(this))) {
-    makeCaPay(msg.sender, getEtherAddress(), priorityFee);
-}
+// Good - async for most operations
+requestPay(user, token, amount, priorityFee, nonce, true, signature);
 
-// Bad - always reward (fails if not staker)
-makeCaPay(msg.sender, getEtherAddress(), priorityFee);
+// Sync only when sequential order matters
+requestPay(user, token, amount, priorityFee, nonce, false, signature);
 ```
 
 ### 4. Protect Admin Functions
 ```solidity
-// Good - require authorization
-function stake(uint256 amount) external onlyOwner {
+// Good - require authorization (using Admin pattern)
+function stake(uint256 amount) external onlyAdmin {
     _makeStakeService(amount);
 }
 
@@ -474,75 +395,103 @@ function stake(uint256 amount) external {
 }
 ```
 
+### 5. Override updateCoreAddress with Access Control
+```solidity
+// Good - admin-protected override
+function updateCoreAddress(address newCoreAddress) external override onlyAdmin {
+    core = Core(newCoreAddress);
+}
+
+// Bad - exposed to anyone (security risk)
+function updateCoreAddress(address newCoreAddress) external override {
+    core = Core(newCoreAddress);
+}
+```
+
 ## Security Considerations
 
-### Signature Replay Prevention
-- Always use `verifyAsyncNonce()` before processing actions
-- Mark nonces as used with `markAsyncNonceAsUsed()` after successful execution
-- Never reuse nonces across different function calls
-
-### Payment Authorization
-- `requestPay()` requires valid payment signature from sender
-- EVVM validates payment signatures internally
-- Service cannot forge payments
+### Centralized Validation via Core.sol
+- **Core.sol validates signatures**: Uses `validateAndConsumeNonce()` on every `requestPay()`
+- **Automatic nonce management**: Core.sol marks nonces as consumed (no manual tracking needed)
+- **Replay protection**: Nonces are one-time use, enforced by Core.sol
+- **Origin executor verification**: Core.sol uses `tx.origin` to verify EOA caller
 
 ### Access Control
-- Protect staking functions (`_makeStakeService`, `_makeUnstakeService`)
-- Protect withdrawal functions (`makeCaPay` for owner withdrawals)
-- Protect address management functions (`_changeEvvmAddress`, `_changeStakingAddress`)
+- **Staking functions**: Always protect `_makeStakeService()` and `_makeUnstakeService()`
+- **Withdrawal functions**: Protect `makeCaPay()` calls for owner withdrawals
+- **Address updates**: Override `updateCoreAddress()` with admin-only access
+
+### Payment Authorization
+- `requestPay()` requires valid user signature - Core.sol validates it
+- Service cannot forge payments on behalf of users
+- Users must explicitly sign payment authorization messages
 
 ## Gas Optimization Tips
 
-1. **Batch nonce checks**: Check all nonces before external calls
-2. **Cache balances**: Store `evvm.getBalance()` results if used multiple times
-3. **Minimize string concatenation**: Pre-compute parameter strings when possible
-4. **Use events**: Emit events instead of storing unnecessary data
+1. **Batch operations**: Use `makeCaBatchPay()` for multiple recipients
+2. **Cache balances**: Store `core.getBalance()` results if used multiple times
+3. **Avoid redundant checks**: Core.sol already validates signatures/nonces
+4. **Use events**: Emit events instead of storing unnecessary data on-chain
 
-## Migration from Manual Implementation
+## Architecture Benefits
 
-### Before (Manual)
+### Compared to Manual Implementation
+
+**Before (Manual):**
 ```solidity
 contract OldService {
     IEvvm evvm;
-    mapping(address => mapping(uint256 => bool)) nonces;
+    mapping(address => mapping(uint256 => bool)) nonces;  // Manual nonce tracking
     
     function action(...) external {
-        // Manual signature verification
+        // 1. Manual signature verification
         bytes32 hash = keccak256(...);
         address signer = ecrecover(hash, v, r, s);
         require(signer == expectedSigner, "Invalid");
         
-        // Manual nonce check
+        // 2. Manual nonce check
         require(!nonces[user][nonce], "Used");
         
-        // Manual payment
+        // 3. Manual payment call
         evvm.pay(user, address(this), "", token, amount, ...);
         
-        // Manual nonce marking
+        // 4. Manual nonce marking
         nonces[user][nonce] = true;
     }
 }
 ```
 
-### After (EvvmService)
+**After (EvvmService):**
 ```solidity
-contract NewService is EvvmService {
-    function action(...) external {
-        validateServiceSignature("action", params, sig, user);
-        verifyAsyncNonce(user, nonce);
-        requestPay(user, token, amount, fee, evmNonce, async, paymentSig);
-        markAsyncNonceAsUsed(user, nonce);
+contract NewService is EvvmService, Admin {
+    function action(
+        address user,
+        address token,
+        uint256 amount,
+        uint256 priorityFee,
+        uint256 nonce,
+        bytes memory signature
+    ) external {
+        // Single call - Core.sol validates signature, verifies executor, consumes nonce
+        requestPay(user, token, amount, priorityFee, nonce, true, signature);
     }
 }
 ```
 
-**Benefits**: Less code, fewer bugs, battle-tested patterns, automatic upgrades
+**Benefits**:
+- **Less code**: No manual signature/nonce management
+- **Fewer bugs**: Battle-tested Core.sol validation
+- **Gas efficient**: No redundant nonce storage in service
+- **Centralized security**: Core.sol enforces all rules
+- **Automatic upgrades**: Core.sol improvements benefit all services
+- **Consistent patterns**: All services use same validation logic
 
 ---
 
 ## See Also
 
-- **[AsyncNonce](./04-Utils/03-Service/01-AsyncNonceService.md)** - Inherited nonce management
-- **[SignatureUtil](./04-Utils/02-SignatureUtil.md)** - Signature verification used internally
+- **[CoreExecution](./04-Utils/03-Service/01-CoreExecution.md)** - Base payment processing contract
+- **[StakingServiceUtils](./04-Utils/03-Service/02-StakingServiceUtils.md)** - Service staking utilities
+- **[Admin](./04-Utils/04-GovernanceUtils.md)** - Governance pattern for access control
 - **[How to Make an EVVM Service](../../06-HowToMakeAEVVMService.md)** - Complete service development guide
-- **[Staking Integration](../../04-Contracts/03-Staking/01-Overview.md)** - Service staking details
+- **[Core.sol Overview](../../04-Contracts/01-EVVM/01-Overview.md)** - Centralized validation details

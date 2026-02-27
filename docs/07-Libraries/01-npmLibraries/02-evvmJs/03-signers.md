@@ -16,7 +16,7 @@ Available helpers:
 ## Ethers
 
 ```ts
-import { EVVM, createSignerWithEthers } from "@evvm/evvm-js";
+import { Core, createSignerWithEthers } from "@evvm/evvm-js";
 import { ethers } from "ethers";
 
 // 1. Create ethers signer
@@ -27,20 +27,20 @@ const ethersSigner = await provider.getSigner();
 const signer = await createSignerWithEthers(ethersSigner);
 
 // 3. Instantiate a service
-const evvm = new EVVM({
+const core = new Core({
   signer,
   address: "EVVM_CONTRACT_ADDRESS",
   chainId: 1,
-  evvmId: 1, // optional
 });
+// ...
 ```
 
 > Refer to the official [ethers](https://docs.ethers.org/v6/) documentation for more about signer usage and creation.
 
 ## Viem
 
-````ts
-import { EVVM } from "@evvm/evvm-js";
+```ts
+import { Core } from "@evvm/evvm-js";
 import { createSignerWithViem } from "@evvm/evvm-js/signers";
 import { createWalletClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
@@ -57,13 +57,12 @@ const client = createWalletClient({
 const signer = await createSignerWithViem(client);
 
 // 3. Instantiate a service
-const evvm = new EVVM({
+const core = new Core({
   signer,
   address: "EVVM_CONTRACT_ADDRESS",
   chainId: 1,
-  evvmId: 1, // optional
 });
-`
+```
 
 > Refer to the official [viem](https://viem.sh/) documentation for more about wallet usage and creation.
 

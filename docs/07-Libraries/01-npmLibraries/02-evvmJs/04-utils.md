@@ -17,7 +17,7 @@ Example:
 ```ts
 import { execute } from "@evvm/evvm-js";
 
-const signedAction = await evvm.pay({
+const signedAction = await core.pay({
   /* params */
 });
 

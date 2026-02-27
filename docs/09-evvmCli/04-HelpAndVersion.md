@@ -1,4 +1,5 @@
 ---
+description: "Display CLI information, usage instructions, available commands, and version details"
 sidebar_position: 4
 ---
 

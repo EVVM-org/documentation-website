@@ -1,4 +1,5 @@
 ---
+description: "Initiates time-delayed governance for changing the superUser role with a mandatory 7-day delay"
 sidebar_position: 1
 ---
 

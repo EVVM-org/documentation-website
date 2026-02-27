@@ -1,101 +1,361 @@
 ---
 title: "registrationUsername"
-description: "Detailed documentation of the NameService Contract's registrationUsername function for completing username registration using a commitment-reveal scheme."
+description: "Username registration completion using centralized Core.sol verification"
 sidebar_position: 2
 ---
 
 # registrationUsername
 
-**Function Type**: `public`  
-**Function Signature**: `registrationUsername(address,string,uint256,uint256,bytes,uint256,uint256,bool,bytes)`
+:::info[Centralized Verification]
+This function uses Core.sol's `validateAndConsumeNonce()` for signature verification. Completes the commit-reveal scheme started by `preRegistrationUsername`.
+:::
 
-Completes username registration using a pre-registration commitment. The user reveals the `username` and `clowNumber` to validate their prior pre-registration commit. This function processes the required registration fee payment via EVVM and finalizes the username registration, associating it with the user.
+**Function Type**: `external`  
+**Function Signature**: `registrationUsername(address,string,uint256,address,uint256,bytes,uint256,uint256,bytes)`
+
+Completes username registration by revealing the username and lock number used in pre-registration. This function validates the reveal against the stored commitment, processes the registration fee payment, and grants 366 days of ownership.
 
 **Requirements:**
-
-- A valid pre-registration corresponding to `keccak256(abi.encodePacked(username, clowNumber))` must exist and be associated with `user`.
-- A minimum waiting period (30 minutes) must have passed since the pre-registration timestamp.
-- The `user` must pay the registration fee plus any optional priority fee via the EVVM contract.
+- Valid pre-registration with matching hash must exist
+- Pre-registration must belong to the same `user`
+- Pre-registration must not be expired (within 30-minute window)
+- Username must be available and valid format
+- User must pay registration fee (100x EVVM reward or market-based)
 
 ## Parameters
 
 | Parameter           | Type      | Description                                                                                                                       |
 | ------------------- | --------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `user`              | `address` | The address of the end-user registering the username (must match the address used in pre-registration).                           |
-| `username`          | `string`  | The desired username being registered (must match the value used to generate the pre-registered hash).                            |
-| `clowNumber`        | `uint256` | The secret number used with `username` during pre-registration hash calculation. Revealing it proves ownership of the commitment. |
-| `nonce`             | `uint256` | The user's NameService nonce specific to this registration action.                                                                        |
-| `signature`         | `bytes`   | The EIP-191 signature from `user` authorizing this registration action.                                                           |
-| `priorityFee_EVVM`  | `uint256` | Optional fee (in MATE) paid **by `user`** to the `msg.sender` (executor) via EVVM, added to the registration fee payment.         |
-| `nonce_EVVM`        | `uint256` | `user`'s nonce for the EVVM payment function call used to pay the total amount.                                                   |
-| `priorityFlag_EVVM` | `bool`    | Priority flag (sync/async) for the EVVM payment function call.                                                                    |
-| `signature_EVVM`    | `bytes`   | `user`'s signature authorizing the EVVM call to transfer the total payment (Registration Fee + `priorityFee_EVVM`).               |
+| `user`              | `address` | The address of the registrant (must match pre-registration address).                           |
+| `username`          | `string`  | The desired username being registered (revealed from commit phase).                            |
+| `lockNumber`        | `uint256` | The secret number used during pre-registration. Proves ownership of commitment. |
+| `originExecutor`    | `address` | Optional tx.origin restriction (use `address(0)` for unrestricted).                                                                        |
+| `nonce`             | `uint256` | User's centralized Core nonce for this operation.                                                                        |
+| `signature`         | `bytes`   | EIP-191 signature authorizing this operation (verified by Core.sol).                                                           |
+| `priorityFeeEvvm`  | `uint256` | Optional fee paid to executor, added to registration fee payment.         |
+| `nonceEvvm`        | `uint256` | User's Core nonce for the payment operation (registration fee + priority fee).                                                   |
+| `signatureEvvm`    | `bytes`   | User's signature authorizing the payment (registration fee + priority fee).               |
 
-:::note
+:::note[Signature Requirements]
 
-- The EVVM payment signature (`signature_EVVM`) covers the **total** payment amount and is paid by `user`. It uses the [Single Payment Signature Structure](../../../05-SignatureStructures/01-EVVM/01-SinglePaymentSignatureStructure.md).
-- The NameService registration signature (`signature`) must be generated by `user` and follows the [Registration Signature Structure](../../../05-SignatureStructures/02-NameService/02-registrationUsernameStructure.md).
-- The EVVM parameters are mandatory as a registration fee is always required.
+**NameService Signature** (`signature`):
+- Uses `NameServiceHashUtils.hashDataForRegistrationUsername(username, lockNumber)`
+- Reference: [Registration Signature Structure](../../../05-SignatureStructures/02-NameService/02-registrationUsernameStructure.md)
+
+**Payment Signature** (`signatureEvvm`):
+- Covers **total payment**: `getPriceOfRegistration(username) + priorityFeeEvvm`
+- Uses `CoreHashUtils.hashDataForPay()`
+- Reference: [Payment Signature Structure](../../../05-SignatureStructures/01-EVVM/01-SinglePaymentSignatureStructure.md)
 
 :::
 
-## Execution Methods
+## Execution Flow
 
-Can be executed by any address (`msg.sender`). Rewards are only distributed if the executor is a staker.
+### 1. Signature Verification (Core.sol)
 
-### Fisher Execution
+```solidity
+core.validateAndConsumeNonce(
+    user,
+    Hash.hashDataForRegistrationUsername(username, lockNumber),
+    originExecutor,
+    nonce,
+    true,                                  // Async
+    signature
+);
+```
 
-When the executor is the fisher:
+**What Core.sol validates:**
+- ✅ Signature matches `user` address
+- ✅ Nonce is valid and available
+- ✅ `tx.origin` matches `originExecutor` (if specified)
+- ✅ Marks nonce as consumed
 
-1. The user sends the payment request to the fishing spot
-2. The fisher captures the transaction and validates all parameters
-3. The fisher submits the transaction to the contract for processing
+### 2. Username Validation
 
-### Direct Execution
+```solidity
+// Admin bypass validation
+if (admin.current != user && !IdentityValidation.isValidUsername(username)) {
+    revert Error.InvalidUsername();
+}
 
-When the executor is the user or a service:
+if (!isUsernameAvailable(username)) {
+    revert Error.UsernameAlreadyRegistered();
+}
+```
 
-1. The user/service submits their transaction directly to the contract
+**Validation Rules:**
+- Alphanumeric characters only (a-z, 0-9, underscore)
+- Length: 3-32 characters
+- No leading/trailing underscores
+- Not already registered (admin can override)
 
-## Workflow
+### 3. Registration Fee Payment
 
-1. **NameService Nonce Verification**: Calls internal `verifyAsyncNonce(user, nonce)` which reverts with `AsyncNonceAlreadyUsed()` if the nonce was already used.
+```solidity
+uint256 registrationCost = getPriceOfRegistration(username);
 
-2. **Username Validation**: Unless `user` is the admin address, calls `isValidUsername` to validate the `username` against character set and length rules. Reverts if invalid.
+requestPay(
+    user,
+    registrationCost,
+    priorityFeeEvvm,
+    nonceEvvm,
+    signatureEvvm
+);
+```
 
-3. **Username Availability Check**: Calls `isUsernameAvailable` to ensure the `username` is not already registered. Reverts with `UsernameAlreadyRegistered` if unavailable.
+Internally calls:
+```solidity
+core.pay(
+    user,                                  // Payer
+    address(this),                         // NameService receives
+    "",                                    // No identity
+    principalToken,                        // PT
+    registrationCost + priorityFeeEvvm,    // Total
+    priorityFeeEvvm,                       // Priority fee
+    address(this),                         // Executor
+    nonceEvvm,                             // Payment nonce
+    true,                                  // Async
+    signatureEvvm                          // Payment sig
+);
+```
 
-4. **Registration Signature Verification**: Verifies the `signature` provided by `user` using `verifyMessageSignedForRegistrationUsername`. Reverts with `InvalidSignatureOnNameService` if invalid.
+**Registration Cost Calculation:**
+```solidity
+function getPriceOfRegistration(string memory username) public view returns (uint256) {
+    return identityDetails[username].offerMaxSlots > 0
+        ? seePriceToRenew(username)       // Market-based (if offers exist)
+        : core.getRewardAmount() * 100;   // Standard rate
+}
+```
 
-5. **Registration Payment**: Calls `makePay` to process the registration fee payment:
+### 4. Pre-Registration Validation
 
-   - Calculates the required registration fee using `getPriceOfRegistration(username)` with dynamic pricing
-   - If username has existing offers, uses market-based pricing via `seePriceToRenew` logic
-   - If no offers exist, uses standard rate of 100x current EVVM reward amount
-   - Transfers the total payment amount from the `user` via EVVM
-   - Uses the provided EVVM parameters for authorization
+```solidity
+string memory key = string.concat(
+    "@",
+    AdvancedStrings.bytes32ToString(hashUsername(username, lockNumber))
+);
 
-6. **Pre-Registration Validation**:
+// Validate commitment
+if (
+    identityDetails[key].owner != user ||
+    identityDetails[key].expirationDate > block.timestamp
+) {
+    revert Error.PreRegistrationNotValid();
+}
+```
 
-   - Reconstructs the expected hash: `keccak256(abi.encodePacked(username, clowNumber))`
-   - Retrieves pre-registration data stored under key `"@<hash_string>"`
-   - Verifies the stored user matches `user` and the waiting period has passed
-   - Reverts with `PreRegistrationNotValid` if validation fails
+**Validates:**
+- ✅ Pre-registration exists
+- ✅ Matches same `user` address
+- ✅ Waiting period has passed (30 minutes)
+- ✅ Not expired
 
-7. **Username Registration**: Creates the final username registration in `identityDetails` with:
+### 5. Username Registration
 
-   - Owner: `user`
-   - Expiration: `block.timestamp + 366 days`
-   - Flags: Marked as username (`flagNotAUsername = 0x00`)
+```solidity
+identityDetails[username] = IdentityBaseMetadata({
+    owner: user,
+    expirationDate: block.timestamp + 366 days,
+    customMetadataMaxSlots: 0,
+    offerMaxSlots: 0,
+    flagNotAUsername: 0x00                    // Marked as username
+});
+```
 
-8. **Nonce Management**: Calls internal `markAsyncNonceAsUsed(user, nonce)` to mark the provided `nonce` as used and prevent replays.
+**Grants:**
+- 366 days of ownership
+- Metadata capabilities
+- Marketplace participation
 
-9. **Staker Rewards**: If the executor is a staker, distributes rewards via `makeCaPay`:
+### 6. Staker Rewards (if executor is staker)
 
-   - Base reward: `50 * getRewardAmount()`
-   - Plus the `priorityFee_EVVM` amount
+```solidity
+if (core.isAddressStaker(msg.sender)) {
+    makeCaPay(msg.sender, (50 * core.getRewardAmount()) + priorityFeeEvvm);
+}
+```
 
-10. **Cleanup**: Deletes the pre-registration entry to free storage.
+**Reward Breakdown:**
+- Base reward: 50x `core.getRewardAmount()`
+- Priority fee: Full `priorityFeeEvvm` amount
+- Highest NameService reward (reflects registration importance)
 
-![registrationUsername Happy Path](./img/registrationUsername_HappyPath.svg)
-![registrationUsername Failed Path](./img/registrationUsername_FailedPath.svg)
+### 7. Cleanup
+
+```solidity
+delete identityDetails[key];  // Remove pre-registration
+```
+
+Frees storage and gas refund.
+
+## Complete Example
+
+**Scenario:** Complete registration of "alice" after pre-registration
+
+### Step 1: Recall Pre-Registration Details
+
+```solidity
+string memory username = "alice";
+uint256 lockNumber = 987654321;  // Used in pre-registration
+
+// Verify commitment matches
+bytes32 expectedHash = keccak256(abi.encodePacked(username, lockNumber));
+// Must match pre-registration hash
+```
+
+### Step 2: Calculate Registration Cost
+
+```solidity
+uint256 registrationCost = nameService.getPriceOfRegistration("alice");
+// If no offers: 100x reward (e.g., 100 PT)
+// If offers exist: Market-based pricing
+```
+
+### Step 3: Generate Signatures
+
+```solidity
+// Operation signature
+bytes32 hashPayload = NameServiceHashUtils.hashDataForRegistrationUsername(
+    username, 
+    lockNumber
+);
+
+// Payment signature (covers total)
+bytes32 paymentHash = CoreHashUtils.hashDataForPay(
+    nameServiceAddress,                    // Receiver
+    principalToken,
+    registrationCost + priorityFee,
+    priorityFee
+);
+```
+
+### Step 4: Submit Registration
+
+```solidity
+nameService.registrationUsername(
+    user,                                   // 0x742d...
+    "alice",                                // Revealed username
+    987654321,                              // Revealed lock number
+    address(0),                             // Unrestricted
+    nonce,                                  // 43
+    signature,                              // Operation sig
+    1000000000000000000,                    // 1 PT priority fee
+    nonceEvvm,                              // 44
+    signatureEvvm                           // Payment sig (covers 101 PT)
+);
+```
+
+### Step 5: Username Registered
+
+```solidity
+// Now available for use
+address owner = nameService.getOwnerOfIdentity("alice");        // user address
+uint256 expires = nameService.getExpireDateOfIdentity("alice"); // now + 366 days
+```
+
+## Pricing Examples
+
+### Standard Rate (No Offers)
+```solidity
+// No existing offers on username
+registrationCost = 100 * core.getRewardAmount();
+// Example: 100 * 1 PT = 100 PT
+```
+
+### Market-Based (With Offers)
+```solidity
+// Username has offers, uses seePriceToRenew()
+// Price based on:
+// - Time to expiration
+// - Offer amounts
+// - Market demand
+registrationCost = seePriceToRenew("alice");
+// Example: 150 PT (higher demand)
+```
+
+## Important Notes
+
+### Time Constraints
+- **Minimum wait**: 30 minutes after pre-registration
+- **Maximum wait**: No hard limit, but pre-registration expires eventually
+- **Best practice**: Register within 24 hours of pre-registration
+
+### Lock Number Security
+```solidity
+// NEVER share lock number before registration
+lockNumber = 987654321;  // Keep this secret!
+
+// After registration, lock number can be public
+// (but no harm in keeping it private)
+```
+
+### Username Validation
+```solidity
+// Valid usernames
+"alice"          ✅  // lowercase letters
+"alice123"       ✅  // letters + numbers
+"alice_bob"      ✅  // underscores allowed
+
+// Invalid usernames
+"Alice"          ❌  // uppercase not allowed
+"alice-bob"      ❌  // hyphens not allowed
+"al"             ❌  // too short (< 3 chars)
+"_alice"         ❌  // leading underscore
+"alice_"         ❌  // trailing underscore
+```
+
+### Admin Override
+```solidity
+// Admin can bypass validation
+if (admin.current == user) {
+    // Skip validation
+    // Allows admin to register any format
+}
+```
+
+## Gas Costs
+
+**Estimated Gas Usage:**
+- Base operation: ~100,000 gas
+- Core verification: ~5,000 gas
+- Username validation: ~5,000 gas
+- Payment processing: ~40,000 gas
+- Storage (username): ~40,000 gas
+- Cleanup (pre-reg): ~5,000 gas (refund)
+- **Total**: ~195,000 gas
+
+**Actual cost varies with:**
+- Username length
+- Market pricing calculations
+- Staker reward distribution
+
+## Error Handling
+
+Common revert reasons:
+
+```solidity
+// From Core.sol
+"Invalid signature"                 // Operation signature failed
+"Nonce already used"                // Nonce consumed
+"Invalid executor"                  // tx.origin mismatch
+
+// From validation
+"InvalidUsername"                   // Format validation failed
+"UsernameAlreadyRegistered"         // Username taken
+
+// From pre-registration check
+"PreRegistrationNotValid"           // Commitment doesn't match
+                                    // OR wrong owner
+                                    // OR expired
+
+// From payment
+"Insufficient balance"              // User lacks PT
+"Payment signature invalid"         // Payment sig failed
+```
+
+## Related Functions
+
+- **[preRegistrationUsername](./01-preRegistrationUsername.md)** - Commit phase
+- **[renewUsername](./06-renewUsername.md)** - Extend expiration
+- **[Core.validateAndConsumeNonce](../../01-EVVM/03-SignatureAndNonceManagement.md)** - Verification system

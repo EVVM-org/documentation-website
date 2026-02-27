@@ -1,8 +1,14 @@
 ---
+title: "Getter Functions"
+description: "View functions for querying Name Service state, user information, pricing details, and administrative data"
 sidebar_position: 5
 ---
 
 # Getter Functions
+
+:::info[Implementation Note]
+Getter functions are **view functions** that do not modify state. They do NOT use Core.sol's signature verification system. References to "EVVM" in function names (e.g., `getEvvmAddress`) refer to the **Core.sol** contract address.
+:::
 
 This section documents the view functions available in the Name Service contract that allow querying system state, user information, pricing details, and administrative data. These functions are read-only and do not modify the blockchain state.
 

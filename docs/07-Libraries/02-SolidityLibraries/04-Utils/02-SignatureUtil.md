@@ -542,4 +542,4 @@ function verifyOrderSignature(
 - **[SignatureRecover](../03-Primitives/02-SignatureRecover.md)** - Underlying signature recovery
 - **[AdvancedStrings](./01-AdvancedStrings.md)** - String conversion utilities
 - **[EvvmService](../02-EvvmService.md)** - Uses SignatureUtil for service verification
-- **[Async Nonce Management](./03-Service/01-AsyncNonceService.md)** - Nonce tracking for replay protection
+- **[Core.sol Nonce Management](../../../04-Contracts/01-EVVM/03-SignatureAndNonceManagement.md)** - Centralized nonce tracking

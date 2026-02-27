@@ -1,213 +1,182 @@
 ---
+title: "Standard Staking/Unstaking Signature Structure"
+description: "EIP-191 signature format for standard staking and unstaking operations verified by Core.sol"
 sidebar_position: 1
 ---
 
 # Standard Staking/Unstaking Signature Structure
 
-To authorize standard staking operations like `presaleStaking` or `publicStaking`, or their corresponding unstaking actions, the user must generate a cryptographic signature compliant with the [EIP-191](https://eips.ethereum.org/EIPS/eip-191) standard using the Ethereum Signed Message format.
+:::info[Signature Verification]
+Staking operations use **Core.sol's centralized signature verification** via `validateAndConsumeNonce()`. The signature format follows the universal EVVM pattern with `StakingHashUtils` for hash generation.
+:::
 
-The signature verification process uses the `SignatureUtil` library which implements the standard Ethereum message signing protocol. This signature proves the user's intent and authorization to perform a specific staking or unstaking action with a defined amount of staking tokens, according to the parameters provided in the signed message.
+To authorize standard staking operations like `presaleStaking` or `publicStaking`, or their corresponding unstaking actions, the user must generate a cryptographic signature compliant with the [EIP-191](https://eips.ethereum.org/EIPS/eip-191) standard.
 
-## Verification Function
+## Signature Format
 
-The signature is verified using the `verifyMessageSignedForStake` function:
+### Complete Message Structure
 
-```solidity
-function verifyMessageSignedForStake(
-    uint256 evvmID,
-    address user,
-    bool isExternalStaking,
-    bool _isStaking,
-    uint256 _amountOfStaking,
-    uint256 _nonce,
-    bytes memory signature
-) internal pure returns (bool)
+```
+{evvmId},{stakingAddress},{hashPayload},{originExecutor},{nonce},true
 ```
 
-## Signed Message Format
+**Components:**
+- `evvmId`: Chain ID (e.g., `1` for Ethereum mainnet)
+- `stakingAddress`: Staking contract address (hexadecimal)
+- `hashPayload`: Operation hash from StakingHashUtils (hexadecimal)
+- `originExecutor`: EOA that will execute (verified with tx.origin), hexadecimal
+- `nonce`: User's Core nonce for this signature
+- `true`: Always async execution
 
-The signature verification uses the `SignatureUtil.verifySignature` function with the following structure:
+### Hash Payload Generation
 
+**Presale Staking:**
 ```solidity
-SignatureUtil.verifySignature(
-    evvmID,                                                 // EVVM ID as uint256
-    isExternalStaking ? "publicStaking" : "presaleStaking", // Action type
-    string.concat(                                          // Concatenated parameters
-        _isStaking ? "true" : "false",
-        ",",
-        AdvancedStrings.uintToString(_amountOfStaking),
-        ",",
-        AdvancedStrings.uintToString(_nonce)
-    ),
-    signature,
-    user
+bytes32 hashPayload = StakingHashUtils.hashDataForPresaleStake(
+    isStaking,      // true = stake, false = unstake
+    1               // Fixed amount: 1 token
 );
+// Hash: keccak256(abi.encode("presaleStaking", isStaking, 1))
 ```
 
-### Internal Message Construction
-
-Internally, the `SignatureUtil.verifySignature` function constructs the final message by concatenating:
-
+**Public Staking:**
 ```solidity
-string.concat(
-    AdvancedStrings.uintToString(evvmID), 
-    ",", 
-    functionName, 
-    ",", 
-    inputs
-)
-```
-
-This results in a message format:
-```
-"{evvmID},{actionType},{isStaking},{amountOfStaking},{nonce}"
-```
-
-Where `{actionType}` is either `"publicStaking"` or `"presaleStaking"` depending on `isExternalStaking`.
-
-### EIP-191 Message Hashing
-
-The message is then hashed according to EIP-191 standard:
-
-```solidity
-bytes32 messageHash = keccak256(
-    abi.encodePacked(
-        "\x19Ethereum Signed Message:\n",
-        AdvancedStrings.uintToString(bytes(message).length),
-        message
-    )
+bytes32 hashPayload = StakingHashUtils.hashDataForPublicStake(
+    isStaking,          // true = stake, false = unstake
+    amountOfStaking     // Variable amount
 );
+// Hash: keccak256(abi.encode("publicStaking", isStaking, amountOfStaking))
 ```
-
-## Message Components
-
-The signature verification takes three main parameters:
-
-**1. EVVM ID (uint256):**
-- Passed directly as `evvmID` (uint256)
-- Internally converted to string with `AdvancedStrings.uintToString(evvmID)`
-- *Purpose*: Identifies the specific EVVM instance
-
-**2. Action Type (String):**
-- Conditional value based on `isExternalStaking`:
-  - `"publicStaking"`: When `isExternalStaking` is `true`
-  - `"presaleStaking"`: When `isExternalStaking` is `false`
-- *Purpose*: Identifies the specific type of staking operation
-
-**3. Concatenated Parameters (String):**
-The parameters are concatenated with comma separators:
-
-**3.1. Staking Action Flag (String):**
-- `"true"`: If the user intends to stake (`_isStaking` is `true`)
-- `"false"`: If the user intends to unstake (`_isStaking` is `false`)
-- *Purpose*: Indicates whether the operation is staking or unstaking
-
-**3.2. Staking Amount (String):**
-- The result of `AdvancedStrings.uintToString(_amountOfStaking)`
-- *Purpose*: The quantity of staking tokens for this operation
-
-**3.3. Nonce (String):**
-- The result of `AdvancedStrings.uintToString(_nonce)`
-- *Purpose*: Provides replay protection for staking/unstaking operations
 
 ## Examples
 
-### Public Staking Example
+### Public Staking Example (Stake 1000 tokens)
 
 **Scenario:** User wants to stake 1000 tokens in public staking
 
 **Parameters:**
-- `evvmID`: `1`
-- `isExternalStaking`: `true` (public staking)
-- `_isStaking`: `true` (staking operation)
-- `_amountOfStaking`: `1000`
-- `_nonce`: `42`
+- `evvmId`: `11155111` (Sepolia testnet)
+- `stakingAddress`: `0x1234567890123456789012345678901234567890`
+- `isStaking`: `true`
+- `amountOfStaking`: `1000`
+- `originExecutor`: `0xABCDEF1234567890ABCDEF1234567890ABCDEF12`
+- `nonce`: `42`
 
-**Signature verification call:**
+**Step 1: Generate hash payload**
 ```solidity
-SignatureUtil.verifySignature(
-    1,               // evvmID as uint256
-    "publicStaking", // action type
-    "true,1000,42",  // concatenated parameters
-    signature,
-    user
-);
+bytes32 hashPayload = StakingHashUtils.hashDataForPublicStake(true, 1000);
+// Result: 0x7a8b9c...def (example hash)
 ```
 
-**Final message to be signed:**
+**Step 2: Construct message**
 ```
-1,publicStaking,true,1000,42
-```
-
-**EIP-191 formatted message hash:**
-```
-keccak256(abi.encodePacked(
-    "\x19Ethereum Signed Message:\n29",
-    "1,publicStaking,true,1000,42"
-))
+11155111,0x1234567890123456789012345678901234567890,0x7a8b9c...def,0xABCDEF1234567890ABCDEF1234567890ABCDEF12,42,true
 ```
 
-### Presale Unstaking Example
+**Step 3: Sign with EIP-191**
+```javascript
+const message = "11155111,0x1234567890123456789012345678901234567890,0x7a8b9c...def,0xABCDEF1234567890ABCDEF1234567890ABCDEF12,42,true";
+const signature = await signer.signMessage(message);
+```
 
-**Scenario:** User wants to unstake 500 tokens from presale staking
+### Presale Staking Example (Stake 1 token)
+
+**Scenario:** Presale user wants to stake 1 token (fixed amount)
 
 **Parameters:**
-- `evvmID`: `1`
-- `isExternalStaking`: `false` (presale staking)
-- `_isStaking`: `false` (unstaking operation)
-- `_amountOfStaking`: `500`
-- `_nonce`: `43`
+- `evvmId`: `11155111` (Sepolia testnet)
+- `stakingAddress`: `0x1234567890123456789012345678901234567890`
+- `isStaking`: `true`
+- `amountOfStaking`: `1` (always 1 for presale)
+- `originExecutor`: `0xABCDEF1234567890ABCDEF1234567890ABCDEF12`
+- `nonce`: `7`
 
-**Signature verification call:**
+**Step 1: Generate hash payload**
 ```solidity
-SignatureUtil.verifySignature(
-    1,                // evvmID as uint256
-    "presaleStaking", // action type
-    "false,500,43",   // concatenated parameters
-    signature,
-    user
+bytes32 hashPayload = StakingHashUtils.hashDataForPresaleStake(true, 1);
+// Result: 0x3c4d5e...abc (example hash)
+```
+
+**Step 2: Construct message**
+```
+11155111,0x1234567890123456789012345678901234567890,0x3c4d5e...abc,0xABCDEF1234567890ABCDEF1234567890ABCDEF12,7,true
+```
+
+**Step 3: Sign with EIP-191**
+```javascript
+const message = "11155111,0x1234567890123456789012345678901234567890,0x3c4d5e...abc,0xABCDEF1234567890ABCDEF1234567890ABCDEF12,7,true";
+const signature = await signer.signMessage(message);
+```
+
+### Public Unstaking Example (Unstake 500 tokens)
+
+**Scenario:** User wants to unstake 500 tokens
+
+**Parameters:**
+- `evvmId`: `11155111`
+- `stakingAddress`: `0x1234567890123456789012345678901234567890`
+- `isStaking`: `false` (unstaking)
+- `amountOfStaking`: `500`
+- `originExecutor`: `0xABCDEF1234567890ABCDEF1234567890ABCDEF12`
+- `nonce`: `43`
+
+**Step 1: Generate hash payload**
+```solidity
+bytes32 hashPayload = StakingHashUtils.hashDataForPublicStake(false, 500);
+// Result: 0x9e8f7a...123 (example hash)
+```
+
+**Step 2: Construct message**
+```
+11155111,0x1234567890123456789012345678901234567890,0x9e8f7a...123,0xABCDEF1234567890ABCDEF1234567890ABCDEF12,43,true
+```
+
+**Step 3: Sign with EIP-191**
+```javascript
+const message = "11155111,0x1234567890123456789012345678901234567890,0x9e8f7a...123,0xABCDEF1234567890ABCDEF1234567890ABCDEF12,43,true";
+const signature = await signer.signMessage(message);
+```
+
+## Verification Process
+
+### Core.validateAndConsumeNonce()
+
+All staking operations use Core.sol's centralized verification:
+
+```solidity
+core.validateAndConsumeNonce(
+    user,               // Signer address
+    hashPayload,        // From StakingHashUtils
+    originExecutor,     // EOA executor (verified with tx.origin)
+    nonce,              // User's Core nonce
+    true,               // Always async execution
+    signature           // EIP-191 signature
 );
 ```
 
-**Final message to be signed:**
-```
-1,presaleStaking,false,500,43
-```
+**Validation Steps:**
+1. **Message Construction**: Concatenates all components with commas
+2. **EIP-191 Formatting**: Prepends `"\x19Ethereum Signed Message:\n"` + length
+3. **Hashing**: Applies `keccak256` to formatted message
+4. **Signature Recovery**: Uses `ecrecover` to recover signer address
+5. **Verification**: Compares recovered address with `user`
+6. **Nonce Check**: Ensures nonce hasn't been used
+7. **Executor Check**: Verifies `tx.origin == originExecutor`
+8. **Consume Nonce**: Marks nonce as used to prevent replay
 
-**EIP-191 formatted message hash:**
-```
-keccak256(abi.encodePacked(
-    "\x19Ethereum Signed Message:\n30",
-    "1,presaleStaking,false,500,43"
-))
-```
-
-## Signature Implementation Details
-
-The `SignatureUtil` library performs signature verification in the following steps:
-
-1. **Message Construction**: Concatenates `evvmID`, `functionName`, and `inputs` with commas
-2. **EIP-191 Formatting**: Prepends `"\x19Ethereum Signed Message:\n"` + message length
-3. **Hashing**: Applies `keccak256` to the formatted message
-4. **Signature Parsing**: Splits the 65-byte signature into `r`, `s`, and `v` components
-5. **Recovery**: Uses `ecrecover` via `SignatureRecover.recoverSigner` to recover the signer's address
-6. **Verification**: Compares recovered address with expected user
-
-### Signature Format Requirements
-
-- **Length**: Exactly 65 bytes
-- **Structure**: `[r (32 bytes)][s (32 bytes)][v (1 byte)]`
-- **V Value**: Must be 27 or 28 (automatically adjusted if < 27)
+**On Failure:**
+- `Core__InvalidSignature()` - Invalid signature
+- `Core__NonceAlreadyUsed()` - Nonce already consumed
+- `Core__InvalidExecutor()` - Executing EOA doesn't match originExecutor
 
 :::tip Technical Details
 
-- **Message Format**: The final message follows the pattern `"{evvmID},{functionName},{parameters}"`
-- **EIP-191 Compliance**: Uses `"\x19Ethereum Signed Message:\n"` prefix with message length
-- **Hash Function**: `keccak256` is used for the final message hash before signing
-- **Signature Recovery**: Uses `ecrecover` to verify the signature against the expected user
-- **Action Types**: `"publicStaking"` for external staking, `"presaleStaking"` for internal staking
-- **Dual Operations**: Single function handles both staking (`true`) and unstaking (`false`)
-- **Nonce Management**: Each nonce should be unique to prevent replay attacks
-- **EVVM ID**: Identifies the specific EVVM instance for signature verification
+- **Universal Format**: All EVVM services now use the same signature format
+- **Centralized Nonces**: Core.sol manages all nonces across services
+- **Hash Security**: StakingHashUtils generates collision-resistant hashes
+- **EOA Verification**: originExecutor ensures only specific EOA can execute
+- **Always Async**: Staking operations always use async execution mode
+- **Replay Protection**: Core.sol's nonce system prevents replay attacks
+- **Operation Types**: `presaleStaking` (1 token fixed) vs `publicStaking` (variable)
 
 :::

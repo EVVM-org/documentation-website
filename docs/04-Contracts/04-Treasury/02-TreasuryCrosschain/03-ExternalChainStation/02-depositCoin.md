@@ -1,4 +1,5 @@
 ---
+description: "Deposit native coins to host chain via selected cross-chain protocol with fee coverage"
 sidebar_position: 2
 ---
 
@@ -30,9 +31,9 @@ Deposits native ETH and sends it to host chain via selected cross-chain protocol
 
 ### 1. Input Validation
 ```solidity
-if (amount == 0) revert ErrorsLib.DepositAmountMustBeGreaterThanZero();
+if (msg.value < amount) revert Error.InsufficientBalance();
 ```
-Prevents zero-value deposits and ensures meaningful transaction amounts.
+Ensures sufficient msg.value to cover at least the deposit amount before processing.
 
 ### 2. Payload Encoding
 ```solidity
@@ -49,8 +50,8 @@ uint256 quote = IMailbox(hyperlane.mailboxAddress).quoteDispatch(
     hyperlane.hostChainStationAddress,
     payload
 );
-if (msg.value < (amount + quote)) 
-    revert ErrorsLib.InvalidDepositAmount();
+if (msg.value < (quote + amount)) 
+    revert Error.InsufficientBalance();
     
 IMailbox(hyperlane.mailboxAddress).dispatch{value: quote}(
     hyperlane.hostChainStationDomainId,
@@ -70,8 +71,8 @@ MessagingFee memory fee = _quote(
     options,
     false
 );
-if (msg.value < (amount + fee.nativeFee)) 
-    revert ErrorsLib.InvalidDepositAmount();
+if (msg.value < (fee + amount)) 
+    revert Error.InsufficientBalance();
     
 _lzSend(
     layerZero.hostChainStationEid,
@@ -87,8 +88,7 @@ _lzSend(
 
 #### Axelar (`0x03`)
 ```solidity
-if (msg.value <= amount) 
-    revert ErrorsLib.InvalidDepositAmount();
+// msg.value - amount is used for gas service payment
     
 IAxelarGasService(axelar.gasServiceAddress).payNativeGasForContractCall{
     value: msg.value - amount
@@ -160,8 +160,8 @@ uint256 totalRequired = amount + estimatedAxelarGas;
 ## Security Features
 
 ### Input Validation
-- **Amount Check**: `ErrorsLib.DepositAmountMustBeGreaterThanZero()` prevents zero deposits
-- **Balance Validation**: Protocol-specific checks ensure sufficient `msg.value`
+- **Initial Check**: `Error.InsufficientBalance()` ensures msg.value >= amount
+- **Balance Validation**: Protocol-specific checks ensure sufficient `msg.value` for fees
 - **Atomic Processing**: Deposit and cross-chain messaging happen atomically
 
 ### Cross-Chain Security
@@ -173,8 +173,9 @@ uint256 totalRequired = amount + estimatedAxelarGas;
 
 | Error | Condition |
 |-------|-----------|
-| `DepositAmountMustBeGreaterThanZero()` | Amount parameter is zero |
-| `InvalidDepositAmount()` | Insufficient `msg.value` for deposit + protocol fees |
+| `Error.InsufficientBalance()` | Initial check: `msg.value < amount` |
+| `Error.InsufficientBalance()` | Hyperlane: `msg.value < quote + amount` |
+| `Error.InsufficientBalance()` | LayerZero: `msg.value < fee + amount` |
 | Protocol Revert | Unsupported `protocolToExecute` identifier |
 | Cross-Chain Failure | Insufficient gas payment for selected protocol |
 

@@ -104,7 +104,7 @@ function stakeAsService(uint256 amount) external {
 
 :::info
 
-For detailed information about the core staking logic, refer to the [stakingBaseProcess](../../02-InternalStakingFunctions/02-stakingBaseProcess.md).
+For detailed information about the core staking logic, refer to the [stakingBaseProcess](../../02-InternalStakingFunctions/01-stakingBaseProcess.md).
 
 :::
 
@@ -113,6 +113,3 @@ For detailed information about the core staking logic, refer to the [stakingBase
 This function must be called immediately after payment via `EVVM.caPay()` in the same transaction. Any delay or separate transaction will cause validation failures.
 
 :::
-
-![confirmServiceStaking Happy Path](./img/confirmServiceStaking_HappyPath.svg)
-![confirmServiceStaking Failed Path](./img/confirmServiceStaking_FailedPath.svg)

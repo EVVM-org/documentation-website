@@ -1,4 +1,5 @@
 ---
+description: "EIP-191 signature structure for username owners to authorize adding custom metadata fields to their identity"
 sidebar_position: 7
 ---
 

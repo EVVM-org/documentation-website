@@ -1,4 +1,5 @@
 ---
+description: "Comprehensive history tracking system and time-based restrictions ensuring fair and secure staking operations"
 sidebar_position: 7
 ---
 
@@ -54,7 +55,7 @@ The contract enforces two types of cooldown periods to maintain system stability
 **Purpose**: Prevents frequent complete withdrawals
 
 - **Trigger**: Based on the last time user's `totalStaked` was `0`
-- **Duration**: Configurable via `secondsToUnlockFullUnstaking.actual` (typically 21 days)
+- **Duration**: Configurable via `secondsToUnllockFullUnstaking.actual` (default: 5 days)
 - **Logic**: User must wait before performing complete unstaking
 - **Function**: `getTimeToUserUnlockFullUnstakingTime()`
 

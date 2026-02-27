@@ -1,4 +1,5 @@
 ---
+description: "Cancels pending superUser change proposals during the governance period"
 sidebar_position: 2
 ---
 

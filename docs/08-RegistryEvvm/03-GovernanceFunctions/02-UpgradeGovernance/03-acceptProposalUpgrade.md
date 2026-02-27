@@ -1,4 +1,5 @@
 ---
+description: "Executes pending upgrade proposals after the 7-day waiting period has elapsed"
 sidebar_position: 3
 ---
 

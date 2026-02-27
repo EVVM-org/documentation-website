@@ -7,35 +7,36 @@ sidebar_position: 1
 # pay Function
 
 **Function Type**: `external`  
-**Function Signature**: `pay(address,address,string,address,uint256,uint256,uint256,bool,address,bytes)`
+**Function Signature**: `pay(address,address,string,address,uint256,uint256,address,uint256,bool,bytes)`
 
-The `pay` function executes a payment from one address to a single recipient address or identity. This is EVVM's core single payment function with intelligent staker detection and reward distribution.
+The `pay` function executes a payment from one address to a single recipient address or identity. This is EVVM Core's primary single payment function with intelligent staker detection and centralized signature verification.
 
 **Key features:**
 - **Single Payment**: Transfers tokens from one sender to one recipient (address or username)
 - **Staker Detection**: Automatically detects if the executor is a staker and distributes rewards accordingly
-- **Flexible Nonce Management**: Supports both synchronous and asynchronous nonce patterns
+- **Centralized Nonce Management**: Uses Core.sol's unified nonce system for enhanced security
 - **Identity Resolution**: Can send payments to usernames which are resolved to addresses via NameService
+- **Signature Verification**: Validated through Core.sol's centralized signature system
 
-The function supports both synchronous and asynchronous nonce management through the `priorityFlag` parameter, making it flexible for various execution patterns and use cases. For details on nonce types, see [Nonce Types in EVVM](../02-NonceTypes.md). For signature details, see [Payment Signature Structure](../../../05-SignatureStructures/01-EVVM/01-SinglePaymentSignatureStructure.md).
+The function supports both synchronous and asynchronous nonce management through the `isAsyncExec` parameter, making it flexible for various execution patterns and use cases. For details on nonce types, see [Nonce Types in EVVM](../02-NonceTypes.md). For signature details, see [Payment Signature Structure](../../../05-SignatureStructures/01-EVVM/01-SinglePaymentSignatureStructure.md).
 
 ### Parameters
 
-| Field         | Type      | Description                                                                                                                                    |
-|---------------|-----------|------------------------------------------------------------------------------------------------------------------------------------------------|
-| `from`        | `address` | The address of the payment sender whose funds are being transferred and whose signature/nonce are validated.                                   |
-| `to_address`  | `address` | Direct recipient address. Used when `to_identity` is empty.                                                                                    |
-| `to_identity` | `string`  | Username/identity of the recipient. If provided, the contract resolves it to an address via the NameService.                                   |
-| `token`       | `address` | The token contract address for the transfer.                                                                                                   |
-| `amount`      | `uint256` | The quantity of tokens to transfer from `from` to the recipient.                                                                               |
-| `priorityFee` | `uint256` | Additional fee for transaction priority. If the executor is a staker, they receive this fee as a reward.                                       |
-| `nonce`       | `uint256` | Transaction nonce value. Usage depends on `priorityFlag`: if `false` (sync), the provided value **must** equal the expected synchronous nonce (`getNextCurrentSyncNonce(from)`) otherwise the call reverts with `SyncNonceMismatch()`; if `true` (async), the provided nonce is used and must not have been used previously (otherwise `AsyncNonceAlreadyUsed()`). |
-| `priorityFlag`| `bool`    | Execution type flag: `false` = synchronous nonce (sequential), `true` = asynchronous nonce (custom).                                          |
-| `executor`    | `address` | Address authorized to execute this transaction. Use `address(0)` to allow any address to execute.                                              |
-| `signature`   | `bytes`   | Cryptographic signature ([EIP-191](https://eips.ethereum.org/EIPS/eip-191)) from the `from` address authorizing this payment.                 |
+| Field            | Type      | Description                                                                                                                                    |
+|------------------|-----------|------------------------------------------------------------------------------------------------------------------------------------------------|
+| `from`           | `address` | The address of the payment sender whose funds are being transferred and whose signature/nonce are validated.                                   |
+| `to_address`     | `address` | Direct recipient address. Used when `to_identity` is empty.                                                                                    |
+| `to_identity`    | `string`  | Username/identity of the recipient. If provided, the contract resolves it to an address via the NameService.                                   |
+| `token`          | `address` | The token contract address for the transfer.                                                                                                   |
+| `amount`         | `uint256` | The quantity of tokens to transfer from `from` to the recipient.                                                                               |
+| `priorityFee`    | `uint256` | Additional fee for transaction priority. If the executor is a staker, they receive this fee as a reward.                                       |
+| `senderExecutor` | `address` | Address authorized to execute this transaction. Use `address(0)` to allow any address to execute.                                              |
+| `nonce`          | `uint256` | Transaction nonce value managed by Core.sol. Usage depends on `isAsyncExec`: if `false` (sync), must equal the expected synchronous nonce; if `true` (async), can be any unused nonce. |
+| `isAsyncExec`    | `bool`    | Execution type flag: `false` = synchronous nonce (sequential), `true` = asynchronous nonce (parallel).                                          |
+| `signature`      | `bytes`   | Cryptographic signature ([EIP-191](https://eips.ethereum.org/EIPS/eip-191)) from the `from` address authorizing this payment. Validated by Core.sol's centralized signature system.                 |
 
-:::note
-The `nonce` parameter usage depends on `priorityFlag`: when `false` (synchronous), the provided `nonce` must equal the expected synchronous nonce (`getNextCurrentSyncNonce(from)`); when `true` (asynchronous), the provided nonce is used and must not have been used previously.
+:::note[Centralized Nonce Management]
+The `nonce` parameter is managed centrally by Core.sol. When `isAsyncExec` is `false` (synchronous), the provided `nonce` must equal `Core.getNextCurrentSyncNonce(from)`. When `true` (asynchronous), the nonce can be any value not yet used, checked via `Core.getIfUsedAsyncNonce(from, nonce)`.
 :::
 
 ### Execution Methods
@@ -51,28 +52,37 @@ The function can be executed in multiple ways:
 #### Direct Execution
 
 1. The user or any authorized service directly calls the `pay` function.
-2. If an `executor` address is specified, only that address can submit the transaction.
-3. If `executor` is set to `address(0)`, anyone can execute the transaction with a valid signature.
+2. If a `senderExecutor` address is specified, only that address can submit the transaction.
+3. If `senderExecutor` is set to `address(0)`, anyone can execute the transaction with a valid signature.
 
 :::tip[Additional Security Using Executor Address]
-When using a service as the executor, we recommend specifying the service's address in the `executor` parameter for additional security.
+When using a service as the executor, we recommend specifying the service's address in the `senderExecutor` parameter for additional security.
 :::
 
 ### Workflow
 
-1. **Signature Verification**: Validates the `signature` against the `from` address and other parameters using `verifyMessageSignedForPay`. For synchronous payments (`priorityFlag = false`), uses `nextSyncUsedNonce[from]` as the nonce; for asynchronous payments (`priorityFlag = true`), uses the provided `nonce` parameter. Reverts with `InvalidSignature` on failure.
-2. **Executor Validation**: If `executor` is not `address(0)`, checks that `msg.sender` matches the `executor` address. Reverts with `SenderIsNotTheExecutor` if they don't match.
-3. **Asynchronous Nonce Verification**: For asynchronous payments (`priorityFlag = true`), checks if the provided `nonce` has already been used for the `from` address by consulting the `asyncUsedNonce` mapping. Reverts with `AsyncNonceAlreadyUsed()` if the nonce has already been used. For synchronous payments (`priorityFlag = false`), the provided `nonce` must match `nextSyncUsedNonce[from]` or the call reverts with `SyncNonceMismatch()`. 
-4. **Resolve Recipient Address**: Determines the final recipient address:
+1. **Signature Verification**: Validates the `signature` using Core.sol's centralized signature verification system:
+   - Constructs signature payload: `buildSignaturePayload(evvmId, address(this), hashPayload, senderExecutor, nonce, isAsyncExec)`
+   - `hashPayload` is generated via `CoreHashUtils.hashDataForPay(to_address, to_identity, token, amount, priorityFee)`
+   - Recovers signer and compares with `from` address. Reverts with `InvalidSignature` on failure.
+
+2. **User Validation**: Checks if the user is allowed to execute transactions using `canExecuteUserTransaction(from)`. Reverts with `UserCannotExecuteTransaction` if not allowed.
+
+3. **Nonce Management**: Core.sol handles nonce verification and updates based on `isAsyncExec`:
+   - **Async (isAsyncExec = true)**: Checks if the nonce hasn't been used via `asyncNonceStatus(from, nonce)`, then marks it as used. Reverts with `AsyncNonceAlreadyUsed` if already used, or `AsyncNonceIsReservedByAnotherService` if reserved by another service.
+   - **Sync (isAsyncExec = false)**: Verifies the nonce matches `nextSyncNonce[from]`, then increments it. Reverts with `SyncNonceMismatch` on mismatch.
+
+4. **Executor Validation**: If `senderExecutor` is not `address(0)`, checks that `msg.sender` matches the `senderExecutor` address. Reverts with `SenderIsNotTheSenderExecutor` if they don't match.
+
+5. **Resolve Recipient Address**: Determines the final recipient address:
    - If `to_identity` is provided (not empty), resolves the identity to an owner address using `verifyStrictAndGetOwnerOfIdentity` from the NameService contract.
    - If `to_identity` is empty, uses the provided `to_address`.
-5. **Balance Update**: Executes the payment transfer using the `_updateBalance` function, sending `amount` of `token` from the `from` address to the resolved recipient address. Reverts with `UpdateBalanceFailed` on transfer failure.
-6. **Staker Benefits Distribution**: If the executor (`msg.sender`) is a registered staker:
+
+6. **Balance Update**: Executes the payment transfer using the `_updateBalance` function, sending `amount` of `token` from the `from` address to the resolved recipient address.
+
+7. **Staker Benefits Distribution**: If the executor (`msg.sender`) is a registered staker:
    - **Priority Fee Transfer**: If `priorityFee > 0`, transfers the `priorityFee` amount of `token` from the `from` address to the `msg.sender` (executor) as a staker reward.
    - **Principal Token Reward**: Grants 1x reward amount in principal tokens to the `msg.sender` (executor) using the `_giveReward` function.
-7. **Nonce Management**: Updates nonce tracking based on execution type:
-   - **Asynchronous** (`priorityFlag = true`): Marks the specific `nonce` as used (`true`) for the `from` address in the `asyncUsedNonce` mapping.
-   - **Synchronous** (`priorityFlag = false`): Increments the synchronous nonce counter for the `from` address to prevent replay attacks.
 
 :::info
 
@@ -85,9 +95,6 @@ For more information about the signature structure, refer to the [Payment Signat
 Use [dispersePay](./03-dispersePay.md) to send tokens from a single sender to multiple different addresses or identities in one transaction.
 
 **Need to execute multiple separate payments?**  
-Use [payMultiple](./02-payMultiple.md) to process several individual `pay` operations within a single transaction, each with their own sender, recipient, and parameters.
+Use [batchPay](./02-batchPay.md) to process several individual `pay` operations within a single transaction, each with their own sender, recipient, and parameters.
 :::
-
-![pay Function Happy Path](./img/pay_HappyPath.svg)
-![pay Function Failed Path](./img/pay_FailedPath.svg)
 

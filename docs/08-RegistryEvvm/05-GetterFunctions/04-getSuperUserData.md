@@ -1,4 +1,5 @@
 ---
+description: "View function retrieving complete superUser governance data including current and proposed addresses"
 sidebar_position: 4
 ---
 

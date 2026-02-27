@@ -1,4 +1,5 @@
 ---
+description: "Processes Fisher bridge token transfers from host chain to external chains"
 sidebar_position: 3
 ---
 
@@ -39,57 +40,53 @@ Only addresses with the current `fisherExecutor` role can call this function.
 
 ### 1. Principal Token Protection
 ```solidity
-if (tokenAddress == Evvm(evvmAddress).getEvvmMetadata().principalTokenAddress)
-    revert ErrorsLib.PrincipalTokenIsNotWithdrawable();
+if (tokenAddress == core.getEvvmMetadata().principalTokenAddress)
+    revert Error.PrincipalTokenIsNotWithdrawable();
 ```
 Prevents withdrawal of Principal Token (MATE) to protect ecosystem integrity.
 
 ### 2. Balance Validation
 ```solidity
-if (Evvm(evvmAddress).getBalance(from, tokenAddress) < (amount + priorityFee))
-    revert ErrorsLib.InsufficientBalance();
+if (core.getBalance(from, tokenAddress) < amount)
+    revert Error.InsufficientBalance();
 ```
-Verifies user has sufficient EVVM balance to cover both withdrawal amount and priority fee.
+Verifies user has sufficient EVVM balance for the withdrawal amount (note: priority fee is deducted separately).
 
 ### 3. Signature Verification
 ```solidity
-if (!SignatureUtils.verifyMessageSignedForFisherBridge(
-    EVVM_ID,
+core.validateAndConsumeNonce(
     from,
-    addressToReceive,
-    nextFisherExecutionNonce[from],
-    tokenAddress,
-    priorityFee,
-    amount,
+    Hash.hashDataForFisherBridge(
+        addressToReceive,
+        tokenAddress,
+        priorityFee,
+        amount
+    ),
+    fisherExecutor.current,
+    nonce,
+    true,
     signature
-)) revert ErrorsLib.InvalidSignature();
+);
 ```
 
-Validates EIP-191 signature with EVVM ID integration and structured message format.
+Validates EIP-191 signature using Core contract's nonce system. The hash is generated using `TreasuryCrossChainHashUtils.hashDataForFisherBridge()` with the transaction parameters. The `async: true` parameter indicates this uses a separate nonce system from regular EVVM operations.
 
-### 4. Nonce Increment
-```solidity
-nextFisherExecutionNonce[from]++;
-```
-Increments Fisher bridge nonce for replay attack prevention.
-
-### 5. EVVM Balance Operations
+### 4. EVVM Balance Operations
 
 #### User Balance Deduction
 ```solidity
-Evvm(evvmAddress).removeAmountFromUser(from, tokenAddress, amount + priorityFee);
+core.removeAmountFromUser(from, tokenAddress, amount + priorityFee);
 ```
 Deducts total amount (transfer + fee) from user's EVVM balance.
 
 #### Fisher Executor Fee
 ```solidity
-if (priorityFee > 0) {
-    Evvm(evvmAddress).addAmountToUser(msg.sender, tokenAddress, priorityFee);
-}
+if (priorityFee > 0)
+    core.addAmountToUser(msg.sender, tokenAddress, priorityFee);
 ```
 Credits priority fee to Fisher executor's EVVM balance as processing incentive.
 
-### 6. Event Emission
+### 5. Event Emission
 ```solidity
 emit FisherBridgeSend(
     from,
@@ -97,7 +94,7 @@ emit FisherBridgeSend(
     tokenAddress,
     priorityFee,
     amount,
-    nextFisherExecutionNonce[from] - 1
+    nonce
 );
 ```
 

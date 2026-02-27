@@ -6,8 +6,12 @@ sidebar_position: 2
 
 # presaleStaking
 
+:::info[Signature Verification]
+presaleStaking uses Core.sol's centralized verification via `validateAndConsumeNonce()` with `StakingHashUtils.hashDataForPresaleStake()`. Includes `originExecutor` parameter (EOA executor verified with tx.origin).
+:::
+
 **Function Type**: `external`  
-**Function Signature**: `presaleStaking(address,bool,uint256,bytes,uint256,uint256,bool,bytes)` 
+**Function Signature**: `presaleStaking(address user, bool isStaking, address originExecutor, uint256 nonce, bytes signature, uint256 priorityFee_EVVM, uint256 nonceEvvm, bytes signatureEvvm)` 
 
 The `presaleStaking` function enables presale participants to stake or unstake their MATE tokens under specific restrictions. This function ensures exclusive access for qualifying presale users while enforcing operational limits.
 
@@ -20,7 +24,7 @@ The `presaleStaking` function enables presale participants to stake or unstake t
 
 :::info
 
-Note: In this repository's contract implementation the constructor enables `allowPresaleStaking.flag` by default and leaves `allowPublicStaking.flag` disabled. Deployments and testnets may use different defaults; consult the deployed contract metadata for runtime flag values.
+Note: In this repository's contract implementation the constructor enables `allowPublicStaking.flag` by default and leaves `allowPresaleStaking.flag` disabled. Deployments and testnets may use different defaults; consult the deployed contract metadata for runtime flag values.
 
 :::
 
@@ -30,7 +34,8 @@ Note: In this repository's contract implementation the constructor enables `allo
 | ------------------- | ------- | ---------------------------------------------------- |
 | `user`              | address | Presale participant's wallet address                 |
 | `isStaking`         | bool    | `true` = Stake, `false` = Unstake                    |
-| `nonce`             | uint256 | Staking contract nonce for replay protection         |
+| `originExecutor`    | address | EOA that will execute the transaction (verified with tx.origin) |
+| `nonce`             | uint256 | Core nonce for this signature (prevents replay attacks) |
 | `signature`         | bytes   | User authorization signature                         |
 
 > **Note:** For presale staking the function enforces a fixed amount of `1` token; therefore the signed message must include `_amountOfStaking = 1`.| `priorityFee_EVVM`  | uint256 | EVVM priority fee                                    |
@@ -53,44 +58,62 @@ The function supports two execution paths:
 
 ## Staking Process
 
-1. **Signature Verification**: Validates the authenticity of the user signature
-2. **Nonce Validation**: Calls internal `verifyAsyncNonce(user, nonce)` which reverts with `AsyncNonceAlreadyUsed()` if the nonce was already used; after successful execution the contract calls `markAsyncNonceAsUsed(user, nonce)` to prevent replays
-3. **Presale Claims Processing**: Calls `presaleClaims()` to verify presale participation and enforce 2-token limit
-4. **Presale Staking Status**: Verifies `allowPresaleStaking.flag` is enabled
-5. **Process Execution**: Calls the internal `stakingBaseProcess` function with:
+1. **Presale Staking Status**: Verifies `allowPresaleStaking.flag` is enabled and `allowPublicStaking.flag` is disabled, reverts with `PresaleStakingDisabled()` otherwise
+
+2. **Centralized Verification**: Validates signature and consumes nonce via Core.sol:
+```solidity
+core.validateAndConsumeNonce(
+    user,
+    Hash.hashDataForPresaleStake(isStaking, 1),  // Fixed amount = 1
+    originExecutor,
+    nonce,
+    true,  // Always async
+    signature
+);
+```
+
+**Validates**:
+- Signature authenticity via EIP-191
+- Nonce hasn't been consumed
+- Executor is the specified EOA (via `tx.origin`)
+
+**On Failure**:
+- `Core__InvalidSignature()` - Invalid signature
+- `Core__NonceAlreadyUsed()` - Nonce consumed
+- `Core__InvalidExecutor()` - Executing EOA doesn't match originExecutor
+
+3. **Presale Participant Verification**: Confirms the user is registered as a presale participant using `userPresaleStaker[user].isAllow`, reverts with `UserIsNotPresaleStaker()` if not authorized
+4. **Limit Check**: Ensures `userPresaleStaker[user].stakingAmount < 2`, reverts with `UserPresaleStakerLimitExceeded()` if limit reached
+5. **Counter Update**: Increments `userPresaleStaker[user].stakingAmount`
+6. **Process Execution**: Calls the internal `stakingBaseProcess` function with:
    - User address and IsAService=false in AccountMetadata
    - Fixed amount of 1 staking token
    - Standard EVVM payment processing
    - Historical record updates and reward distribution
-6. **Nonce Update**: Marks the staking nonce as used to prevent replay attacks
 
 :::info
 
-For detailed information about the `stakingBaseProcess` function, refer to the [stakingBaseProcess](../02-InternalStakingFunctions/02-stakingBaseProcess.md).
+For detailed information about the `stakingBaseProcess` function, refer to the [stakingBaseProcess](../02-InternalStakingFunctions/01-stakingBaseProcess.md).
 
 :::
-
-![presaleStaking Staking Happy Path](./img/presaleStaking_Staking_HappyPath.svg)
-![presaleStaking Staking Failed Path](./img/presaleStaking_Staking_FailedPath.svg)
 
 ## Unstaking Process
 
-1. **Signature Verification**: Validates the authenticity of the user signature
-2. **Nonce Validation**: Calls internal `verifyAsyncNonce(user, nonce)` which reverts with `AsyncNonceAlreadyUsed()` if the nonce was already used; after successful execution the contract calls `markAsyncNonceAsUsed(user, nonce)` to prevent replays
-3. **Presale Claims Processing**: Calls `presaleClaims()` to verify presale participation and validate unstaking eligibility
-4. **Presale Staking Status**: Verifies `allowPresaleStaking.flag` is enabled
-5. **Process Execution**: Calls the internal `stakingBaseProcess` function with:
+1. **Presale Staking Status**: Verifies `allowPresaleStaking.flag` is enabled and `allowPublicStaking.flag` is disabled, reverts with `PresaleStakingDisabled()` otherwise
+
+2. **Centralized Verification**: Validates signature and consumes nonce via Core.sol (same as staking)
+
+3. **Presale Participant Verification**: Confirms the user is registered as a presale participant using `userPresaleStaker[user].isAllow`, reverts with `UserIsNotPresaleStaker()` if not authorized
+4. **Balance Check**: Ensures `userPresaleStaker[user].stakingAmount > 0`, reverts with `UserPresaleStakerLimitExceeded()` if no stakes to unstake
+5. **Counter Decrement**: Decrements `userPresaleStaker[user].stakingAmount`
+6. **Process Execution**: Calls the internal `stakingBaseProcess` function with:
    - User address and IsAService=false in AccountMetadata
    - Fixed amount of 1 staking token
    - Standard EVVM payment processing
    - Historical record updates and reward distribution
-6. **Nonce Update**: Marks the staking nonce as used to prevent replay attacks
 
 :::info
 
-For detailed information about the `stakingBaseProcess` function, refer to the [stakingBaseProcess](../02-InternalStakingFunctions/02-stakingBaseProcess.md).
+For detailed information about the `stakingBaseProcess` function, refer to the [stakingBaseProcess](../02-InternalStakingFunctions/01-stakingBaseProcess.md).
 
 :::
-
-![presaleStaking Unstaking Happy Path](./img/presaleStaking_Unstaking_HappyPath.svg)
-![presaleStaking Unstaking Failed Path](./img/presaleStaking_Unstaking_FailedPath.svg)

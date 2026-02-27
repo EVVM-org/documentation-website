@@ -1,4 +1,5 @@
 ---
+description: "Overview of the Treasury system enabling secure asset movement between external blockchains and the EVVM ecosystem"
 sidebar_position: 1
 ---
 

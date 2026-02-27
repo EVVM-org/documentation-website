@@ -1,4 +1,5 @@
 ---
+description: "Developer utilities for generating interfaces, running tests, and other EVVM contract development workflows"
 sidebar_position: 6
 ---
 
@@ -66,7 +67,7 @@ This command will:
 **Output:**
 ```
 Generating contract interfaces...
-✓ IEvvm.sol
+✓ ICore.sol
 ✓ INameService.sol
 ✓ IStaking.sol
 ✓ IEstimator.sol

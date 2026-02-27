@@ -1,4 +1,5 @@
 ---
+description: "View function retrieving complete upgrade proposal governance data including proposed implementation and timeline"
 sidebar_position: 8
 ---
 

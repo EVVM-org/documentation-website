@@ -64,6 +64,7 @@ npm run build
 Static files are generated in the `build/` directory. The build process includes:
 - Optimized production bundles
 - LLM-friendly documentation generation (`llms.txt` and `llms-full.txt`)
+- Post-build cleanup of Docusaurus admonition syntax from LLM files (`scripts/clean-llms.sh`)
 - Search index creation
 - Math equation rendering (KaTeX)
 
@@ -112,12 +113,12 @@ documentation-website/
 ### Adding New Documentation
 
 1. Create Markdown files in the appropriate `docs/` subdirectory
-2. Use frontmatter for metadata:
+2. Use frontmatter for metadata (all three fields are **required**):
    ```yaml
    ---
-   sidebar_position: 1
    title: "Page Title"
-   description: "SEO description"
+   description: "SEO and LLM-friendly description of the page content"
+   sidebar_position: 1
    ---
    ```
 3. Files are auto-sorted by numeric prefixes (e.g., `01-`, `02-`)
@@ -141,8 +142,8 @@ The site supports KaTeX for mathematical notation:
 
 This repository automatically generates AI-optimized documentation for feeding AI agents and LLMs:
 
-- **`/llms.txt`**: Index with links to all 137 documentation sections
-- **`/llms-full.txt`**: Complete documentation in a single file (~25,000+ lines)
+- **`/llms.txt`**: Index with links to all 147 documentation sections
+- **`/llms-full.txt`**: Complete documentation in a single file (~29,700+ lines)
 
 ### Features
 
@@ -157,7 +158,7 @@ These files follow the [llmstxt.org](https://llmstxt.org) standard and are acces
 - https://www.evvm.info/llms.txt
 - https://www.evvm.info/llms-full.txt
 
-Files are automatically generated during `npm run build` via the `docusaurus-plugin-llms` plugin with custom `rootContent` and `fullRootContent` for AI agent context.
+Files are automatically generated during `npm run build` via the `docusaurus-plugin-llms` plugin with custom `rootContent` and `fullRootContent` for AI agent context. A post-build script (`scripts/clean-llms.sh`) strips Docusaurus admonition syntax (`:::info`, `:::warning`, etc.) and converts them to standard markdown for clean LLM consumption.
 
 ## Development Workflow
 
@@ -217,7 +218,7 @@ GIT_USER=<username> npm run deploy
 
 ## Technology Stack
 
-- **[Docusaurus 3.7.0](https://docusaurus.io/)**: Modern static site generator
+- **[Docusaurus 3.9.2](https://docusaurus.io/)**: Modern static site generator
 - **[React 19](https://react.dev/)**: UI framework
 - **[TypeScript](https://www.typescriptlang.org/)**: Type-safe development
 - **[KaTeX](https://katex.org/)**: Math equation rendering

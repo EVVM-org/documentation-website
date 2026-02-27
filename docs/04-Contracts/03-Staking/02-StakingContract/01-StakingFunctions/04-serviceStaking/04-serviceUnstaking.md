@@ -116,7 +116,7 @@ contract MyService {
 
 :::info
 
-For detailed information about the core unstaking logic and time lock calculations, refer to the [stakingBaseProcess](../../02-InternalStakingFunctions/02-stakingBaseProcess.md).
+For detailed information about the core unstaking logic and time lock calculations, refer to the [stakingBaseProcess](../../02-InternalStakingFunctions/01-stakingBaseProcess.md).
 
 :::
 
@@ -125,6 +125,3 @@ For detailed information about the core unstaking logic and time lock calculatio
 Services can check their current staked amount using `getUserAmountStaked(address(this))` before calling this function to ensure they don't attempt to unstake more than available.
 
 :::
-
-![serviceUnstaking Happy Path](./img/serviceUnstaking_HappyPath.svg)
-![serviceUnstaking Failed Path](./img/serviceUnstaking_FailedPath.svg)

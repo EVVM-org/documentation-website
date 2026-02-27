@@ -37,13 +37,9 @@ The EVVM payment signature (`signature_EVVM`) follows the [Single Payment Signat
 
 :::info
 
-For detailed information about the `stakingBaseProcess` implementation, refer to the [stakingBaseProcess](../02-InternalStakingFunctions/02-stakingBaseProcess.md).
+For detailed information about the `stakingBaseProcess` implementation, refer to the [stakingBaseProcess](../02-InternalStakingFunctions/01-stakingBaseProcess.md).
 
 :::
-
-
-![goldenStaking Staking Happy Path](./img/goldenStaking_Staking_HappyPath.svg)
-![goldenStaking Staking Failed Path](./img/goldenStaking_Staking_FailedPath.svg)
 
 ### Unstaking Process
 
@@ -56,9 +52,6 @@ For detailed information about the `stakingBaseProcess` implementation, refer to
 
 :::info
 
-For detailed information about the `stakingBaseProcess` implementation, refer to the [stakingBaseProcess](../02-InternalStakingFunctions/02-stakingBaseProcess.md).
+For detailed information about the `stakingBaseProcess` implementation, refer to the [stakingBaseProcess](../02-InternalStakingFunctions/01-stakingBaseProcess.md).
 
 :::
-
-![goldenStaking Unstaking Happy Path](./img/goldenStaking_Unstaking_HappyPath.svg)
-![goldenStaking Unstaking Failed Path](./img/goldenStaking_Unstaking_FailedPath.svg)

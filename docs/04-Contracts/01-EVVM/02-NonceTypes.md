@@ -1,12 +1,25 @@
 ---
 title: "Nonce Types in EVVM"
-description: "Detailed explanation of sync and async nonce mechanisms in the EVVM payment system."
+description: "Detailed explanation of the centralized sync and async nonce mechanisms managed by Core.sol for the entire EVVM ecosystem."
 sidebar_position: 2
 ---
 
 # Nonce Types in EVVM
 
-The EVVM system implements two distinct nonce mechanisms for payment functions: `sync` and `async`. Understanding these nonce types is essential for developers interfacing with the EVVM contract, as they serve different purposes and behave in significantly different ways.
+Core.sol manages all nonces centrally for the entire EVVM ecosystem, implementing two distinct nonce mechanisms: `sync` and `async`. This centralized approach prevents replay attacks across multi-service transactions, as all services (Core, NameService, Staking, P2PSwap, Treasury) use the same unified nonce system.
+
+## Centralized Nonce Management
+
+**Why centralized nonces?**
+
+EVVM fundamentally restructured nonce management. Previously, each service maintained its own nonce system, which created potential security vulnerabilities in cross-service transactions. Now, Core.sol serves as the single source of truth for all nonce validation:
+
+- **Unified Tracking**: All nonces are tracked and validated by Core.sol
+- **Cross-Service Security**: Prevents replay attacks when transactions span multiple services
+- **Simplified Architecture**: Services no longer need individual nonce management logic
+- **Consistent Behavior**: All ecosystem transactions follow the same nonce rules
+
+Understanding these nonce types is essential for developers interfacing with any EVVM service, as they serve different purposes and behave in significantly different ways.
 
 ## Sync Nonce
 
@@ -27,8 +40,6 @@ The sync nonce is a consecutive counter that increments sequentially by one each
 - Operations that require deterministic processing sequence
 - Situations where transaction dependencies exist
 - Services that rely on deterministic payment processing
-
-![Sync Nonce](./img/02NonceTypes/SyncNonces.svg)
 
 ---
 
@@ -52,5 +63,47 @@ The async nonce is a non-consecutive number that is user-generated and transacti
 - Batch transaction preparation without dependency on execution order
 - Systems where transaction preparation and submission might happen on different timelines
 
-![Async Nonce](./img/02NonceTypes/AsyncNonces.svg)
+---
 
+## Service Integration with Core.sol
+
+All EVVM services rely on Core.sol for nonce management and validation:
+
+### How Services Use Core Nonces
+
+**NameService**, **Staking**, **P2PSwap**, and **Treasury** all follow this pattern:
+
+1. **Signature Construction**: Service-specific hash functions create payload hashes (e.g., `NameServiceHashUtils.hashDataForRegister()`)
+2. **Core Validation**: Services call Core.sol to verify signatures and validate nonces
+3. **Unified Format**: All signatures follow the format: `{evvmId},{serviceAddress},{hashPayload},{executor},{nonce},{isAsyncExec}`
+4. **Nonce Tracking**: Core.sol marks nonces as used after validation
+
+### Benefits of Centralized Nonces
+
+**Security:**
+- **No Replay Across Services**: A signature used in NameService cannot be replayed in Staking or other services
+- **Single Validation Point**: All nonce checks happen in Core.sol, reducing attack surface
+- **Consistent Rules**: Same nonce behavior across all ecosystem components
+
+**Developer Experience:**
+- **Simplified Integration**: Services don't need to implement nonce logic
+- **Predictable Behavior**: Same nonce rules everywhere in the ecosystem
+- **Unified API**: All services use Core.sol's nonce getter functions
+
+### Nonce Getter Functions
+
+**Check Sync Nonce:**
+```solidity
+Core.getNextCurrentSyncNonce(address user)
+```
+Returns the next expected sequential nonce for the user.
+
+**Check Async Nonce:**
+```solidity
+Core.getIfUsedAsyncNonce(address user, uint256 nonce)
+```
+Returns `true` if the nonce has been used, `false` if it's available.
+
+:::tip[Multi-Service Transactions]
+When building transactions that interact with multiple EVVM services (e.g., staking and then registering a username), use async nonces to allow flexible execution ordering. The centralized nonce system ensures these operations cannot be replayed across services.
+:::

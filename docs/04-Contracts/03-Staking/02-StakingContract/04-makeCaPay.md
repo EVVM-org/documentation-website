@@ -1,4 +1,5 @@
 ---
+description: "Internal function providing a streamlined interface for contract-to-contract payment operations through the EVVM contract's caPay function"
 sidebar_position: 4
 ---
 

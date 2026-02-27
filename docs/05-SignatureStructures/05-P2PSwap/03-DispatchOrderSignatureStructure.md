@@ -1,4 +1,5 @@
 ---
+description: "EIP-191 signature structure for authorizing order fulfillment operations in the P2P swap system"
 sidebar_position: 3
 ---
 

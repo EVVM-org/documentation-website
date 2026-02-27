@@ -1,4 +1,5 @@
 ---
+description: "Detailed explanation of how transactions are created, signed, broadcast, validated by fishers, and executed in the EVVM ecosystem"
 sidebar_position: 3
 ---
 
@@ -26,14 +27,17 @@ In the first stage, users construct and cryptographically sign their transaction
 Every EVVM transaction follows a standardized format that includes all necessary information:
 
 ```solidity
-string.concat(<evvmId>,",",<functionName>,",",<param1>,",",<param2>,",",...,",",<paramN>)
+string.concat(<evvmId>,",",<service/coreAddress>,",",<HashOfFunction(fucntionName,param1,param2,...,paramN)>,",",<originExecutor/senderExecutor>,",",<nonce>,",",<isASyncExec>)
 ```
 
 **Component breakdown:**
 
 - `<evvmId>`: Unique identifier of the target EVVM instance (which virtual blockchain to use)
-- `<functionName>`: Specific function to execute within EVVM (e.g., "pay", "registerUsername")
-- `<param1> ... <paramN>`: Function parameters in the exact order required by the target function
+- `<service/coreAddress>`: Address of the service or core contract to interact with
+- `<HashOfFunction(fucntionName,param1,param2,...,paramN)>`: Keccak256 hash of the abi-encoded function name and parameters
+- `<originExecutor/senderExecutor>`: Address of the transaction sender or origin executor that will be responsible for execution (if address is zero, any executor can process it)
+- `<nonce>`: Unique number to prevent replay attacks
+- `<isASyncExec>`: Boolean indicating if the nonce execution is asynchronous (true) or synchronous (false)
 
 ### 2. EIP-191 Signature Generation
 

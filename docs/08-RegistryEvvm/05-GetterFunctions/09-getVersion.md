@@ -1,4 +1,5 @@
 ---
+description: "Pure function returning the current version number of the Registry EVVM contract"
 sidebar_position: 9
 ---
 

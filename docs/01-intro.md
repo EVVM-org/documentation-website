@@ -1,4 +1,5 @@
 ---
+description: "Introduction to EVVM (Ethereum Virtual Virtual Machine), a virtual blockchain system that runs on existing blockchains without requiring infrastructure management"
 sidebar_position: 1
 ---
 
