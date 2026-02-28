@@ -157,6 +157,103 @@ Updates the NameService contract address for identity resolution.
 
 ---
 
+## Token List Management Functions
+
+The EVVM Core contract implements a flexible token permission system using allowList and denyList mechanisms. This enables granular control over which tokens can be used in payments, deposits, and other interactions.
+
+### List Modes
+- **allowList**: Only explicitly allowed tokens can be used.
+- **denyList**: All tokens are allowed except those explicitly denied.
+- **None**: No restrictions; all tokens are permitted.
+
+The active mode is managed through governance proposals.
+
+### Key Functions
+
+| Function | Signature |
+|----------|-----------|
+| verifyTokenInteractionAllowance | `function verifyTokenInteractionAllowance(address token) external view` |
+| proposeListStatus | `function proposeListStatus(bytes1 newStatus) external onlyAdmin` |
+| rejectListStatusProposal | `function rejectListStatusProposal() external onlyAdmin` |
+| acceptListStatusProposal | `function acceptListStatusProposal() external onlyAdmin` |
+| setTokenStatusOnAllowList | `function setTokenStatusOnAllowList(address token, bool status) external onlyAdmin` |
+| setTokenStatusOnDenyList | `function setTokenStatusOnDenyList(address token, bool status) external onlyAdmin` |
+
+#### Example Usage
+```solidity
+// Propose allowList mode
+evvm.proposeListStatus(0x01);
+// Wait for timelock and accept
+evvm.acceptListStatusProposal();
+// Add token to allowList
+evvm.setTokenStatusOnAllowList(tokenAddress, true);
+// Check if a token is allowed
+evvm.verifyTokenInteractionAllowance(tokenAddress);
+```
+
+---
+
+## Reward Flow Distribution Control
+
+The Core contract includes a safety mechanism to halt or resume reward distribution when the supply reaches critical thresholds, managed by the `rewardFlowDistribution` flag.
+
+### Purpose
+- **Preserve supply:** If 99.99% of the supply is distributed, reward emission can be stopped.
+- **Emergency control:** Admin can re-enable distribution if needed.
+
+### Key Functions
+| Variable/Function | Description |
+|-------------------|-------------|
+| rewardFlowDistribution.flag | Boolean flag indicating if rewards are distributed |
+| proposeChangeRewardFlowDistribution | Propose flag change (admin only, timelock) |
+| rejectChangeRewardFlowDistribution | Reject pending proposal |
+| acceptChangeRewardFlowDistribution | Accept and apply the change after timelock |
+
+#### Example
+```solidity
+evvm.proposeChangeRewardFlowDistribution();
+// Wait for timelock
+evvm.acceptChangeRewardFlowDistribution();
+```
+
+---
+
+## Supply & Reward Governance
+
+The Core contract provides administrative functions to manage critical economic parameters: the maximum supply and the base reward. All actions are protected by timelock.
+
+### Deleting Maximum Supply
+Allows the admin to "delete" (set to max uint256) the maximum supply, only in extreme scenarios.
+
+| Function | Signature |
+|----------|-----------|
+| proposeDeleteTotalSupply | `function proposeDeleteTotalSupply() external onlyAdmin` |
+| rejectDeleteTotalSupply | `function rejectDeleteTotalSupply() external onlyAdmin` |
+| acceptDeleteTotalSupply | `function acceptDeleteTotalSupply() external onlyAdmin` |
+
+#### Workflow
+1. Propose deletion
+2. Wait for timelock
+3. Accept: max supply is set to uint256 max
+
+### Changing Base Reward
+Allows the admin to change the base reward for stakers and transaction processors.
+
+| Function | Signature |
+|----------|-----------|
+| proposeChangeBaseRewardAmount | `function proposeChangeBaseRewardAmount(uint256 newBaseReward) external onlyAdmin` |
+| rejectChangeBaseRewardAmount | `function rejectChangeBaseRewardAmount() external onlyAdmin` |
+| acceptChangeBaseRewardAmount | `function acceptChangeBaseRewardAmount() external onlyAdmin` |
+
+#### Workflow
+1. Propose new reward
+2. Wait for timelock
+3. Accept: reward is updated
+
+---
+
+All these functions are subject to admin control and timelock periods for maximum security and transparency.
+
 ## Usage Examples
 
 ### Admin Transfer Process
