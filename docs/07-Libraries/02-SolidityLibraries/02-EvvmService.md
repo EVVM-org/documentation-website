@@ -226,14 +226,9 @@ Returns the MATE token address used in EVVM.
 
 **Returns**: `address(1)` (MATE token representation)
 
-#### `getEtherAddress`
-```solidity
-function getEtherAddress() internal pure virtual returns (address)
-```
-
-Returns the ETH token address used in EVVM.
-
-**Returns**: `address(0)` (ETH representation)
+:::tip[Native Coin Address]
+To get the address representing the native chain coin (ETH) in EVVM, use `core.getChainHostCoinAddress()` which returns `address(0)`.
+:::
 
 ## Complete Usage Example
 
@@ -283,7 +278,7 @@ contract CoffeeShop is EvvmService, Admin {
         // Request payment via Core.sol (validates signature and consumes nonce)
         requestPay(
             customer,
-            address(0),             // ETH payment
+            core.getChainHostCoinAddress(), // native coin (ETH)
             totalPrice,
             priorityFee,
             originExecutor,         // Original executor
@@ -303,7 +298,7 @@ contract CoffeeShop is EvvmService, Admin {
      */
     function refundCustomer(address customer, uint256 amount) external onlyAdmin {
         // Send refund from service balance (no signature needed)
-        makeCaPay(customer, address(0), amount);
+        makeCaPay(customer, core.getChainHostCoinAddress(), amount);
     }
     
     /**
@@ -327,8 +322,8 @@ contract CoffeeShop is EvvmService, Admin {
      * @param to Recipient address
      */
     function withdrawFunds(address to) external onlyAdmin {
-        uint256 balance = core.getBalance(address(this), address(0));
-        makeCaPay(to, address(0), balance);
+        uint256 balance = core.getBalance(address(this), core.getChainHostCoinAddress());
+        makeCaPay(to, core.getChainHostCoinAddress(), balance);
     }
     
     /**
@@ -356,7 +351,7 @@ contract CoffeeShop is EvvmService, Admin {
 ### 1. Always Use Core.sol for Payment Validation
 ```solidity
 // Good - Core.sol validates signature and nonce
-requestPay(user, token, amount, priorityFee, originExecutor, nonce, true, signature);
+requestPay(user, core.getChainHostCoinAddress(), amount, priorityFee, originExecutor, nonce, true, signature);
 
 // Bad - no validation
 // Process without checking signature
@@ -365,7 +360,7 @@ requestPay(user, token, amount, priorityFee, originExecutor, nonce, true, signat
 ### 2. Let Core.sol Handle Nonce Management
 ```solidity
 // Good - Core.sol validates and consumes nonce
-requestPay(user, token, amount, priorityFee, originExecutor, nonce, true, signature);
+requestPay(user, core.getChainHostCoinAddress(), amount, priorityFee, originExecutor, nonce, true, signature);
 
 // Bad - Don't implement your own nonce tracking
 // Core.sol manages nonces centrally
@@ -374,10 +369,10 @@ requestPay(user, token, amount, priorityFee, originExecutor, nonce, true, signat
 ### 3. Use isAsyncExec Appropriately
 ```solidity
 // Good - async for most operations
-requestPay(user, token, amount, priorityFee, originExecutor, nonce, true, signature);
+requestPay(user, core.getChainHostCoinAddress(), amount, priorityFee, originExecutor, nonce, true, signature);
 
 // Sync only when sequential order matters
-requestPay(user, token, amount, priorityFee, originExecutor, nonce, false, signature);
+requestPay(user, core.getChainHostCoinAddress(), amount, priorityFee, originExecutor, nonce, false, signature);
 ```
 
 ### 4. Protect Admin Functions
@@ -438,7 +433,7 @@ function updateCoreAddress(address newCoreAddress) external override {
 **Before (Manual):**
 ```solidity
 contract OldService {
-    IEvvm evvm;
+    Core core;
     mapping(address => mapping(uint256 => bool)) nonces;  // Manual nonce tracking
     
     function action(...) external {
@@ -451,7 +446,7 @@ contract OldService {
         require(!nonces[user][nonce], "Used");
         
         // 3. Manual payment call
-        evvm.pay(user, address(this), "", token, amount, ...);
+        core.pay(user, address(this), "", token, amount, ...);
         
         // 4. Manual nonce marking
         nonces[user][nonce] = true;

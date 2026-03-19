@@ -99,7 +99,7 @@ function verifySignature(
 **Description**: Verifies that a signature matches the EVVM message format and was signed by the expected address
 
 **Parameters**:
-- `evvmID`: The EVVM blockchain ID (from `IEvvm.getEvvmID()`)
+- `evvmID`: The EVVM blockchain ID (from `Core.getEvvmID()`)
 - `functionName`: Name of the function being called (e.g., "orderCoffee")
 - `inputs`: Comma-separated parameter string (e.g., "latte,2,1000000000000000,12345")
 - `signature`: 65-byte ECDSA signature
@@ -214,7 +214,7 @@ function verifySignature(...) internal pure returns (bool) {
 ### Use Case 1: Service Action Verification
 ```solidity
 contract CoffeeShop {
-    IEvvm evvm;
+    Core core;
     
     function orderCoffee(
         address customer,
@@ -226,7 +226,7 @@ contract CoffeeShop {
     ) external {
         // Verify customer signed this order
         bool validSignature = SignatureUtil.verifySignature(
-            evvm.getEvvmID(),
+            core.getEvvmID(),
             "orderCoffee",
             string.concat(
                 coffeeType,
@@ -282,7 +282,7 @@ function processAction(
     string memory params,
     bytes memory signature
 ) external {
-    uint256 evvmID = evvm.getEvvmID();
+    uint256 evvmID = core.getEvvmID();
     
     // Verify signature if not from trusted executor
     if (msg.sender != trustedExecutor) {

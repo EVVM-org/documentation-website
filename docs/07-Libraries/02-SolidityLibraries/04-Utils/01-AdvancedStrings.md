@@ -461,24 +461,15 @@ library SignatureUtil {
 }
 ```
 
-### Used by EvvmService
+### Used with EvvmService
 ```solidity
-abstract contract EvvmService {
-    function validateServiceSignature(
-        string memory functionName,
-        string memory inputs,
-        bytes memory signature,
-        address expectedSigner
-    ) internal view virtual {
-        if (!SignatureUtil.verifySignature(
-            evvm.getEvvmID(), // Converted with AdvancedStrings internally
-            functionName,
-            inputs,
-            signature,
-            expectedSigner
-        )) revert InvalidServiceSignature();
-    }
-}
+// AdvancedStrings is used internally by SignatureUtil when building the message string.
+// In modern EVVM services, prefer core.validateAndConsumeNonce() which handles
+// signature verification and nonce consumption atomically using the centralized format:
+// {evvmId},{senderExecutor},{hashPayload},{originExecutor},{nonce},{isAsyncExec}
+//
+// SignatureUtil.verifySignature() remains useful for custom service-level signatures
+// that follow the simpler "{evvmID},{functionName},{inputs}" format.
 ```
 
 ## Gas Optimization Tips
@@ -498,7 +489,7 @@ string memory message2 = string.concat("Message2: ", AdvancedStrings.uintToStrin
 ### 2. Use Constants for Fixed Strings
 ```solidity
 // Good - use string literals for fixed values
-string memory token0 = getEtherAddress() == address(0) ? "ETH" : "TOKEN";
+string memory token0 = token == address(0) ? "ETH" : "TOKEN";
 
 // Bad - unnecessary conversion
 string memory token0 = AdvancedStrings.addressToString(address(0)); // "0x0000..."

@@ -75,7 +75,7 @@ All EVVM services rely on Core.sol for nonce management and validation:
 
 1. **Signature Construction**: Service-specific hash functions create payload hashes (e.g., `NameServiceHashUtils.hashDataForRegister()`)
 2. **Core Validation**: Services call Core.sol to verify signatures and validate nonces
-3. **Unified Format**: All signatures follow the format: `{evvmId},{serviceAddress},{hashPayload},{executor},{nonce},{isAsyncExec}`
+3. **Unified Format**: All signatures follow the format: `{evvmId},{senderExecutor},{hashPayload},{originExecutor},{nonce},{isAsyncExec}`
 4. **Nonce Tracking**: Core.sol marks nonces as used after validation
 
 ### Benefits of Centralized Nonces

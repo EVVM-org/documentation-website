@@ -264,14 +264,14 @@ abstract contract StakingServiceUtils {
 
 ### EvvmService (More Complete)
 ```solidity
-abstract contract EvvmService is AsyncNonce {
-    IEvvm evvm;
-    IStaking staking;
+abstract contract EvvmService is CoreExecution, StakingServiceUtils {
+    // Core public core;    (from CoreExecution)
+    // IStaking internal staking; (from StakingServiceUtils)
     
     function _makeStakeService(uint256 amount) internal { }
     function _makeUnstakeService(uint256 amount) internal { }
     
-    // Plus: payment helpers, signature validation, nonce management
+    // Plus: requestPay, makeCaPay, getEvvmID, getPrincipalTokenAddress
 }
 ```
 
@@ -323,7 +323,7 @@ function stake(uint256 amount) external {
 ### 2. Check Balance Before Staking
 ```solidity
 // Good - verify sufficient balance
-uint256 mateBalance = IEvvm(evvmHookAddress).getBalance(
+uint256 mateBalance = ICore(evvmHookAddress).getBalance(
     address(this),
     address(1)
 );
@@ -429,7 +429,7 @@ function unstake(uint256 amount) external onlyOwner {
 uint256 public totalRewardsEarned;
 
 function claimRewards() external {
-    uint256 rewardBalance = IEvvm(evvmHookAddress).getBalance(
+    uint256 rewardBalance = ICore(evvmHookAddress).getBalance(
         address(this),
         address(1)
     );
@@ -437,7 +437,7 @@ function claimRewards() external {
     totalRewardsEarned += rewardBalance;
     
     // Transfer to owner or restake
-    IEvvm(evvmHookAddress).caPay(owner, address(1), rewardBalance);
+    ICore(evvmHookAddress).caPay(owner, address(1), rewardBalance);
 }
 ```
 
@@ -483,7 +483,7 @@ function stake(uint256 amount) external onlyOwner {
 ```solidity
 function canStake(uint256 amount) external view returns (bool) {
     uint256 cost = IStaking(stakingHookAddress).priceOfStaking() * amount;
-    uint256 balance = IEvvm(evvmHookAddress).getBalance(
+    uint256 balance = ICore(evvmHookAddress).getBalance(
         address(this),
         address(1)
     );
