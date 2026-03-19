@@ -119,6 +119,7 @@ function requestPay(
     address token,
     uint256 amount,
     uint256 priorityFee,
+    address originExecutor,
     uint256 nonce,
     bool isAsyncExec,
     bytes memory signature
@@ -136,6 +137,7 @@ requestPay(
     address(0),             // ETH
     1 ether,
     0.001 ether,            // Priority fee
+    msg.sender,             // originExecutor
     nonce,
     true,                   // isAsyncExec
     paymentSignature
@@ -262,8 +264,8 @@ contract CoffeeShop is EvvmService, Admin {
      * @param customer Customer address
      * @param coffeeType Type of coffee (e.g., "latte")
      * @param quantity Number of coffees
-     * @param priorityFee Fee for fisher (in MATE)
-     * @param originExecutor EOA that will execute (verified with tx.origin)
+     * @param priorityFee Fee for executor (in native token)
+     * @param originExecutor Original executor address (user or relayer)
      * @param nonce Core.sol nonce for customer
      * @param signature Customer's payment authorization signature
      */
@@ -272,6 +274,7 @@ contract CoffeeShop is EvvmService, Admin {
         string memory coffeeType,
         uint256 quantity,
         uint256 priorityFee,
+        address originExecutor,
         uint256 nonce,
         bytes memory signature
     ) external {
@@ -283,6 +286,7 @@ contract CoffeeShop is EvvmService, Admin {
             address(0),             // ETH payment
             totalPrice,
             priorityFee,
+            originExecutor,         // Original executor
             nonce,
             true,                   // Always async
             signature
@@ -352,13 +356,7 @@ contract CoffeeShop is EvvmService, Admin {
 ### 1. Always Use Core.sol for Payment Validation
 ```solidity
 // Good - Core.sol validates signature and nonce
-```solidity
-// Good - Core.sol validates signature and nonce
-requestPay(user, token, amount, priorityFee, nonce, true, signature);
-
-// Bad - Manual validation is redundant and error-prone
-// Don't implement your own signature/nonce validation
-```
+requestPay(user, token, amount, priorityFee, originExecutor, nonce, true, signature);
 
 // Bad - no validation
 // Process without checking signature
@@ -367,7 +365,7 @@ requestPay(user, token, amount, priorityFee, nonce, true, signature);
 ### 2. Let Core.sol Handle Nonce Management
 ```solidity
 // Good - Core.sol validates and consumes nonce
-requestPay(user, token, amount, priorityFee, nonce, true, signature);
+requestPay(user, token, amount, priorityFee, originExecutor, nonce, true, signature);
 
 // Bad - Don't implement your own nonce tracking
 // Core.sol manages nonces centrally
@@ -376,10 +374,10 @@ requestPay(user, token, amount, priorityFee, nonce, true, signature);
 ### 3. Use isAsyncExec Appropriately
 ```solidity
 // Good - async for most operations
-requestPay(user, token, amount, priorityFee, nonce, true, signature);
+requestPay(user, token, amount, priorityFee, originExecutor, nonce, true, signature);
 
 // Sync only when sequential order matters
-requestPay(user, token, amount, priorityFee, nonce, false, signature);
+requestPay(user, token, amount, priorityFee, originExecutor, nonce, false, signature);
 ```
 
 ### 4. Protect Admin Functions
@@ -469,11 +467,12 @@ contract NewService is EvvmService, Admin {
         address token,
         uint256 amount,
         uint256 priorityFee,
+        address originExecutor,
         uint256 nonce,
         bytes memory signature
     ) external {
         // Single call - Core.sol validates signature, verifies executor, consumes nonce
-        requestPay(user, token, amount, priorityFee, nonce, true, signature);
+        requestPay(user, token, amount, priorityFee, originExecutor, nonce, true, signature);
     }
 }
 ```
