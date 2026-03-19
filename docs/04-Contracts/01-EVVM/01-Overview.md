@@ -36,11 +36,30 @@ The EVVM (*E*thereum *V*irtual *V*irtual *M*achine) Core Contract (`Core.sol`) i
 
 ## Security Architecture
 
+### Dual-Executor Transaction Model
+
+EVVM implements a flexible dual-executor system that enables both competitive and deterministic transaction execution:
+
+**Sender Executor (`senderExecutor`)**
+- Controls which service can execute and consume nonces (`msg.sender` validation)
+- **`address(0)`**: Flexible mode - any service with correct signature can execute. Ideal for competitive fisher markets and cross-service transactions.
+- **Specific address**: Restrictive mode - only that service can execute. Provides deterministic execution guarantees and prevents race conditions.
+
+**Origin Executor (`originExecutor`)**
+- Additional security layer controlling transaction origin (`tx.origin` validation)
+- **`address(0)`**: No origin restriction - any EOA can initiate the transaction
+- **Specific address**: Restricts transaction origin to specific address
+
+**Service Payment Accountability**
+- When services dispatch payments on behalf of users, both executors must be set to the service address
+- Provides clear tracking of payment origins across the EVVM ecosystem
+- Enables complex multi-service transaction flows with full accountability
+
 ### Centralized Signature Verification
 - **EIP-191 Standard**: All transactions require cryptographic signatures validated by Core.sol
 - **Unified Verification**: Single point of signature validation for the entire ecosystem
 - **Service-Specific Hashing**: Each service uses dedicated hash functions (e.g., `CoreHashUtils`, `NameServiceHashUtils`) for payload construction
-- **Signature Payload Format**: `{evvmId},{serviceAddress},{hashPayload},{executor},{nonce},{isAsyncExec}`
+- **Signature Payload Format**: `{evvmId},{senderExecutor},{hashPayload},{originExecutor},{nonce},{isAsyncExec}`
 
 ### Replay Protection
 - **Centralized Nonce Tracking**: Core.sol manages all nonces to prevent replay attacks across services

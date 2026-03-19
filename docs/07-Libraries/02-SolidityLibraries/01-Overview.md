@@ -27,10 +27,14 @@ All libraries are imported from `@evvm/testnet-contracts/library/` followed by t
 ### Utility Libraries
 
 #### String & Type Conversion
-- **AdvancedStrings**: Type conversion utilities (uint/address/bytes to string)
+- **AdvancedStrings**: Type conversion utilities (uint/address/bytes to string) and signature payload construction
 
 #### Signature Verification
-- **SignatureUtil**: High-level signature verification for EVVM messages
+- **SignatureUtil**: Legacy signature verification for External Chain treasury operations only (TreasuryExternalChainStation)
+
+:::note[Signature Verification Standard]
+For standard EVVM services, use `AdvancedStrings.buildSignaturePayload()` + `Core.validateAndConsumeNonce()` instead of SignatureUtil. See [signature structures documentation](/docs/SignatureStructures/Overview) for details.
+:::
 
 #### Hash Generation
 - **CoreHashUtils**: Hash generation for Core.sol payment operations
@@ -81,6 +85,7 @@ The `EvvmService` abstract contract is the recommended way to build EVVM service
 
 ```solidity
 import {EvvmService} from "@evvm/testnet-contracts/library/EvvmService.sol";
+import {AdvancedStrings} from "@evvm/testnet-contracts/library/utils/AdvancedStrings.sol";
 
 contract MyService is EvvmService {
     constructor(
@@ -91,10 +96,20 @@ contract MyService is EvvmService {
     function myFunction(
         address user,
         string memory data,
+        uint256 nonce,
         bytes memory signature
     ) external {
-        // Validate signature
-        validateServiceSignature("myFunction", data, signature, user);
+        // Use Core.sol centralized signature validation
+        bytes32 hashPayload = keccak256(abi.encode("myFunction", data));
+        
+        core.validateAndConsumeNonce(
+            user,
+            hashPayload,
+            user,               // originExecutor
+            nonce,
+            true,               // isAsyncExec
+            signature
+        );
 
         // Your service logic here
     }
@@ -103,26 +118,40 @@ contract MyService is EvvmService {
 
 ### Using Individual Utilities
 
-For more granular control, use individual libraries:
+For more granular control, use individual libraries with the centralized signature pattern:
 
 ```solidity
-import {SignatureUtil} from "@evvm/testnet-contracts/library/utils/SignatureUtil.sol";
 import {AdvancedStrings} from "@evvm/testnet-contracts/library/utils/AdvancedStrings.sol";
+import {SignatureRecover} from "@evvm/testnet-contracts/library/primitives/SignatureRecover.sol";
 import {CoreExecution} from "@evvm/testnet-contracts/library/utils/service/CoreExecution.sol";
+import {ICore} from "@evvm/testnet-contracts/interfaces/ICore.sol";
 
 contract MyCustomService is CoreExecution {
     
     constructor(address coreAddress) CoreExecution(coreAddress) {}
     
-    function verifyUser(address user, bytes memory sig) internal view {
-        bool valid = SignatureUtil.verifySignature(
-            evvmId,
-            "myFunction",
-            AdvancedStrings.uintToString(someValue),
-            sig,
-            user
+    function verifyUser(
+        address user,
+        bytes32 hashPayload,
+        uint256 nonce,
+        bytes memory signature
+    ) internal {
+        // Build signature payload using centralized format
+        string memory payload = AdvancedStrings.buildSignaturePayload(
+            ICore(address(core)).getEvvmID(),
+            address(this),      // senderExecutor (this service)
+            hashPayload,        // Function-specific hash
+            user,               // originExecutor
+            nonce,
+            true                // isAsyncExec
         );
-        require(valid, "Invalid signature");
+        
+        // Verify signature
+        address signer = SignatureRecover.recoverSigner(payload, signature);
+        require(signer == user, "Invalid signature");
+        
+        // Or use Core.validateAndConsumeNonce directly (recommended):
+        core.validateAndConsumeNonce(user, hashPayload, user, nonce, true, signature);
     }
 }
 ```
@@ -197,40 +226,68 @@ contract Service {
         bytes32 hash = CoreHashUtils.hashDataForPay(...);
         // Use libraries as needed
     }
-import {SignatureUtil} from "@evvm/testnet-contracts/library/utils/SignatureUtil.sol";
-import {AdvancedStrings} from "@evvm/testnet-contracts/library/utils/AdvancedStrings.sol";
+import {EvvmService} from "@evvm/testnet-contracts/library/EvvmService.sol";
 
-contract Service {
-    using SignatureUtil for bytes;
-    using AdvancedStrings for uint256;
+contract Service is EvvmService {
     constructor(address coreAddress, address stakingAddress)
         EvvmService(coreAddress, stakingAddress) {}
         
     function orderCoffee(
         string memory order,
+        uint256 nonce,
         bytes memory signature
     ) external {
-        validateServiceSignature("orderCoffee", order, signature, msg.sender);
+        // Generate function-specific hash
+        bytes32 hashPayload = keccak256(abi.encode("orderCoffee", order));
+        
+        // Validate via Core.sol centralized validation
+        core.validateAndConsumeNonce(
+            msg.sender,
+            hashPayload,
+            msg.sender,
+            nonce,
+            true,
+            signature
+        );
+        
         // Process order...
     }
 }
 ```
 
-### Read-Only Service
-Use `SignatureUtil` for signature verification only:
+### Read-Only Signature Verification
+For verification without nonce consumption:
 
 ```solidity
-import {SignatureUtil} from "@evvm/testnet-contracts/library/utils/SignatureUtil.sol";
+import {AdvancedStrings} from "@evvm/testnet-contracts/library/utils/AdvancedStrings.sol";
+import {SignatureRecover} from "@evvm/testnet-contracts/library/primitives/SignatureRecover.sol";
+import {ICore} from "@evvm/testnet-contracts/interfaces/ICore.sol";
 
 contract Validator {
-    uint256 evvmId;
+    ICore public core;
+    
+    constructor(address coreAddress) {
+        core = ICore(coreAddress);
+    }
     
     function isValidSignature(
-        bytes memory sig,
+        bytes memory signature,
         address user,
-        string memory action
+        bytes32 hashPayload,
+        uint256 nonce
     ) public view returns (bool) {
-        return SignatureUtil.verifySignature(evvmId, action, "", sig, user);
+        // Build signature payload
+        string memory payload = AdvancedStrings.buildSignaturePayload(
+            core.getEvvmID(),
+            address(this),
+            hashPayload,
+            user,
+            nonce,
+            true
+        );
+        
+        // Verify signature
+        return SignatureRecover.recoverSigner(payload, signature) == user;
     }
 }
 ```
