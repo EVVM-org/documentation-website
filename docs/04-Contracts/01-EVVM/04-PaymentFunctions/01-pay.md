@@ -7,7 +7,7 @@ sidebar_position: 1
 # pay Function
 
 **Function Type**: `external`  
-**Function Signature**: `pay(address,address,string,address,uint256,uint256,address,uint256,bool,bytes)`
+**Function Signature**: `pay(address,address,string,address,uint256,uint256,address,address,uint256,bool,bytes)`
 
 The `pay` function executes a payment from one address to a single recipient address or identity. This is EVVM Core's primary single payment function with intelligent staker detection and centralized signature verification.
 
@@ -30,7 +30,8 @@ The function supports both synchronous and asynchronous nonce management through
 | `token`          | `address` | The token contract address for the transfer.                                                                                                   |
 | `amount`         | `uint256` | The quantity of tokens to transfer from `from` to the recipient.                                                                               |
 | `priorityFee`    | `uint256` | Additional fee for transaction priority. If the executor is a staker, they receive this fee as a reward.                                       |
-| `senderExecutor` | `address` | Address authorized to execute this transaction. Use `address(0)` to allow any address to execute.                                              |
+| `senderExecutor` | `address` | Address authorized to execute this transaction (`msg.sender`). Use `address(0)` to allow any service with the correct signature to execute. When set to a specific address, only that executor can consume the nonce. |
+| `originExecutor` | `address` | Address restriction for transaction origin (`tx.origin`). Use `address(0)` to allow any origin. Provides additional security layer for multi-service transaction flows. |
 | `nonce`          | `uint256` | Transaction nonce value managed by Core.sol. Usage depends on `isAsyncExec`: if `false` (sync), must equal the expected synchronous nonce; if `true` (async), can be any unused nonce. |
 | `isAsyncExec`    | `bool`    | Execution type flag: `false` = synchronous nonce (sequential), `true` = asynchronous nonce (parallel).                                          |
 | `signature`      | `bytes`   | Cryptographic signature ([EIP-191](https://eips.ethereum.org/EIPS/eip-191)) from the `from` address authorizing this payment. Validated by Core.sol's centralized signature system.                 |
@@ -53,34 +54,41 @@ The function can be executed in multiple ways:
 
 1. The user or any authorized service directly calls the `pay` function.
 2. If a `senderExecutor` address is specified, only that address can submit the transaction.
-3. If `senderExecutor` is set to `address(0)`, anyone can execute the transaction with a valid signature.
+3. If `senderExecutor` is set to `address(0)`, any service can execute the transaction with a valid signature - enabling flexible multi-service transaction flows.
 
-:::tip[Additional Security Using Executor Address]
-When using a service as the executor, we recommend specifying the service's address in the `senderExecutor` parameter for additional security.
+:::tip[Executor Security Model]
+The dual-executor model provides flexible security:
+- **`senderExecutor = address(0)`**: Any service with the correct signature can execute and consume the nonce - useful for competitive fisher markets
+- **`senderExecutor = specific address`**: Only that specific service can execute - provides deterministic execution guarantees
+- **`originExecutor`**: Additionally restricts `tx.origin` for extra security in multi-service flows
+
+When building services that dispatch payments on behalf of users, both `senderExecutor` and `originExecutor` should be set to the service address for clear accountability.
 :::
 
 ### Workflow
 
 1. **Signature Verification**: Validates the `signature` using Core.sol's centralized signature verification system:
-   - Constructs signature payload: `buildSignaturePayload(evvmId, address(this), hashPayload, senderExecutor, nonce, isAsyncExec)`
+   - Constructs signature payload: `buildSignaturePayload(evvmId, senderExecutor, hashPayload, originExecutor, nonce, isAsyncExec)`
    - `hashPayload` is generated via `CoreHashUtils.hashDataForPay(to_address, to_identity, token, amount, priorityFee)`
    - Recovers signer and compares with `from` address. Reverts with `InvalidSignature` on failure.
 
-2. **User Validation**: Checks if the user is allowed to execute transactions using `canExecuteUserTransaction(from)`. Reverts with `UserCannotExecuteTransaction` if not allowed.
+2. **Sender Executor Validation**: If `senderExecutor` is not `address(0)`, validates that `msg.sender` matches `senderExecutor`. Reverts with `SenderMismatch` if they don't match. When `address(0)`, any service can execute.
 
-3. **Nonce Management**: Core.sol handles nonce verification and updates based on `isAsyncExec`:
-   - **Async (isAsyncExec = true)**: Checks if the nonce hasn't been used via `asyncNonceStatus(from, nonce)`, then marks it as used. Reverts with `AsyncNonceAlreadyUsed` if already used, or `AsyncNonceIsReservedByAnotherService` if reserved by another service.
+3. **Origin Executor Validation**: If `originExecutor` is not `address(0)`, validates that `tx.origin` matches `originExecutor`. Reverts with `OriginMismatch` if they don't match. Provides additional security for multi-service transactions.
+
+4. **User Validation**: Checks if the user is allowed to execute transactions using `canExecuteUserTransaction(from)`. Reverts with `UserCannotExecuteTransaction` if not allowed.
+
+5. **Nonce Management**: Core.sol handles nonce verification and updates based on `isAsyncExec`:
+   - **Async (isAsyncExec = true)**: Checks nonce status via `asyncNonceStatus(from, nonce)`. If `senderExecutor` was `address(0)` in signature, any service can consume it; otherwise only the specified service. Reverts with `AsyncNonceAlreadyUsed` if already used, or `AsyncNonceIsReservedByAnotherService` if reserved by another service.
    - **Sync (isAsyncExec = false)**: Verifies the nonce matches `nextSyncNonce[from]`, then increments it. Reverts with `SyncNonceMismatch` on mismatch.
 
-4. **Executor Validation**: If `senderExecutor` is not `address(0)`, checks that `msg.sender` matches the `senderExecutor` address. Reverts with `SenderIsNotTheSenderExecutor` if they don't match.
-
-5. **Resolve Recipient Address**: Determines the final recipient address:
+6. **Resolve Recipient Address**: Determines the final recipient address:
    - If `to_identity` is provided (not empty), resolves the identity to an owner address using `verifyStrictAndGetOwnerOfIdentity` from the NameService contract.
    - If `to_identity` is empty, uses the provided `to_address`.
 
-6. **Balance Update**: Executes the payment transfer using the `_updateBalance` function, sending `amount` of `token` from the `from` address to the resolved recipient address.
+7. **Balance Update**: Executes the payment transfer using the `_updateBalance` function, sending `amount` of `token` from the `from` address to the resolved recipient address.
 
-7. **Staker Benefits Distribution**: If the executor (`msg.sender`) is a registered staker:
+8. **Staker Benefits Distribution**: If the executor (`msg.sender`) is a registered staker:
    - **Priority Fee Transfer**: If `priorityFee > 0`, transfers the `priorityFee` amount of `token` from the `from` address to the `msg.sender` (executor) as a staker reward.
    - **Principal Token Reward**: Grants 1x reward amount in principal tokens to the `msg.sender` (executor) using the `_giveReward` function.
 

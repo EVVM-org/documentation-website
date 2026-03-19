@@ -7,18 +7,24 @@ sidebar_position: 1
 # makeOrder
 
 :::info[Signature Verification]
-makeOrder uses Core.sol's centralized signature verification via `validateAndConsumeNonce()` with `P2PSwapHashUtils.hashDataForMakeOrder()`. Note: makeOrder uses `address(0)` as originExecutor.
+makeOrder uses Core.sol's centralized signature verification via `validateAndConsumeNonce()` with `P2PSwapHashUtils.hashDataForMakeOrder()`. Includes dual-executor parameters.
 :::
 
 **Function Signature**:
 ```solidity
 function makeOrder(
     address user,
-    MetadataMakeOrder memory metadata,
+    address tokenA,
+    address tokenB,
+    uint256 amountA,
+    uint256 amountB,
+    address senderExecutor,
+    address originExecutor,
+    uint256 nonce,
     bytes memory signature,
-    uint256 priorityFeeEvvm,
-    uint256 nonceEvvm,
-    bytes memory signatureEvvm
+    uint256 priorityFeePay,
+    uint256 noncePay,
+    bytes memory signaturePay
 ) external returns (uint256 market, uint256 orderId)
 ```
 
@@ -29,23 +35,17 @@ Creates a new token swap order in the P2P marketplace, locking tokenA in Core.so
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `user` | `address` | Order creator whose tokens will be locked |
-| `metadata` | `MetadataMakeOrder` | Order details (nonce, tokenA, tokenB, amountA, amountB) |
+| `tokenA` | `address` | Token being offered |
+| `tokenB` | `address` | Token being requested |
+| `amountA` | `uint256` | Amount of tokenA to lock |
+| `amountB` | `uint256` | Amount of tokenB required to fill |
+| `senderExecutor` | `address` | Restricts which address can execute this operation via msg.sender (address(0) = anyone can execute) |
+| `originExecutor` | `address` | EOA that will initiate the transaction, verified via tx.origin (address(0) = anyone can initiate) |
+| `nonce` | `uint256` | User's nonce for P2PSwap service operations |
 | `signature` | `bytes` | EIP-191 signature from `user` for operation authorization |
-| `priorityFeeEvvm` | `uint256` | Optional MATE priority fee for faster execution |
-| `nonceEvvm` | `uint256` | Nonce for Core payment transaction (locks tokenA) |
-| `signatureEvvm` | `bytes` | Signature for Core payment authorization |
-
-### MetadataMakeOrder Structure
-
-```solidity
-struct MetadataMakeOrder {
-    uint256 nonce;    // Core nonce for P2PSwap service
-    address tokenA;   // Token being offered
-    address tokenB;   // Token being requested
-    uint256 amountA;  // Amount of tokenA to lock
-    uint256 amountB;  // Amount of tokenB required to fill
-}
-```
+| `priorityFeePay` | `uint256` | Optional MATE priority fee for faster execution |
+| `noncePay` | `uint256` | Nonce for Core payment transaction (locks tokenA) |
+| `signaturePay` | `bytes` | Signature for Core payment authorization |
 
 ## Return Values
 
@@ -59,20 +59,26 @@ struct MetadataMakeOrder {
 :::note[Operation Hash]
 ```solidity
 bytes32 hashPayload = P2PSwapHashUtils.hashDataForMakeOrder(
-    metadata.tokenA,
-    metadata.tokenB,
-    metadata.amountA,
-    metadata.amountB
+    tokenA,
+    tokenB,
+    amountA,
+    amountB
 );
 ```
 :::
 
 **Signature Format**:
 ```
-{evvmId},{p2pSwapAddress},{hashPayload},{address(0)},{nonce},true
+{evvmId},{senderExecutor},{hashPayload},{originExecutor},{nonce},true
 ```
 
-**Important**: makeOrder uses `address(0)` as originExecutor because it doesn't restrict who can execute (anyone can submit the transaction). Other P2PSwap operations specify the EOA executor.
+Where:
+- `evvmId`: Chain ID from `block.chainid`
+- `senderExecutor`: Address that can execute via msg.sender (often address(0) for flexibility)
+- `hashPayload`: Result from `P2PSwapHashUtils.hashDataForMakeOrder(...)`
+- `originExecutor`: EOA that will initiate the transaction (often address(0) for flexibility)
+- `nonce`: User's nonce for P2PSwap service
+- `true`: Always async execution
 
 **Payment Signature**: Separate signature required for locking tokenA via Core.pay().
 
@@ -82,14 +88,15 @@ bytes32 hashPayload = P2PSwapHashUtils.hashDataForMakeOrder(
 ```solidity
 core.validateAndConsumeNonce(
     user,
+    senderExecutor,
     P2PSwapHashUtils.hashDataForMakeOrder(
-        metadata.tokenA,
-        metadata.tokenB,
-        metadata.amountA,
-        metadata.amountB
+        tokenA,
+        tokenB,
+        amountA,
+        amountB
     ),
-    address(0),        // makeOrder doesn't use originExecutor
-    metadata.nonce,
+    originExecutor,
+    nonce,
     true,              // Always async execution
     signature
 );
@@ -100,32 +107,38 @@ core.validateAndConsumeNonce(
 - Nonce hasn't been consumed
 - Hash matches order parameters
 - User authorization
-- originExecutor = address(0) (no restriction on who executes)
+- Executor restrictions (if specified)
 
 **On Failure**:
 - `Core__InvalidSignature()` - Invalid or mismatched signature
 - `Core__NonceAlreadyUsed()` - Nonce already consumed
+- `Core__InvalidExecutor()` - Executor restrictions not met
 
 ### 2. Lock TokenA
 ```solidity
 requestPay(
     user,
-    metadata.tokenA,
-    metadata.amountA,
-    priorityFeeEvvm,
-    nonceEvvm,
+    tokenA,
+    amountA,
+    priorityFeePay,
+    originExecutor,
+    noncePay,
     true,              // Always async
-    signatureEvvm
+    signaturePay
 );
 ```
 
 **Action**: Transfers `amountA` of `tokenA` from user to Core.sol, locking it for order lifetime.
 
+:::note[Service Payment Accountability]
+P2PSwap sets `senderExecutor = address(this)` when calling `requestPay()`, ensuring the payment is attributed to the P2PSwap service.
+:::
+
 ### 3. Market Resolution
 ```solidity
-market = findMarket(metadata.tokenA, metadata.tokenB);
+market = findMarket(tokenA, tokenB);
 if (market == 0) {
-    market = createMarket(metadata.tokenA, metadata.tokenB);
+    market = createMarket(tokenA, tokenB);
 }
 ```
 

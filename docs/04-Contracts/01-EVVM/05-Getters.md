@@ -203,6 +203,93 @@ if (status == 0x00) {
 
 ---
 
+### getUserValidatorAddress {#getuservalidatoraddress}
+
+**Function Type**: `view`  
+**Function Signature**: `getUserValidatorAddress()`
+
+Gets the current UserValidator contract address used for transaction filtering. Returns `address(0)` if no validator is configured (all users allowed).
+
+#### Return Value
+
+| Type      | Description                                                           |
+| --------- | --------------------------------------------------------------------- |
+| `address` | Address of the active UserValidator contract, or `address(0)` if none |
+
+#### Example
+
+```solidity
+address validator = core.getUserValidatorAddress();
+
+if (validator == address(0)) {
+    // No validator configured - all users can execute transactions
+} else {
+    // Validator is active - check if user can execute
+    bool canExecute = IUserValidator(validator).canExecute(userAddress);
+}
+```
+
+---
+
+## User Validation Functions
+
+### canExecuteUserTransaction {#canexecuteusertransaction}
+
+**Function Type**: `view` (public)  
+**Function Signature**: `canExecuteUserTransaction(address)`
+
+Validates if a user is allowed to execute transactions in the EVVM ecosystem. This function is publicly accessible, allowing external services to check user permissions before processing transactions.
+
+#### Input Parameters
+
+| Parameter | Type      | Description                           |
+| --------- | --------- | ------------------------------------- |
+| `user`    | `address` | Address to check execution permission |
+
+#### Return Value
+
+| Type   | Description                                          |
+| ------ | ---------------------------------------------------- |
+| `bool` | `true` if user can execute, `false` if blocked       |
+
+#### Behavior
+
+- **No Validator Configured**: Returns `true` (all users allowed)
+- **Validator Active**: Delegates to `IUserValidator.canExecute(user)`
+- **Used By**: Called internally by `validateAndConsumeNonce` before processing transactions
+- **External Use**: Services can call this to pre-validate users before requesting signatures
+
+#### Integration
+
+This function is called during every transaction validation in `validateAndConsumeNonce`. When a UserValidator is configured, it enables:
+- Compliance filtering (KYC/AML requirements)
+- Whitelist/blacklist management
+- Dynamic access control based on external conditions
+
+#### Example
+
+```solidity
+// Pre-validate user before requesting signature
+if (!core.canExecuteUserTransaction(userAddress)) {
+    revert("User is not authorized to execute transactions");
+}
+
+// Request signature from user
+bytes memory signature = requestUserSignature(userAddress, ...);
+
+// Proceed with transaction
+core.validateAndConsumeNonce(userAddress, ...);
+```
+
+#### Related Functions
+
+For UserValidator management, see:
+- [proposeUserValidator](./03-SignatureAndNonceManagement.md#proposeuservalidator)
+- [acceptUserValidatorProposal](./03-SignatureAndNonceManagement.md#acceptuservalidatorproposal)
+- [cancelUserValidatorProposal](./03-SignatureAndNonceManagement.md#canceluservalidatorproposal)
+
+---
+
 
 
 ### getNextFisherDepositNonce

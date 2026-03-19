@@ -16,10 +16,10 @@ The proxy management functions have been moved to their own dedicated section. S
 
 ## Initial Setup Functions
 
-### _setupNameServiceAndTreasuryAddress
+### initializeSystemContracts
 
 **Function Type**: `external`  
-**Function Signature**: `_setupNameServiceAndTreasuryAddress(address,address)`
+**Function Signature**: `initializeSystemContracts(address,address)`
 
 One-time setup function to configure the NameService and Treasury contract addresses. This function can only be called once due to a breaker flag mechanism for security.
 
@@ -32,11 +32,12 @@ One-time setup function to configure the NameService and Treasury contract addre
 
 #### Setup Process
 
-1. **Breaker Validation**: Ensures the function can only be called once
+1. **Breaker Validation**: Ensures the function can only be called once (checks `breakerSetupNameServiceAddress == true`)
 2. **NameService Configuration**: Sets the NameService contract address for identity resolution
-3. **Initial Balance**: Provides 10,000 MATE tokens to the NameService contract
+3. **Initial Reward**: Provides 20x reward amount in principal tokens to the NameService contract
 4. **Staker Registration**: Registers NameService as a privileged staker
 5. **Treasury Configuration**: Sets the Treasury contract address for balance operations
+6. **Breaker Deactivation**: Sets `breakerSetupNameServiceAddress = false` to prevent re-execution
 
 #### Security Features
 
@@ -47,10 +48,10 @@ One-time setup function to configure the NameService and Treasury contract addre
 
 #### Workflow
 
-```solidity
-// Initial state: breakerSetupNameServiceAddress == FLAG_IS_STAKER (0x01)
-// After execution: breakerSetupNameServiceAddress == 0x00 (prevents re-execution)
+```soliditytrue
+// After execution: breakerSetupNameServiceAddress == false (prevents re-execution)
 
+core.initializeSystemContract
 evvm._setupNameServiceAndTreasuryAddress(nameServiceAddr, treasuryAddr);
 ```
 

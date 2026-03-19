@@ -17,16 +17,16 @@ To authorize standard staking operations like `presaleStaking` or `publicStaking
 ### Complete Message Structure
 
 ```
-{evvmId},{stakingAddress},{hashPayload},{originExecutor},{nonce},true
+{evvmId},{senderExecutor},{hashPayload},{originExecutor},{nonce},{isAsyncExec}
 ```
 
 **Components:**
 - `evvmId`: Chain ID (e.g., `1` for Ethereum mainnet)
-- `stakingAddress`: Staking contract address (hexadecimal)
-- `hashPayload`: Operation hash from StakingHashUtils (hexadecimal)
-- `originExecutor`: EOA that will execute (verified with tx.origin), hexadecimal
-- `nonce`: User's Core nonce for this signature
-- `true`: Always async execution
+- `senderExecutor`: Address that can call via msg.sender (`0x0...0` for anyone)
+- `hashPayload`: Operation hash from StakingHashUtils (bytes32)
+- `originExecutor`: EOA that can execute via tx.origin (`0x0...0` for anyone)
+- `nonce`: User's Core nonce from Core.sol
+- `isAsyncExec`: Always `true` for staking operations
 
 ### Hash Payload Generation
 
@@ -56,10 +56,10 @@ bytes32 hashPayload = StakingHashUtils.hashDataForPublicStake(
 
 **Parameters:**
 - `evvmId`: `11155111` (Sepolia testnet)
-- `stakingAddress`: `0x1234567890123456789012345678901234567890`
+- `senderExecutor`: `0x0000000000000000000000000000000000000000` (anyone can call)
 - `isStaking`: `true`
 - `amountOfStaking`: `1000`
-- `originExecutor`: `0xABCDEF1234567890ABCDEF1234567890ABCDEF12`
+- `originExecutor`: `0x0000000000000000000000000000000000000000` (anyone can initiate)
 - `nonce`: `42`
 
 **Step 1: Generate hash payload**
@@ -70,12 +70,12 @@ bytes32 hashPayload = StakingHashUtils.hashDataForPublicStake(true, 1000);
 
 **Step 2: Construct message**
 ```
-11155111,0x1234567890123456789012345678901234567890,0x7a8b9c...def,0xABCDEF1234567890ABCDEF1234567890ABCDEF12,42,true
+11155111,0x0000000000000000000000000000000000000000,0x7a8b9c...def,0x0000000000000000000000000000000000000000,42,true
 ```
 
 **Step 3: Sign with EIP-191**
 ```javascript
-const message = "11155111,0x1234567890123456789012345678901234567890,0x7a8b9c...def,0xABCDEF1234567890ABCDEF1234567890ABCDEF12,42,true";
+const message = "11155111,0x0000000000000000000000000000000000000000,0x7a8b9c...def,0x0000000000000000000000000000000000000000,42,true";
 const signature = await signer.signMessage(message);
 ```
 
@@ -85,10 +85,10 @@ const signature = await signer.signMessage(message);
 
 **Parameters:**
 - `evvmId`: `11155111` (Sepolia testnet)
-- `stakingAddress`: `0x1234567890123456789012345678901234567890`
+- `senderExecutor`: `0x0000000000000000000000000000000000000000` (anyone can call)
 - `isStaking`: `true`
 - `amountOfStaking`: `1` (always 1 for presale)
-- `originExecutor`: `0xABCDEF1234567890ABCDEF1234567890ABCDEF12`
+- `originExecutor`: `0x0000000000000000000000000000000000000000` (anyone can initiate)
 - `nonce`: `7`
 
 **Step 1: Generate hash payload**
@@ -99,12 +99,12 @@ bytes32 hashPayload = StakingHashUtils.hashDataForPresaleStake(true, 1);
 
 **Step 2: Construct message**
 ```
-11155111,0x1234567890123456789012345678901234567890,0x3c4d5e...abc,0xABCDEF1234567890ABCDEF1234567890ABCDEF12,7,true
+11155111,0x0000000000000000000000000000000000000000,0x3c4d5e...abc,0x0000000000000000000000000000000000000000,7,true
 ```
 
 **Step 3: Sign with EIP-191**
 ```javascript
-const message = "11155111,0x1234567890123456789012345678901234567890,0x3c4d5e...abc,0xABCDEF1234567890ABCDEF1234567890ABCDEF12,7,true";
+const message = "11155111,0x0000000000000000000000000000000000000000,0x3c4d5e...abc,0x0000000000000000000000000000000000000000,7,true";
 const signature = await signer.signMessage(message);
 ```
 
@@ -114,10 +114,10 @@ const signature = await signer.signMessage(message);
 
 **Parameters:**
 - `evvmId`: `11155111`
-- `stakingAddress`: `0x1234567890123456789012345678901234567890`
+- `senderExecutor`: `0x0000000000000000000000000000000000000000` (anyone can call)
 - `isStaking`: `false` (unstaking)
 - `amountOfStaking`: `500`
-- `originExecutor`: `0xABCDEF1234567890ABCDEF1234567890ABCDEF12`
+- `originExecutor`: `0x0000000000000000000000000000000000000000` (anyone can initiate)
 - `nonce`: `43`
 
 **Step 1: Generate hash payload**
@@ -128,12 +128,12 @@ bytes32 hashPayload = StakingHashUtils.hashDataForPublicStake(false, 500);
 
 **Step 2: Construct message**
 ```
-11155111,0x1234567890123456789012345678901234567890,0x9e8f7a...123,0xABCDEF1234567890ABCDEF1234567890ABCDEF12,43,true
+11155111,0x0000000000000000000000000000000000000000,0x9e8f7a...123,0x0000000000000000000000000000000000000000,43,true
 ```
 
 **Step 3: Sign with EIP-191**
 ```javascript
-const message = "11155111,0x1234567890123456789012345678901234567890,0x9e8f7a...123,0xABCDEF1234567890ABCDEF1234567890ABCDEF12,43,true";
+const message = "11155111,0x0000000000000000000000000000000000000000,0x9e8f7a...123,0x0000000000000000000000000000000000000000,43,true";
 const signature = await signer.signMessage(message);
 ```
 
@@ -146,8 +146,9 @@ All staking operations use Core.sol's centralized verification:
 ```solidity
 core.validateAndConsumeNonce(
     user,               // Signer address
+    senderExecutor,     // Who can call via msg.sender
     hashPayload,        // From StakingHashUtils
-    originExecutor,     // EOA executor (verified with tx.origin)
+    originExecutor,     // Who can initiate via tx.origin
     nonce,              // User's Core nonce
     true,               // Always async execution
     signature           // EIP-191 signature
@@ -161,7 +162,7 @@ core.validateAndConsumeNonce(
 4. **Signature Recovery**: Uses `ecrecover` to recover signer address
 5. **Verification**: Compares recovered address with `user`
 6. **Nonce Check**: Ensures nonce hasn't been used
-7. **Executor Check**: Verifies `tx.origin == originExecutor`
+7. **Executor Checks**: Verifies executors match msg.sender and tx.origin
 8. **Consume Nonce**: Marks nonce as used to prevent replay
 
 **On Failure:**
@@ -171,12 +172,13 @@ core.validateAndConsumeNonce(
 
 :::tip Technical Details
 
-- **Universal Format**: All EVVM services now use the same signature format
+- **Dual-Executor Format**: senderExecutor controls msg.sender, originExecutor controls tx.origin
 - **Centralized Nonces**: Core.sol manages all nonces across services
 - **Hash Security**: StakingHashUtils generates collision-resistant hashes
-- **EOA Verification**: originExecutor ensures only specific EOA can execute
-- **Always Async**: Staking operations always use async execution mode
+- **Hash Independence**: Executors NOT included in hash payload (only operation parameters)
+- **Always Async**: Staking operations always use async execution mode (`isAsyncExec: true`)
 - **Replay Protection**: Core.sol's nonce system prevents replay attacks
-- **Operation Types**: `presaleStaking` (1 token fixed) vs `publicStaking` (variable)
+- **Operation Types**: `presaleStaking` (1 token fixed) vs `publicStaking` (variable amounts)
+- **Executor Flexibility**: Both executors at address(0) allows anyone to execute
 
 :::

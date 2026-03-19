@@ -7,11 +7,11 @@ sidebar_position: 2
 # presaleStaking
 
 :::info[Signature Verification]
-presaleStaking uses Core.sol's centralized verification via `validateAndConsumeNonce()` with `StakingHashUtils.hashDataForPresaleStake()`. Includes `originExecutor` parameter (EOA executor verified with tx.origin).
+presaleStaking uses Core.sol's centralized verification via `validateAndConsumeNonce()` with `StakingHashUtils.hashDataForPresaleStake()`. Includes dual-executor parameters: `senderExecutor` (msg.sender restriction) and `originExecutor` (tx.origin restriction).
 :::
 
 **Function Type**: `external`  
-**Function Signature**: `presaleStaking(address user, bool isStaking, address originExecutor, uint256 nonce, bytes signature, uint256 priorityFee_EVVM, uint256 nonceEvvm, bytes signatureEvvm)` 
+**Function Signature**: `presaleStaking(address user, bool isStaking, address senderExecutor, address originExecutor, uint256 nonce, bytes signature, uint256 priorityFeePay, uint256 noncePay, bytes signaturePay)` 
 
 The `presaleStaking` function enables presale participants to stake or unstake their MATE tokens under specific restrictions. This function ensures exclusive access for qualifying presale users while enforcing operational limits.
 
@@ -34,14 +34,14 @@ Note: In this repository's contract implementation the constructor enables `allo
 | ------------------- | ------- | ---------------------------------------------------- |
 | `user`              | address | Presale participant's wallet address                 |
 | `isStaking`         | bool    | `true` = Stake, `false` = Unstake                    |
+| `senderExecutor`    | address | Optional msg.sender restriction. Use `address(0)` for any service, or specify address to restrict execution. |
 | `originExecutor`    | address | EOA that will execute the transaction (verified with tx.origin) |
 | `nonce`             | uint256 | Core nonce for this signature (prevents replay attacks) |
 | `signature`         | bytes   | User authorization signature                         |
 
-> **Note:** For presale staking the function enforces a fixed amount of `1` token; therefore the signed message must include `_amountOfStaking = 1`.| `priorityFee_EVVM`  | uint256 | EVVM priority fee                                    |
-| `nonce_EVVM`        | uint256 | EVVM payment operation nonce                         |
-| `priorityFlag_EVVM` | bool    | EVVM execution mode (`true` = async, `false` = sync) |
-| `signature_EVVM`    | bytes   | EVVM payment authorization                           |
+> **Note:** For presale staking the function enforces a fixed amount of `1` token; therefore the signed message must include `_amountOfStaking = 1`.| `priorityFeePay`  | uint256 | Optional priority fee for faster processing                                   |
+| `noncePay`        | uint256 | Core nonce for the payment operation                         |
+| `signaturePay`    | bytes   | User's signature authorizing the payment                           |
 
 :::note
 
@@ -64,6 +64,7 @@ The function supports two execution paths:
 ```solidity
 core.validateAndConsumeNonce(
     user,
+    senderExecutor,
     Hash.hashDataForPresaleStake(isStaking, 1),  // Fixed amount = 1
     originExecutor,
     nonce,
@@ -75,6 +76,7 @@ core.validateAndConsumeNonce(
 **Validates**:
 - Signature authenticity via EIP-191
 - Nonce hasn't been consumed
+- `msg.sender` matches `senderExecutor` (if specified)
 - Executor is the specified EOA (via `tx.origin`)
 
 **On Failure**:

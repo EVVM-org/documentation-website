@@ -11,7 +11,7 @@ This function uses **Core.sol's centralized signature verification** via `valida
 :::
 
 **Function Type**: External  
-**Function Signature**: `flushCustomMetadata(address user, string memory identity, address originExecutor, uint256 nonce, bytes memory signature, uint256 priorityFeeEvvm, uint256 nonceEvvm, bytes memory signatureEvvm) external`
+**Function Signature**: `flushCustomMetadata(address user, string memory identity, address senderExecutor, address originExecutor, uint256 nonce, bytes memory signature, uint256 priorityFeeEvvm, uint256 nonceEvvm, bytes memory signatureEvvm) external`
 
 Removes all custom metadata entries for a username in one transaction. More gas-efficient than calling `removeCustomMetadata` multiple times. The cost is calculated per entry, making it proportional to the amount of metadata being deleted.
 
@@ -21,12 +21,13 @@ Removes all custom metadata entries for a username in one transaction. More gas-
 | ----------------------- |-----------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `user`                 | `address` | The address of the **current owner** of the `identity` who is authorizing the flush.                                                                                                        |
 | `identity`             | `string`  | The registered identity (e.g., username) from which all custom metadata entries will be flushed.                                                                                             |
+| `senderExecutor`       | `address` | Optional msg.sender restriction. Use `address(0)` for any service, or specify address to restrict execution. |
+| `originExecutor`       | `address` | The address authorized to submit this specific signed transaction. |
 | `nonce`                | `uint256` | The **owner's (`user`)** nonce specific to the NameService contract (`nameServiceNonce`) for this `flushCustomMetadata` action's replay protection.                                             |
 | `signature`            | `bytes`   | The EIP-191 signature **from the owner (`user`)** authorizing *this flush all metadata action*.                                              |
-| `priorityFee_EVVM` | `uint256` | Optional fee (in principal tokens) paid **by the owner (`user`)** to the `msg.sender` (executor) via the EVVM contract for prioritized processing of this transaction.                           |
-| `nonce_EVVM`           | `uint256` | **Required**. The **owner's (`user`)** nonce for the EVVM payment call used to pay the total calculated Flush Fee + Priority Fee.                                               |
-| `priorityFlag_EVVM`        | `bool`    | **Required**. Priority flag (sync/async) for the EVVM payment call paying the fees.                                                                                                 |
-| `signature_EVVM`       | `bytes`   | **Required**. The **owner's (`user`)** signature authorizing the EVVM payment call.                        |
+| `priorityFeeEvvm` | `uint256` | Optional fee (in principal tokens) paid **by the owner (`user`)** to the `msg.sender` (executor) via the EVVM contract for prioritized processing of this transaction.                           |
+| `nonceEvvm`           | `uint256` | **Required**. The **owner's (`user`)** nonce for the EVVM payment call used to pay the total calculated Flush Fee + Priority Fee.                               |
+| `signatureEvvm`       | `bytes`   | **Required**. The **owner's (`user`)** signature authorizing the EVVM payment call.                        |
 
 :::note Signature Links & EVVM Payment
 

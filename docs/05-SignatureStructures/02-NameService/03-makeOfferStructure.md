@@ -5,98 +5,70 @@ sidebar_position: 3
 
 # Make Offer Signature Structure
 
+:::info[Centralized Verification]
+NameService signatures are **verified by Core.sol** using `validateAndConsumeNonce()`. Uses `NameServiceHashUtils.hashDataForMakeOffer()` for hash generation.
+:::
+
 To authorize the `makeOffer` operation within the Name Service, the user (the offeror) must generate a cryptographic signature compliant with the [EIP-191](https://eips.ethereum.org/EIPS/eip-191) standard using the Ethereum Signed Message format.
 
-The signature verification process uses the `SignatureUtil` library. This signature proves the offeror's intent and authorization to place a specific offer on a target username under the specified terms (amount, expiration).
+## Signature Format
 
-## Signed Message Format
+```
+{evvmId},{senderExecutor},{hashPayload},{originExecutor},{nonce},{isAsyncExec}
+```
 
-The signature verification uses the `SignatureUtil.verifySignature` function with the following structure:
+**Components:**
+1. **evvmId**: Network identifier (uint256, typically `1`)
+2. **senderExecutor**: Address that can call the function via msg.sender (`0x0...0` for anyone)
+3. **hashPayload**: Hash of offer parameters (bytes32, from NameServiceHashUtils)
+4. **originExecutor**: EOA that can initiate the transaction via tx.origin (`0x0...0` for anyone)
+5. **nonce**: User's centralized nonce from Core.sol (uint256)
+6. **isAsyncExec**: Always `true` for NameService (async execution)
+
+## Hash Payload Generation
+
+The `hashPayload` is generated using **NameServiceHashUtils.hashDataForMakeOffer()**:
 
 ```solidity
-SignatureUtil.verifySignature(
-    evvmID,                                             // EVVM ID as uint256
-    "makeOffer",                                        // Action type
-    string.concat(                                      // Concatenated parameters
-        _username,
-        ",",
-        AdvancedStrings.uintToString(_dateExpire),
-        ",",
-        AdvancedStrings.uintToString(_amount),
-        ",",
-        AdvancedStrings.uintToString(_nameServiceNonce)
-    ),
-    signature,
-    signer
+import {NameServiceHashUtils} from "@evvm/testnet-contracts/library/signature/NameServiceHashUtils.sol";
+
+bytes32 hashPayload = NameServiceHashUtils.hashDataForMakeOffer(
+    username,        // Target username
+    amount,          // Offer amount in tokens
+    expirationDate   // Unix timestamp when offer expires
 );
+
+// Internal implementation
+// keccak256(abi.encode("makeOffer", username, amount, expirationDate))
 ```
-
-### Internal Message Construction
-
-This results in a message format:
-```
-"{evvmID},makeOffer,{username},{dateExpire},{amount},{nameServiceNonce}"
-```
-
-## Message Components
-
-The signature verification takes three main parameters:
-
-**1. EVVM ID (String):**
-- The result of `AdvancedStrings.uintToString(evvmID)`
-- *Purpose*: Identifies the specific EVVM instance
-
-**2. Action Type (String):**
-- Fixed value: `"makeOffer"`
-- *Purpose*: Identifies this as a make offer operation
-
-**3. Concatenated Parameters (String):**
-The parameters are concatenated with comma separators:
-
-**3.1. Target Username (String):**
-- The `_username` string itself
-- *Purpose*: Specifies the username on which the offer is being placed
-
-**3.2. Offer Expiration Date (String):**
-- The result of `AdvancedStrings.uintToString(_dateExpire)`
-- *Purpose*: Unix timestamp indicating when this offer expires
-
-**3.3. Offer Amount (String):**
-- The result of `AdvancedStrings.uintToString(_amount)`
-- *Purpose*: The quantity of tokens being offered in exchange for the username
-
-**3.4. Name Service Nonce (String):**
-- The result of `AdvancedStrings.uintToString(_nameServiceNonce)`
-- *Purpose*: Provides replay protection for make offer actions
 
 ## Example
 
-Here's a practical example of constructing a signature message for making an offer:
-
 **Scenario:** User wants to make an offer on username "alice"
 
-**Parameters:**
-- `evvmID`: `1` (EVVM instance ID)
-- `_username`: `"alice"`
-- `_dateExpire`: `1735689600` (Unix timestamp for January 1, 2025)
-- `_amount`: `1000` (tokens)
-- `_nameServiceNonce`: `5`
-
-**Signature verification call:**
+**Step 1: Generate Hash Payload**
 ```solidity
-SignatureUtil.verifySignature(
-    1,  // evvmID as uint256
-    "makeOffer", // action type
-    "alice,1735689600,1000,5",
-    signature,
-    signer
+string memory username = "alice";
+uint256 amount = 1000;  // tokens
+uint256 expirationDate = 1735689600;  // January 1, 2025
+
+bytes32 hashPayload = NameServiceHashUtils.hashDataForMakeOffer(
+    username,
+    amount,
+    expirationDate
 );
 ```
 
-**Final message to be signed (after internal concatenation):**
+**Step 2: Construct and Sign Message**
 ```
-1,makeOffer,alice,1735689600,1000,5
+1,0x0000000000000000000000000000000000000000,0x[hashPayload],0x0000000000000000000000000000000000000000,5,true
 ```
+
+:::tip Technical Details
+- **Hash Independence**: The hash payload does NOT include executors (only username, amount, expirationDate)
+- **Operation Name**: "makeOffer" is included in hash via NameServiceHashUtils
+- **Async Execution**: Always uses async nonces (`isAsyncExec: true`)
+:::
 
 **EIP-191 formatted message hash:**
 ```

@@ -52,14 +52,14 @@ if (
     SignatureRecover.recoverSigner(
         AdvancedStrings.buildSignaturePayload(
             evvmID,
-            hostChainAddress.currentAddress,
+            fisherExecutor.current,  // senderExecutor position
             Hash.hashDataForFisherBridge(
                 addressToReceive,
                 tokenAddress,
                 priorityFee,
                 amount
             ),
-            fisherExecutor.current,
+            fisherExecutor.current,  // originExecutor position
             nonce,
             true
         ),
@@ -68,7 +68,25 @@ if (
 ) revert CoreError.InvalidSignature();
 ```
 
-Validates EIP-191 signature by recovering the signer and comparing to `from` address. Uses `SignatureRecover.recoverSigner()` with payload built by `AdvancedStrings.buildSignaturePayload()`.
+Validates EIP-191 signature using **independent asyncNonce system** (NOT Core.sol):
+
+**Signature Format (Similar to Dual-Executor)**:
+```
+{evvmID},{fisherExecutor},{hashPayload},{fisherExecutor},{nonce},true
+```
+
+**Key Differences from Host Chain**:
+- External Chain Station does NOT have Core.sol
+- Uses `SignatureRecover.recoverSigner()` instead of `Core.validateAndConsumeNonce()`
+- Uses local `asyncNonce` mapping instead of centralized Core.sol nonces
+- Signature format follows dual-executor pattern but validated independently
+- Fisher executor appears in both executor positions (similar to Host Chain hardcoded pattern)
+
+**Validation Flow**:
+1. Build signature payload with `AdvancedStrings.buildSignaturePayload()`
+2. Recover signer from signature using `SignatureRecover.recoverSigner()`
+3. Compare recovered signer to `from` address
+4. Reject if mismatch
 
 ### 3. Token Transfer
 ```solidity

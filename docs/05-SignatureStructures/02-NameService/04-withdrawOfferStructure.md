@@ -5,99 +5,52 @@ sidebar_position: 4
 
 # Withdraw Offer Signature Structure
 
+:::info[Centralized Verification]
+NameService signatures are **verified by Core.sol** using `validateAndConsumeNonce()`. Uses `NameServiceHashUtils.hashDataForWithdrawOffer()` for hash generation.
+:::
+
 To authorize the `withdrawOffer` operation within the Name Service, the user (the original offeror) must generate a cryptographic signature compliant with the [EIP-191](https://eips.ethereum.org/EIPS/eip-191) standard using the Ethereum Signed Message format.
 
-The signature verification process uses the `SignatureUtil` library. This signature proves the offeror's intent and authorization to withdraw a specific, previously placed offer from a target username.
+## Signature Format
 
-## Signed Message Format
+```
+{evvmId},{senderExecutor},{hashPayload},{originExecutor},{nonce},{isAsyncExec}
+```
 
-The signature verification uses the `SignatureUtil.verifySignature` function with the following structure:
+## Hash Payload Generation
+
+The `hashPayload` is generated using **NameServiceHashUtils.hashDataForWithdrawOffer()**:
 
 ```solidity
-SignatureUtil.verifySignature(
-    evvmID,                                             // EVVM ID as uint256
-    "withdrawOffer",                                    // Action type
-    string.concat(                                      // Concatenated parameters
-        _username,
-        ",",
-        AdvancedStrings.uintToString(_offerId),
-        ",",
-        AdvancedStrings.uintToString(_nameServiceNonce)
-    ),
-    signature,
-    signer
+import {NameServiceHashUtils} from "@evvm/testnet-contracts/library/signature/NameServiceHashUtils.sol";
+
+bytes32 hashPayload = NameServiceHashUtils.hashDataForWithdrawOffer(
+    username,  // Username associated with the offer
+    offerID    // ID of the offer to withdraw
 );
+
+// Internal implementation
+// keccak256(abi.encode("withdrawOffer", username, offerID))
 ```
-
-### Internal Message Construction
-
-This results in a message format:
-```
-"{evvmID},withdrawOffer,{username},{offerId},{nameServiceNonce}"
-```
-
-
-## Message Components
-
-**1. EVVM ID (String):**
-- The result of `AdvancedStrings.uintToString(evvmID)`
-- *Purpose*: Identifies the specific EVVM instance
-
-**2. Action Type (String):**
-- Fixed value: `"withdrawOffer"`
-- *Purpose*: Identifies this as a withdraw offer operation
-
-**3. Concatenated Parameters (String):**
-
-**3.1. Target Username (String):**
-- The `_username` string itself
-- *Purpose*: Specifies the username associated with the offer being withdrawn
-
-**3.2. Offer ID (String):**
-- The result of `AdvancedStrings.uintToString(_offerId)`
-- *Purpose*: The unique identifier assigned to the specific offer when created
-
-**3.3. Name Service Nonce (String):**
-- The result of `AdvancedStrings.uintToString(_nameServiceNonce)`
-- *Purpose*: Provides replay protection for withdraw offer actions
 
 ## Example
 
 **Scenario:** User wants to withdraw their offer on username "alice"
 
-**Parameters:**
-- `evvmID`: `1`
-- `_username`: `"alice"`
-- `_offerId`: `42`
-- `_nameServiceNonce`: `7`
-
-**Signature verification call:**
 ```solidity
-SignatureUtil.verifySignature(
-    1,
-    "withdrawOffer",
-    "alice,42,7",
-    signature,
-    signer
-);
+string memory username = "alice";
+uint256 offerID = 42;
+
+bytes32 hashPayload = NameServiceHashUtils.hashDataForWithdrawOffer(username, offerID);
 ```
 
-**Final message to be signed:**
-```
-1,withdrawOffer,alice,42,7
-```
-
-**EIP-191 formatted message hash:**
-```
-keccak256(abi.encodePacked(
-    "\x19Ethereum Signed Message:\n27",
-    "1,withdrawOffer,alice,42,7"
-))
-```
+**Message:** `1,0x0000000000000000000000000000000000000000,0x[hashPayload],0x0000000000000000000000000000000000000000,7,true`
 
 :::tip Technical Details
-
-- **Message Format**: `"{evvmID},{functionName},{parameters}"`
+- **Hash Independence**: The hash payload does NOT include executors (only username, offerID)
+- **Operation Name**: "withdrawOffer" is included in hash via NameServiceHashUtils
+- **Ownership Check**: Only the original offeror can withdraw their offer
+:::
 - **EIP-191 Compliance**: Uses `"\x19Ethereum Signed Message:\n"` prefix with message length
 - **Offer ID Validation**: `_offerId` must correspond to an existing offer made by the same user
 - **Authorization**: Only the original offeror can withdraw their own offers

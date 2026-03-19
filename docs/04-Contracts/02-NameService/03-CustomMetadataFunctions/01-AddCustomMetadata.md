@@ -11,7 +11,7 @@ This function uses **Core.sol's centralized signature verification** via `valida
 :::
 
 **Function Type**: External  
-**Function Signature**: `addCustomMetadata(address user, string memory identity, string memory value, address originExecutor, uint256 nonce, bytes memory signature, uint256 priorityFeeEvvm, uint256 nonceEvvm, bytes memory signatureEvvm) external`
+**Function Signature**: `addCustomMetadata(address user, string memory identity, string memory value, address senderExecutor, address originExecutor, uint256 nonce, bytes memory signature, uint256 priorityFeeEvvm, uint256 nonceEvvm, bytes memory signatureEvvm) external`
 
 Associates custom metadata with a registered username using a structured schema format. Supports arbitrary key-value information like social media handles, email addresses, membership affiliations, and more. Each metadata entry is stored in a separate slot with sequential indexing.
 
@@ -22,6 +22,7 @@ Associates custom metadata with a registered username using a structured schema 
 | `user` | `address` | Current owner of the username |
 | `identity` | `string` | Username to add metadata to |
 | `value` | `string` | Metadata string following recommended schema format (must not be empty) |
+| `senderExecutor` | `address` | Optional msg.sender restriction. Use `address(0)` for any service, or specify address to restrict execution. |
 | `originExecutor` | `address` | EOA that will execute the transaction (verified with tx.origin) |
 | `nonce` | `uint256` | User's Core nonce for this signature (prevents replay attacks) |
 | `signature` | `bytes` | EIP-191 signature from `user` authorizing metadata addition |
@@ -38,7 +39,7 @@ This function requires **two signatures** from the username owner:
 Authorizes adding the metadata entry:
 
 ```
-Message Format: {evvmId},{serviceAddress},{hashPayload},{originExecutor},{nonce},{isAsyncExec}
+Message Format: {evvmId},{senderExecutor},{hashPayload},{originExecutor},{nonce},{isAsyncExec}
 Hash Payload: NameServiceHashUtils.hashDataForAddCustomMetadata(identity, value)
 Async Execution: true (always)
 ```
@@ -56,7 +57,7 @@ bytes32 hashPayload = NameServiceHashUtils.hashDataForAddCustomMetadata(
 string memory message = string.concat(
     Strings.toString(block.chainid),
     ",",
-    Strings.toHexString(address(nameServiceContract)),
+    Strings.toHexString(senderExecutor),
     ",",
     Strings.toHexString(uint256(hashPayload)),
     ",",

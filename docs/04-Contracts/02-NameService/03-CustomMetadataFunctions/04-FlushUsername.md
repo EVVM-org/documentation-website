@@ -11,7 +11,7 @@ This function uses **Core.sol's centralized signature verification** via `valida
 :::
 
 **Function Type**: External  
-**Function Signature**: `flushUsername(address user, string memory username, address originExecutor, uint256 nonce, bytes memory signature, uint256 priorityFeeEvm, uint256 nonceEvvm, bytes memory signatureEvvm) external`
+**Function Signature**: `flushUsername(address user, string memory username, address senderExecutor, address originExecutor, uint256 nonce, bytes memory signature, uint256 priorityFeeEvvm, uint256 nonceEvvm, bytes memory signatureEvvm) external`
 
 Permanently deletes a username registration and all associated data. This is **irreversible** - the username becomes immediately available for others to register. All custom metadata is deleted, ownership is reset, and the username returns to initial state (except offerMaxSlots is preserved for historical tracking).
 
@@ -21,12 +21,13 @@ Permanently deletes a username registration and all associated data. This is **i
 | ----------------------- |-----------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `user`                 | `address` | The address of the **current owner** of the `username` who is authorizing the permanent deletion.                                                                                   |
 | `username`             | `string`  | The registered identity (e.g., username) to be permanently flushed from the system.                                                                                                  |
+| `senderExecutor`       | `address` | Optional msg.sender restriction. Use `address(0)` for any service, or specify address to restrict execution. |
+| `originExecutor`       | `address` | The address authorized to submit this specific signed transaction. |
 | `nonce`                | `uint256` | The **owner's (`user`)** nonce specific to the Name Service contract (`nameServiceNonce`) for this `flushUsername` action's replay protection.                                           |
 | `signature`            | `bytes`   | The EIP-191 signature **from the owner (`user`)** authorizing *this flush username action*.                                        |
-| `priorityFee_EVVM` | `uint256` | Optional fee (in principal tokens) paid **by the owner (`user`)** to the `msg.sender` (executor) via the EVVM contract for prioritized processing of this transaction.                   |
-| `nonce_EVVM`           | `uint256` | **Required**. The **owner's (`user`)** nonce for the EVVM payment call used to pay the total calculated Flush Fee + Priority Fee.                                         |
-| `priorityFlag_EVVM`        | `bool`    | **Required**. Priority flag (sync/async) for the EVVM payment call paying the fees.                                                                                         |
-| `signature_EVVM`       | `bytes`   | **Required**. The **owner's (`user`)** signature authorizing the EVVM payment call to transfer the total calculated Flush Fee + Priority Fee.                           |
+| `priorityFeeEvvm` | `uint256` | Optional fee (in principal tokens) paid **by the owner (`user`)** to the `msg.sender` (executor) via the EVVM contract for prioritized processing of this transaction.                   |
+| `nonceEvvm`           | `uint256` | **Required**. The **owner's (`user`)** nonce for the EVVM payment call used to pay the total calculated Flush Fee + Priority Fee.                                         |
+| `signatureEvvm`       | `bytes`   | **Required**. The **owner's (`user`)** signature authorizing the EVVM payment call to transfer the total calculated Flush Fee + Priority Fee.                           |
 
 
 :::note Signature Links & EVVM Payment

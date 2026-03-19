@@ -5,198 +5,197 @@ sidebar_position: 3
 
 # Dispatch Order Signature Structure
 
+:::info[Centralized Verification]
+P2PSwap signatures are **verified by Core.sol** using `validateAndConsumeNonce()`. Uses `P2PSwapHashUtils.hashDataForDispatchOrder()` for hash generation. This signature is used for both `dispatchOrder_fillPropotionalFee` and `dispatchOrder_fillFixedFee`.
+:::
+
 To authorize order fulfillment operations, users must generate a cryptographic signature compliant with the [EIP-191](https://eips.ethereum.org/EIPS/eip-191) standard using the Ethereum Signed Message format.
 
-The signature verification process uses the `SignatureUtil` library which implements the standard Ethereum message signing protocol. This signature is used for both `dispatchOrder_fillPropotionalFee` and `dispatchOrder_fillFixedFee` functions.
+## Signature Format
 
-## Signed Message Format
+```
+{evvmId},{senderExecutor},{hashPayload},{originExecutor},{nonce},{isAsyncExec}
+```
 
-The signature verification uses the `SignatureUtil.verifySignature` function with the following structure:
+**Components:**
+1. **evvmId**: Network identifier (uint256, typically `1`)
+2. **senderExecutor**: Address that can call the function via msg.sender (`0x0...0` for anyone)
+3. **hashPayload**: Hash of dispatch order parameters (bytes32, from P2PSwapHashUtils)
+4. **originExecutor**: EOA that can initiate the transaction via tx.origin (`0x0...0` for anyone)
+5. **nonce**: User's centralized nonce from Core.sol (uint256)
+6. **isAsyncExec**: Always `true` for P2PSwap (async execution)
+
+## Hash Payload Generation
+
+The `hashPayload` is generated using **P2PSwapHashUtils.hashDataForDispatchOrder()**:
 
 ```solidity
-SignatureUtil.verifySignature(
-    evvmID,                          // EVVM ID as uint256
-    "dispatchOrder",                 // Action type
-    string.concat(                   // Concatenated parameters
-        AdvancedStrings.uintToString(_nonce),
-        ",",
-        AdvancedStrings.addressToString(_tokenA),
-        ",",
-        AdvancedStrings.addressToString(_tokenB),
-        ",",
-        AdvancedStrings.uintToString(_orderId)
-    ),
-    signature,
-    signer
+import {P2PSwapHashUtils} from "@evvm/testnet-contracts/library/signature/P2PSwapHashUtils.sol";
+
+bytes32 hashPayload = P2PSwapHashUtils.hashDataForDispatchOrder(
+    tokenA,     // Token A in market pair (token offered by seller)
+    tokenB,     // Token B in market pair (token requested by seller)
+    orderId     // ID of order to fulfill
+);
+
+// Internal implementation
+// keccak256(abi.encode("dispatchOrder", tokenA, tokenB, orderId))
+```
+
+## Centralized Verification
+
+Core.sol verifies the signature using `validateAndConsumeNonce()`:
+
+```solidity
+// Called internally by P2PSwap.sol.dispatchOrder_fillPropotionalFee() or dispatchOrder_fillFixedFee()
+Core(coreAddress).validateAndConsumeNonce(
+    user,             // Buyer's address (order fulfiller)
+    senderExecutor,   // Who can call via msg.sender
+    hashPayload,      // From P2PSwapHashUtils
+    originExecutor,   // Who can initiate via tx.origin
+    nonce,            // User's nonce
+    true,             // Always async for P2PSwap
+    signature         // EIP-191 signature
 );
 ```
 
-### Internal Message Construction
+## Message Construction
 
-Internally, the `SignatureUtil.verifySignature` function constructs the final message by concatenating:
-
-```solidity
-string.concat(AdvancedStrings.uintToString(evvmID), ",", functionName, ",", inputs)
-```
-
-This results in a message format:
-```
-"{evvmID},dispatchOrder,{nonce},{tokenA},{tokenB},{orderId}"
-```
-
-### EIP-191 Message Hashing
-
-The message is then hashed according to EIP-191 standard:
+The signature message is constructed using **AdvancedStrings.buildSignaturePayload()**:
 
 ```solidity
-bytes32 messageHash = keccak256(
-    abi.encodePacked(
-        "\x19Ethereum Signed Message:\n",
-        AdvancedStrings.uintToString(bytes(message).length),
-        message
-    )
+import {AdvancedStrings} from "@evvm/testnet-contracts/library/utils/AdvancedStrings.sol";
+import {P2PSwapHashUtils} from "@evvm/testnet-contracts/library/signature/P2PSwapHashUtils.sol";
+
+// Step 1: Generate hash payload
+bytes32 hashPayload = P2PSwapHashUtils.hashDataForDispatchOrder(
+    tokenA,
+    tokenB,
+    orderId
 );
+
+// Step 2: Build signature message
+string memory message = AdvancedStrings.buildSignaturePayload(
+    1,                                           // evvmId
+    address(0),                                  // senderExecutor (anyone can call)
+    hashPayload,                                 // Hash from step 1
+    address(0),                                  // originExecutor (anyone can initiate)
+    nonce,                                       // User's current nonce
+    true                                         // isAsyncExec (always true for P2PSwap)
+);
+
+// Result: "1,0x0000000000000000000000000000000000000000,0x[hashPayload],0x0000000000000000000000000000000000000000,[nonce],true"
 ```
-
-This creates the final hash that the user must sign with their private key.
-
-## Message Components
-
-The signature verification takes three main parameters:
-
-**1. EVVM ID (uint256):**
-- Direct uint256 value (converted to string internally)
-- *Purpose*: Identifies the specific EVVM instance
-
-**2. Action Type (String):**
-- Fixed value: `"dispatchOrder"`
-- *Purpose*: Identifies this as an order fulfillment operation
-
-**3. Concatenated Parameters (String):**
-The parameters are concatenated with comma separators:
-
-**3.1. Nonce (String):**
-- The result of `AdvancedStrings.uintToString(_nonce)`
-- *Purpose*: Provides replay protection for the P2P Swap transaction
-
-**3.2. Token A Address (String):**
-- The result of `AdvancedStrings.addressToString(_tokenA)`
-- *Purpose*: Identifies the token offered in the target order
-
-**3.3. Token B Address (String):**
-- The result of `AdvancedStrings.addressToString(_tokenB)`
-- *Purpose*: Identifies the token requested in the target order
-
-**3.4. Order ID (String):**
-- The result of `AdvancedStrings.uintToString(_orderId)`
-- *Purpose*: Specifies the unique ID of the order to be fulfilled
 
 ## Example
 
-Here's a practical example of constructing a signature message for fulfilling a swap order:
-
 **Scenario:** User wants to fulfill order #3 in the USDC/ETH market (buying 100 USDC for 0.05 ETH)
 
-**Parameters:**
-- `evvmID`: `1` (EVVM instance ID)
-- `_nonce`: `33`
-- `_tokenA`: `0xA0b86a33E6441e6e80D0c4C6C7527d72E1d00000` (USDC - token being offered by seller)
-- `_tokenB`: `0x0000000000000000000000000000000000000000` (ETH - token being requested by seller)
-- `_orderId`: `3`
-
-**Signature verification call:**
+**Step 1: Generate Hash Payload**
 ```solidity
-SignatureUtil.verifySignature(
-    1,  // evvmID as uint256
-    "dispatchOrder", // action type
-    "33,0xa0b86a33e6441e6e80d0c4c6c7527d72e1d00000,0x0000000000000000000000000000000000000000,3",
-    signature,
-    signer
+import {P2PSwapHashUtils} from "@evvm/testnet-contracts/library/signature/P2PSwapHashUtils.sol";
+
+address tokenA = 0xA0b86a33E6441e6e80D0c4C6C7527d72E1d00000;  // USDC (offered by seller)
+address tokenB = address(0);  // ETH (requested by seller)
+uint256 orderId = 3;
+
+bytes32 hashPayload = P2PSwapHashUtils.hashDataForDispatchOrder(
+    tokenA,
+    tokenB,
+    orderId
+);
+// Result: 0x9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b
+```
+
+**Step 2: Construct Signature Message**
+```
+1,0x0000000000000000000000000000000000000000,0x9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b,0x0000000000000000000000000000000000000000,33,true
+```
+
+Components:
+- `evvmId`: `1`
+- `senderExecutor`: `0x0000...` (anyone can call)
+- `hashPayload`: `0x9a8b...` (from Step 1)
+- `originExecutor`: `0x0000...` (anyone can initiate)
+- `nonce`: `33`
+- `isAsyncExec`: `true`
+
+**Step 3: Sign with Wallet**
+```javascript
+const message = "1,0x0000000000000000000000000000000000000000,0x9a8b...a8b,0x0000000000000000000000000000000000000000,33,true";
+const signature = await signer.signMessage(message);
+```
+
+## Function Calls
+
+### dispatchOrder_fillPropotionalFee
+
+Uses percentage-based fee calculation:
+
+```solidity
+P2PSwap(p2pSwapAddress).dispatchOrder_fillPropotionalFee(
+    user,              // Buyer's address
+    tokenA,            // Token A in market pair
+    tokenB,            // Token B in market pair
+    orderId,           // Order ID to dispatch
+    amountOfTokenBToFill,  // Amount of tokenB to provide
+    senderExecutor,    // Address(0) for anyone
+    originExecutor,    // Address(0) for anyone
+    nonce,             // User's nonce from Core.sol
+    signature,         // EIP-191 signature of the message
+    priorityFeePay,    // Optional priority fee
+    noncePay,          // Nonce for pay operation
+    signaturePay       // Signature for pay operation
 );
 ```
 
-**Final message to be signed (after internal concatenation):**
-```
-1,dispatchOrder,33,0xa0b86a33e6441e6e80d0c4c6c7527d72e1d00000,0x0000000000000000000000000000000000000000,3
-```
-
-**EIP-191 formatted message hash:**
-```
-keccak256(abi.encodePacked(
-    "\x19Ethereum Signed Message:\n136",
-    "1,dispatchOrder,33,0xa0b86a33e6441e6e80d0c4c6c7527d72e1d00000,0x0000000000000000000000000000000000000000,3"
-))
-```
-
-**Concatenated parameters breakdown:**
-1. `33` - P2P Swap nonce for replay protection
-2. `0xa0b86a33e6441e6e80d0c4c6c7527d72e1d00000` - USDC token address (tokenA from target order)
-3. `0x0000000000000000000000000000000000000000` - ETH address (tokenB from target order)
-4. `3` - Order ID to be fulfilled
-
-## Example with Reverse Token Pair
-
-**Scenario:** User wants to fulfill order #12 in the ETH/USDC market (buying ETH with USDC)
-
-**Parameters:**
-- `evvmID`: `1`
-- `_nonce`: `55`
-- `_tokenA`: `0x0000000000000000000000000000000000000000` (ETH - offered by seller)
-- `_tokenB`: `0xA0b86a33E6441e6e80D0c4C6C7527d72E1d00000` (USDC - requested by seller)
-- `_orderId`: `12`
-
-**Final message to be signed:**
-```
-1,dispatchOrder,55,0x0000000000000000000000000000000000000000,0xa0b86a33e6441e6e80d0c4c6c7527d72e1d00000,12
-```
-
-**Transaction Flow:**
-- Buyer provides USDC (tokenB) + fees
-- Buyer receives ETH (tokenA) from the order
-- Seller receives USDC payment + fee bonus
-
-## Usage in Both Dispatch Functions
-
-This signature structure is used by both dispatch functions:
-
-### dispatchOrder_fillPropotionalFee
-- Uses the same signature verification
-- Applies percentage-based fee calculation
-- Distributes fees according to configured percentages
-
 ### dispatchOrder_fillFixedFee
-- Uses identical signature verification
-- Applies capped fee calculation with maximum limits
-- Provides fee protection for large orders
 
-## Signature Implementation Details
+Uses capped fee calculation with maximum limits:
 
-The `SignatureRecover` library performs signature verification in the following steps:
-
-1. **Message Construction**: Concatenates `evvmID`, `functionName`, and `inputs` with commas
-2. **EIP-191 Formatting**: Prepends `"\x19Ethereum Signed Message:\n"` + message length
-3. **Hashing**: Applies `keccak256` to the formatted message
-4. **Signature Parsing**: Splits the 65-byte signature into `r`, `s`, and `v` components
-5. **Recovery**: Uses `ecrecover` to recover the signer's address
-6. **Verification**: Compares recovered address with expected signer
-
-### Signature Format Requirements
-
-- **Length**: Exactly 65 bytes
-- **Structure**: `[r (32 bytes)][s (32 bytes)][v (1 byte)]`
-- **V Value**: Must be 27 or 28 (automatically adjusted if < 27)
+```solidity
+P2PSwap(p2pSwapAddress).dispatchOrder_fillFixedFee(
+    user,              // Buyer's address
+    tokenA,            // Token A in market pair
+    tokenB,            // Token B in market pair
+    orderId,           // Order ID to dispatch
+    amountOfTokenBToFill,  // Amount of tokenB to provide
+    senderExecutor,    // Address(0) for anyone
+    originExecutor,    // Address(0) for anyone
+    nonce,             // User's nonce from Core.sol
+    signature,         // EIP-191 signature of the message
+    priorityFeePay,    // Optional priority fee
+    noncePay,          // Nonce for pay operation
+    signaturePay       // Signature for pay operation
+);
+```
 
 ## Security Considerations
 
-### Order Validation
-
-The signature authorizes the dispatch attempt, but the contract performs additional validation:
+The signature authorizes the dispatch attempt. The contract performs additional validation:
 
 1. **Signature Verification**: Confirms the user signed the dispatch request
 2. **Order Existence**: Verifies the order exists and is active
 3. **Market Validation**: Confirms the token pair matches an existing market
 4. **Nonce Validation**: Ensures the nonce hasn't been used before
 5. **Payment Sufficiency**: Validates the user provided enough tokens to cover order + fees
+
+:::tip Technical Details
+
+- **Dual Signatures**: dispatchOrder requires TWO signatures:
+  1. One for the dispatchOrder operation (validates buyer intent)
+  2. One for the pay operation (locks tokenB + fees in Core.sol)
+- **Hash Independence**: The hash payload does NOT include executors (only tokenA, tokenB, orderId)
+- **Operation Name**: "dispatchOrder" is included in hash via P2PSwapHashUtils
+- **Async Execution**: Always uses async nonces (`isAsyncExec: true`)
+- **Same Signature for Both Fee Models**: Both proportional and fixed fee functions use identical signature format
+- **Transaction Flow**:
+  - Buyer provides tokenB (+ fees)
+  - Buyer receives tokenA from order
+  - Seller receives tokenB payment (+ bonus)
+  - Validators receive staking rewards
+
+:::
 
 ### Token Direction Understanding
 

@@ -7,11 +7,11 @@ sidebar_position: 3
 # publicStaking
 
 :::info[Signature Verification]
-publicStaking uses Core.sol's centralized verification via `validateAndConsumeNonce()` with `StakingHashUtils.hashDataForPublicStake()`. Includes `originExecutor` parameter (EOA executor verified with tx.origin).
+publicStaking uses Core.sol's centralized verification via `validateAndConsumeNonce()` with `StakingHashUtils.hashDataForPublicStake()`. Includes dual-executor parameters: `senderExecutor` (msg.sender restriction) and `originExecutor` (tx.origin restriction).
 :::
 
 **Function Type**: `external`  
-**Function Signature**: `publicStaking(address user, bool isStaking, uint256 amountOfStaking, address originExecutor, uint256 nonce, bytes signature, uint256 priorityFee_EVVM, uint256 nonceEvvm, bytes signatureEvvm)`  
+**Function Signature**: `publicStaking(address user, bool isStaking, uint256 amountOfStaking, address senderExecutor, address originExecutor, uint256 nonce, bytes signature, uint256 priorityFeePay, uint256 noncePay, bytes signaturePay)`  
 **Function Selector**: `0x21cc1749`
 
 The `publicStaking` function enables universal access to MATE token staking when the `allowPublicStaking.flag` is enabled, regardless of presale participation status or account type.
@@ -29,13 +29,13 @@ Note: In this repository's contract implementation the constructor enables `allo
 | `user`              | address | User address                                         |
 | `isStaking`         | bool    | `true` = Stake, `false` = Unstake                    |
 | `amountOfStaking`   | uint256 | Amount of staking tokens to stake/unstake            |
+| `senderExecutor`    | address | Optional msg.sender restriction. Use `address(0)` for any service, or specify address to restrict execution. |
 | `originExecutor`    | address | EOA that will execute the transaction (verified with tx.origin) |
 | `nonce`             | uint256 | Core nonce for this signature (prevents replay attacks) |
 | `signature`         | bytes   | User authorization signature                         |
-| `priorityFee_EVVM`  | uint256 | EVVM priority fee                                    |
-| `nonce_EVVM`        | uint256 | EVVM payment operation nonce                         |
-| `priorityFlag_EVVM` | bool    | EVVM execution mode (`true` = async, `false` = sync) |
-| `signature_EVVM`    | bytes   | EVVM payment authorization                           |
+| `priorityFeePay`  | uint256 | Optional priority fee for faster processing                                    |
+| `noncePay`        | uint256 | Core nonce for the payment operation                         |
+| `signaturePay`    | bytes   | User's signature authorizing the payment                           |
 
 :::note
 
@@ -58,6 +58,7 @@ The function supports two execution paths:
 ```solidity
 core.validateAndConsumeNonce(
     user,
+    senderExecutor,
     Hash.hashDataForPublicStake(isStaking, amountOfStaking),
     originExecutor,
     nonce,
@@ -69,6 +70,7 @@ core.validateAndConsumeNonce(
 **Validates**:
 - Signature authenticity via EIP-191
 - Nonce hasn't been consumed
+- `msg.sender` matches `senderExecutor` (if specified)
 - Executor is the specified EOA (via `tx.origin`)
 
 **On Failure**:

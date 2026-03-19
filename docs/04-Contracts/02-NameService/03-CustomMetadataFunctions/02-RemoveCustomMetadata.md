@@ -11,7 +11,7 @@ This function uses **Core.sol's centralized signature verification** via `valida
 :::
 
 **Function Type**: External  
-**Function Signature**: `removeCustomMetadata(address user, string memory identity, uint256 key, address originExecutor, uint256 nonce, bytes memory signature, uint256 priorityFeeEvvm, uint256 nonceEvvm, bytes memory signatureEvvm) external`
+**Function Signature**: `removeCustomMetadata(address user, string memory identity, uint256 key, address senderExecutor, address originExecutor, uint256 nonce, bytes memory signature, uint256 priorityFeeEvvm, uint256 nonceEvvm, bytes memory signatureEvvm) external`
 
 Removes a specific custom metadata entry identified by its slot index. If the removed entry is not the last slot, all subsequent entries are shifted down to maintain array continuity (no gaps). This ensures efficient iteration and consistent slot indexing.
 
@@ -22,12 +22,13 @@ Removes a specific custom metadata entry identified by its slot index. If the re
 | `user`                 | `address` | The address of the **current owner** of the `identity` who is removing the metadata.                                                                              |
 | `identity`             | `string`  | The registered identity (e.g., username) from which the custom metadata will be removed.                                                                           |
 | `key`                  | `uint256` | The index (zero-based) of the specific custom metadata entry to be removed from the identity's list.                                                               |
+| `senderExecutor`       | `address` | Optional msg.sender restriction. Use `address(0)` for any service, or specify address to restrict execution. |
+| `originExecutor`       | `address` | The address authorized to submit this specific signed transaction. |
 | `nonce`                | `uint256` | The **owner's (`user`)** nonce specific to the Name Service contract (`nameServiceNonce`) for this `removeCustomMetadata` action's replay protection.                  |
 | `signature`            | `bytes`   | The EIP-191 signature **from the owner (`user`)** authorizing _this remove metadata action_.                              |
-| `priorityFee_EVVM` | `uint256` | Optional fee (in principal tokens) paid **by the owner (`user`)** to the `msg.sender` (executor) via the EVVM contract for prioritized processing of this transaction. |
-| `nonce_EVVM`           | `uint256` | **Required**. The **owner's (`user`)** nonce for the EVVM payment call used to pay the Metadata Removal Fee + Priority Fee.                               |
-| `priorityFlag_EVVM`        | `bool`    | **Required**. Priority flag (sync/async) for the EVVM payment call paying the fees.                                                                        |
-| `signature_EVVM`       | `bytes`   | **Required**. The **owner's (`user`)** signature authorizing the EVVM payment call paying the Metadata Removal Fee + Priority Fee.                        |
+| `priorityFeeEvvm` | `uint256` | Optional fee (in principal tokens) paid **by the owner (`user`)** to the `msg.sender` (executor) via the EVVM contract for prioritized processing of this transaction. |
+| `nonceEvvm`           | `uint256` | **Required**. The **owner's (`user`)** nonce for the EVVM payment call used to pay the Metadata Removal Fee + Priority Fee.                               |
+| `signatureEvvm`       | `bytes`   | **Required**. The **owner's (`user`)** signature authorizing the EVVM payment call paying the Metadata Removal Fee + Priority Fee.                        |
 
 :::note Signature Links & EVVM Payment
 

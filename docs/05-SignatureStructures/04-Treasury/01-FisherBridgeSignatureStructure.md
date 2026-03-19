@@ -5,9 +5,15 @@ sidebar_position: 1
 
 # Fisher Bridge Signature Structure
 
-To authorize cross-chain treasury operations through the Fisher Bridge system, users must generate a cryptographic signature compliant with the [EIP-191](https://eips.ethereum.org/EIPS/eip-191) standard using the Ethereum Signed Message format.
+:::info[External Chain Operations]
+This signature structure is used for **External Chain** Fisher Bridge operations (`fisherBridgeSendERC20`, `fisherBridgeSendCoin`). External chains use **SignatureRecover** with independent `asyncNonce` for verification.
 
-The signature verification process uses the `SignatureUtil` library which implements the standard Ethereum message signing protocol. The signature authorizes fisher executors to process cross-chain deposits and withdrawals on behalf of users, enabling gasless transactions and seamless multi-chain asset management.
+**Host Chain operations** (`fisherBridgeSend`) use a different format: they use `Core.validateAndConsumeNonce()` with dual-executor format where **both executors are hardcoded to `fisherExecutor.current`** for security. See [Treasury Host Chain documentation](../../Contracts/Treasury) for details.
+:::
+
+To authorize cross-chain treasury operations through the Fisher Bridge system on **External Chains**, users must generate a cryptographic signature compliant with the [EIP-191](https://eips.ethereum.org/EIPS/eip-191) standard using the Ethereum Signed Message format.
+
+The signature verification process uses the `SignatureRecover` library which implements the standard Ethereum message signing protocol. The signature authorizes fisher executors to process cross-chain deposits and withdrawals on behalf of users, enabling gasless transactions and seamless multi-chain asset management.
 
 ## Signed Message Format
 
