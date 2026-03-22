@@ -1,0 +1,10 @@
+{
+  "label": "EVVM Docker",
+  "position": 3,
+  "description": "Containerized environment for deploying EVVM without local dependencies",
+  "link": {
+    "type": "generated-index",
+    "title": "EVVM Docker",
+    "description": "Deploy and manage EVVM Testnet Contracts using Docker — no Foundry, Bun, or local dependency management required. Everything is pre-configured inside a ready-to-use Docker image."
+  }
+}
