@@ -8,7 +8,7 @@ sidebar_position: 1
 :::info[External Chain Operations]
 This signature structure is used for **External Chain** Fisher Bridge operations (`fisherBridgeSendERC20`, `fisherBridgeSendCoin`). External chains use **SignatureRecover** with independent `asyncNonce` for verification.
 
-**Host Chain operations** (`fisherBridgeSend`) use a different format: they use `Core.validateAndConsumeNonce()` with dual-executor format where **both executors are hardcoded to `fisherExecutor.current`** for security. See [Treasury Host Chain documentation](../../04-Contracts/04-Treasury/02-TreasuryCrosschain/01-Overview) for details.
+**Host Chain operations** (`fisherBridgeSend`) use a different format: they use `Core.validateAndConsumeNonce()` with dual-executor format where **both executors are hardcoded to `fisherExecutor.current`** for security. See [Treasury Host Chain documentation](/docs/Contracts/Treasury/TreasuryCrosschain/Overview) for details.
 :::
 
 To authorize cross-chain treasury operations through the Fisher Bridge system on **External Chains**, users must generate a cryptographic signature compliant with the [EIP-191](https://eips.ethereum.org/EIPS/eip-191) standard using the Ethereum Signed Message format.
