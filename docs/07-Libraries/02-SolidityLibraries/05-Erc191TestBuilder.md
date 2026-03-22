@@ -1076,6 +1076,6 @@ assertEq(expected, actual);
 
 **Related Documentation**:
 - [Signature Structures Overview](/docs/SignatureStructures/Overview)
-- [Core.sol Documentation](/docs/Contracts/EVVM/Core)
+- [Core.sol Documentation](/docs/Contracts/EVVM/Overview)
 - [AdvancedStrings Library](./04-Utils/01-AdvancedStrings.md)
 - [SignatureRecover Library](./03-Primitives/02-SignatureRecover.md)
