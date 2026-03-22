@@ -56,20 +56,38 @@ Verifies user has sufficient EVVM balance for the withdrawal amount (note: prior
 ```solidity
 core.validateAndConsumeNonce(
     from,
+    fisherExecutor.current,  // senderExecutor (hardcoded)
     Hash.hashDataForFisherBridge(
         addressToReceive,
         tokenAddress,
         priorityFee,
         amount
     ),
-    fisherExecutor.current,
+    fisherExecutor.current,  // originExecutor (hardcoded)
     nonce,
     true,
     signature
 );
 ```
 
-Validates EIP-191 signature using Core contract's nonce system. The hash is generated using `TreasuryCrossChainHashUtils.hashDataForFisherBridge()` with the transaction parameters. The `async: true` parameter indicates this uses a separate nonce system from regular EVVM operations.
+Validates EIP-191 signature using Core contract's dual-executor nonce system:
+
+**Dual-Executor Usage (Hardcoded)**:
+- `senderExecutor`: Set to `fisherExecutor.current` (the only address that can call this function)
+- `originExecutor`: Set to `fisherExecutor.current` (ensures tx.origin matches the fisher executor)
+- Both executors are **hardcoded** since only the Fisher executor is authorized to process these transactions
+
+**Signature Validation**:
+- Hash generated via `TreasuryCrossChainHashUtils.hashDataForFisherBridge()` with transaction parameters
+- User signature must include both executor addresses in the signed payload
+- `async: true` parameter indicates this uses async nonce system
+
+**Signature Format**:
+```
+{evvmId},{fisherExecutor},{hashPayload},{fisherExecutor},{nonce},true
+```
+
+Where both executor positions use the same `fisherExecutor.current` address.
 
 ### 4. EVVM Balance Operations
 
@@ -134,8 +152,10 @@ The emitted event serves as a signal for external chain operations. The correspo
 
 ### Signature Security
 - **EIP-191 Compliance**: Standard Ethereum signed message format
-- **Nonce Protection**: Prevents signature replay attacks
+- **Dual-Executor Model**: Uses Core.sol's validateAndConsumeNonce with both executors hardcoded to fisherExecutor.current
+- **Nonce Protection**: Centralized nonce system prevents signature replay attacks
 - **User Authorization**: Cryptographic proof of user consent
+- **Fisher Executor Binding**: Signature binds transaction to specific Fisher executor address
 
 ### Balance Protection
 - **Principal Token Guard**: Prevents withdrawal of ecosystem's core token

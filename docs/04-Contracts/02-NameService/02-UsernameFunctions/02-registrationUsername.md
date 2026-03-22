@@ -11,7 +11,7 @@ This function uses Core.sol's `validateAndConsumeNonce()` for signature verifica
 :::
 
 **Function Type**: `external`  
-**Function Signature**: `registrationUsername(address,string,uint256,address,uint256,bytes,uint256,uint256,bytes)`
+**Function Signature**: `registrationUsername(address,string,uint256,address,address,uint256,bytes,uint256,uint256,bytes)`
 
 Completes username registration by revealing the username and lock number used in pre-registration. This function validates the reveal against the stored commitment, processes the registration fee payment, and grants 366 days of ownership.
 
@@ -29,6 +29,7 @@ Completes username registration by revealing the username and lock number used i
 | `user`              | `address` | The address of the registrant (must match pre-registration address).                           |
 | `username`          | `string`  | The desired username being registered (revealed from commit phase).                            |
 | `lockNumber`        | `uint256` | The secret number used during pre-registration. Proves ownership of commitment. |
+| `senderExecutor`    | `address` | Optional msg.sender restriction. Use `address(0)` for any service, or specify address to restrict execution. |
 | `originExecutor`    | `address` | Optional tx.origin restriction (use `address(0)` for unrestricted).                                                                        |
 | `nonce`             | `uint256` | User's centralized Core nonce for this operation.                                                                        |
 | `signature`         | `bytes`   | EIP-191 signature authorizing this operation (verified by Core.sol).                                                           |
@@ -56,6 +57,7 @@ Completes username registration by revealing the username and lock number used i
 ```solidity
 core.validateAndConsumeNonce(
     user,
+    senderExecutor,
     Hash.hashDataForRegistrationUsername(username, lockNumber),
     originExecutor,
     nonce,
@@ -67,6 +69,7 @@ core.validateAndConsumeNonce(
 **What Core.sol validates:**
 - ✅ Signature matches `user` address
 - ✅ Nonce is valid and available
+- ✅ `msg.sender` matches `senderExecutor` (if specified)
 - ✅ `tx.origin` matches `originExecutor` (if specified)
 - ✅ Marks nonce as consumed
 
@@ -98,6 +101,7 @@ requestPay(
     user,
     registrationCost,
     priorityFeeEvvm,
+    originExecutor,
     nonceEvvm,
     signatureEvvm
 );
@@ -112,12 +116,17 @@ core.pay(
     principalToken,                        // PT
     registrationCost + priorityFeeEvvm,    // Total
     priorityFeeEvvm,                       // Priority fee
-    address(this),                         // Executor
+    address(this),                         // senderExecutor (service accountability)
+    originExecutor,                        // originExecutor (from parameter)
     nonceEvvm,                             // Payment nonce
     true,                                  // Async
     signatureEvvm                          // Payment sig
 );
 ```
+
+:::info[Service Payment Accountability]
+When NameService dispatches payments, both `senderExecutor` and `originExecutor` are set to `address(this)` (the NameService contract). This ensures proper tracking of service-initiated payments.
+:::
 
 **Registration Cost Calculation:**
 ```solidity
@@ -237,7 +246,8 @@ nameService.registrationUsername(
     user,                                   // 0x742d...
     "alice",                                // Revealed username
     987654321,                              // Revealed lock number
-    address(0),                             // Unrestricted
+    address(0),                             // Unrestricted senderExecutor
+    address(0),                             // Unrestricted originExecutor
     nonce,                                  // 43
     signature,                              // Operation sig
     1000000000000000000,                    // 1 PT priority fee

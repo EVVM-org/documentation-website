@@ -5,99 +5,53 @@ sidebar_position: 5
 
 # Accept Offer Signature Structure
 
+:::info[Centralized Verification]
+NameService signatures are **verified by Core.sol** using `validateAndConsumeNonce()`. Uses `NameServiceHashUtils.hashDataForAcceptOffer()` for hash generation.
+:::
+
 To authorize the `acceptOffer` operation within the Name Service, the user who **currently owns the username** must generate a cryptographic signature compliant with the [EIP-191](https://eips.ethereum.org/EIPS/eip-191) standard using the Ethereum Signed Message format.
 
-The signature verification process uses the `SignatureUtil` library. This signature proves the current username owner's intent and authorization to accept a specific offer (`_offerId`), thereby agreeing to transfer ownership of their username (`_username`) in exchange for the offered amount.
+## Signature Format
 
-## Signed Message Format
+```
+{evvmId},{senderExecutor},{hashPayload},{originExecutor},{nonce},{isAsyncExec}
+```
 
-The signature verification uses the `SignatureUtil.verifySignature` function with the following structure:
+## Hash Payload Generation
+
+The `hashPayload` is generated using **NameServiceHashUtils.hashDataForAcceptOffer()**:
 
 ```solidity
-SignatureUtil.verifySignature(
-    evvmID,                                             // EVVM ID as uint256
-    "acceptOffer",                                      // Action type
-    string.concat(                                      // Concatenated parameters
-        _username,
-        ",",
-        AdvancedStrings.uintToString(_offerId),
-        ",",
-        AdvancedStrings.uintToString(_nameServiceNonce)
-    ),
-    signature,
-    signer
+import {NameServiceHashUtils} from "@evvm/testnet-contracts/library/signature/NameServiceHashUtils.sol";
+
+bytes32 hashPayload = NameServiceHashUtils.hashDataForAcceptOffer(
+    username,  // Username being sold
+    offerID    // ID of the offer to accept
 );
+
+// Internal implementation
+// keccak256(abi.encode("acceptOffer", username, offerID))
 ```
-
-### Internal Message Construction
-
-This results in a message format:
-```
-"{evvmID},acceptOffer,{username},{offerId},{nameServiceNonce}"
-```
-
-## Message Components
-
-**1. EVVM ID (String):**
-- The result of `AdvancedStrings.uintToString(evvmID)`
-- *Purpose*: Identifies the specific EVVM instance
-
-**2. Action Type (String):**
-- Fixed value: `"acceptOffer"`
-- *Purpose*: Identifies this as an accept offer operation
-
-**3. Concatenated Parameters (String):**
-
-**3.1. Target Username (String):**
-- The `_username` string itself
-- *Purpose*: Specifies the username that the owner is agreeing to sell
-
-**3.2. Offer ID (String):**
-- The result of `AdvancedStrings.uintToString(_offerId)`
-- *Purpose*: The unique identifier of the specific offer being accepted
-
-**3.3. Name Service Nonce (String):**
-- The result of `AdvancedStrings.uintToString(_nameServiceNonce)`
-- *Purpose*: Provides replay protection for accept offer actions
 
 ## Example
 
 **Scenario:** Current owner of username "alice" wants to accept an offer
 
-**Parameters:**
-- `evvmID`: `1`
-- `_username`: `"alice"`
-- `_offerId`: `123`
-- `_nameServiceNonce`: `3`
-
-**Signature verification call:**
 ```solidity
-SignatureUtil.verifySignature(
-    1,
-    "acceptOffer",
-    "alice,123,3",
-    signature,
-    signer
-);
+string memory username = "alice";
+uint256 offerID = 123;
+
+bytes32 hashPayload = NameServiceHashUtils.hashDataForAcceptOffer(username, offerID);
 ```
 
-**Final message to be signed:**
-```
-1,acceptOffer,alice,123,3
-```
-
-**EIP-191 formatted message hash:**
-```
-keccak256(abi.encodePacked(
-    "\x19Ethereum Signed Message:\n25",
-    "1,acceptOffer,alice,123,3"
-))
-```
+**Message:** `1,0x0000000000000000000000000000000000000000,0x[hashPayload],0x0000000000000000000000000000000000000000,3,true`
 
 :::tip Technical Details
-
-- **Message Format**: `"{evvmID},{functionName},{parameters}"`
-- **EIP-191 Compliance**: Uses `"\x19Ethereum Signed Message:\n"` prefix with message length
+- **Hash Independence**: The hash payload does NOT include executors (only username, offerID)
+- **Operation Name**: "acceptOffer" is included in hash via NameServiceHashUtils
+- **Ownership Transfer**: Accepting an offer transfers username ownership to the offeror
+- **Owner-Only**: Only the current username owner can accept offers
+:::
 - **Authorization**: Only the current owner of the username can accept offers
 - **Offer Validation**: `_offerId` must correspond to a valid, non-expired offer
 - **Ownership Transfer**: Accepting an offer transfers username ownership to the offeror

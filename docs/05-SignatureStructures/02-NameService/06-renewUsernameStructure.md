@@ -5,95 +5,40 @@ sidebar_position: 6
 
 # Renew Username Signature Structure
 
+:::info[Centralized Verification]
+NameService signatures are **verified by Core.sol** using `validateAndConsumeNonce()`. Uses `NameServiceHashUtils.hashDataForRenewUsername()` for hash generation.
+:::
+
 To authorize the `renewUsername` operation within the Name Service, the user (the current username owner) must generate a cryptographic signature compliant with the [EIP-191](https://eips.ethereum.org/EIPS/eip-191) standard using the Ethereum Signed Message format.
 
-The signature verification process uses the `SignatureUtil` library. This signature proves the owner's intent and authorization to extend the validity period of their username registration.
+## Signature Format
 
-## Signed Message Format
+```
+{evvmId},{senderExecutor},{hashPayload},{originExecutor},{nonce},{isAsyncExec}
+```
 
-The signature verification uses the `SignatureUtil.verifySignature` function with the following structure:
+## Hash Payload Generation
 
 ```solidity
-SignatureUtil.verifySignature(
-    evvmID,                                             // EVVM ID as uint256
-    "renewUsername",                                    // Action type
-    string.concat(                                      // Concatenated parameters
-        _username,
-        ",",
-        AdvancedStrings.uintToString(_nameServiceNonce)
-    ),
-    signature,
-    signer
-);
+import {NameServiceHashUtils} from "@evvm/testnet-contracts/library/signature/NameServiceHashUtils.sol";
+
+bytes32 hashPayload = NameServiceHashUtils.hashDataForRenewUsername(username);
+// Internal: keccak256(abi.encode("renewUsername", username))
 ```
-
-### Internal Message Construction
-
-This results in a message format:
-```
-"{evvmID},renewUsername,{username},{nameServiceNonce}"
-```
-
-## Message Components
-
-**1. EVVM ID (String):**
-- The result of `AdvancedStrings.uintToString(evvmID)`
-- *Purpose*: Identifies the specific EVVM instance
-
-**2. Action Type (String):**
-- Fixed value: `"renewUsername"`
-- *Purpose*: Identifies this as a username renewal operation
-
-**3. Concatenated Parameters (String):**
-
-**3.1. Target Username (String):**
-- The `_username` string itself
-- *Purpose*: Specifies the username whose registration is being renewed
-
-**3.2. Name Service Nonce (String):**
-- The result of `AdvancedStrings.uintToString(_nameServiceNonce)`
-- *Purpose*: Provides replay protection for renewal actions
 
 ## Example
 
 **Scenario:** Current owner wants to renew their username "alice"
 
-**Parameters:**
-- `evvmID`: `1`
-- `_username`: `"alice"`
-- `_nameServiceNonce`: `8`
-
-**Signature verification call:**
 ```solidity
-SignatureUtil.verifySignature(
-    1,
-    "renewUsername",
-    "alice,8",
-    signature,
-    signer
-);
+string memory username = "alice";
+bytes32 hashPayload = NameServiceHashUtils.hashDataForRenewUsername(username);
 ```
 
-**Final message to be signed:**
-```
-1,renewUsername,alice,8
-```
-
-**EIP-191 formatted message hash:**
-```
-keccak256(abi.encodePacked(
-    "\x19Ethereum Signed Message:\n22",
-    "1,renewUsername,alice,8"
-))
-```
+**Message:** `1,0x0000000000000000000000000000000000000000,0x[hashPayload],0x0000000000000000000000000000000000000000,8,true`
 
 :::tip Technical Details
-
-- **Message Format**: `"{evvmID},{functionName},{parameters}"`
-- **EIP-191 Compliance**: Uses `"\x19Ethereum Signed Message:\n"` prefix with message length
-- **Authorization**: Only the current owner of the username can renew their own username
-- **Renewal Logic**: Extends the username's expiration period and may involve a renewal fee
-- **Replay Protection**: `_nameServiceNonce` prevents replay attacks
-- **EVVM ID**: Identifies the specific EVVM instance for signature verification
-
+- **Owner-Only**: Only the current username owner can renew
+- **Extends Registration**: Renewal extends the username's expiration period
+- **Hash Independence**: Hash payload does NOT include executors (only username)
 :::

@@ -276,9 +276,9 @@ uint256 totalEarnings = totalRewards + totalFees;
 // Example staking contract integration
 function updateStakerStatus(address user) internal {
     if (isUserStaker(user)) {
-        IEvvm(evvmAddress).pointStaker(user, FLAG_IS_STAKER);
+        ICore(evvmAddress).pointStaker(user, FLAG_IS_STAKER);
     } else {
-        IEvvm(evvmAddress).pointStaker(user, 0x00);
+        ICore(evvmAddress).pointStaker(user, 0x00);
     }
 }
 ```

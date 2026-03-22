@@ -11,7 +11,7 @@ This function uses **Core.sol's centralized signature verification** via `valida
 :::
 
 **Function Type**: External  
-**Function Signature**: `renewUsername(address user, string memory username, address originExecutor, uint256 nonce, bytes memory signature, uint256 priorityFeeEvvm, uint256 nonceEvvm, bytes memory signatureEvvm) external`
+**Function Signature**: `renewUsername(address user, string memory username, address senderExecutor, address originExecutor, uint256 nonce, bytes memory signature, uint256 priorityFeeEvvm, uint256 nonceEvvm, bytes memory signatureEvvm) external`
 
 Extends a username registration by 366 days. The renewal cost is dynamically calculated based on marketplace activity and timing. Usernames can be renewed up to 100 years in advance. The renewal preserves ownership, metadata, and all settings - only the expiration date changes.
 
@@ -21,6 +21,7 @@ Extends a username registration by 366 days. The renewal cost is dynamically cal
 |-----------|------|-------------|
 | `user` | `address` | Current owner of the username |
 | `username` | `string` | Username to renew |
+| `senderExecutor` | `address` | Optional msg.sender restriction. Use `address(0)` for any service, or specify address to restrict execution. |
 | `originExecutor` | `address` | The address authorized to submit this specific signed transaction |
 | `nonce` | `uint256` | User's Core nonce for this signature (prevents replay attacks) |
 | `signature` | `bytes` | EIP-191 signature from `user` authorizing the renewal |
@@ -37,7 +38,7 @@ This function requires **two signatures** from the username owner:
 Authorizes the username renewal:
 
 ```
-Message Format: {evvmId},{serviceAddress},{hashPayload},{originExecutor},{nonce},{isAsyncExec}
+Message Format: {evvmId},{senderExecutor},{hashPayload},{originExecutor},{nonce},{isAsyncExec}
 Hash Payload: NameServiceHashUtils.hashDataForRenewUsername(username)
 Async Execution: true (always)
 ```
@@ -51,7 +52,7 @@ bytes32 hashPayload = NameServiceHashUtils.hashDataForRenewUsername(username);
 string memory message = string.concat(
     Strings.toString(block.chainid),
     ",",
-    Strings.toHexString(address(nameServiceContract)),
+    Strings.toHexString(senderExecutor),
     ",",
     Strings.toHexString(uint256(hashPayload)),
     ",",
@@ -88,6 +89,7 @@ Core.sol validates the signature and consumes the nonce:
 ```solidity
 core.validateAndConsumeNonce(
     user,
+    senderExecutor,
     Hash.hashDataForRenewUsername(username),
     originExecutor,
     nonce,
@@ -99,6 +101,7 @@ core.validateAndConsumeNonce(
 **Validation Steps**:
 - Verifies nonce hasn't been used (prevents replay)
 - Validates EIP-191 signature matches user + payload
+- Confirms `msg.sender == senderExecutor` (if specified)
 - Confirms `tx.origin == originExecutor` (EOA verification)
 - Marks nonce as consumed (prevents double-use)
 

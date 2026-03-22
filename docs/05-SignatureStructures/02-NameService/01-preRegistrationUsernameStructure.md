@@ -17,16 +17,22 @@ Pre-registration uses a **commit-reveal scheme** to prevent front-running: users
 ## Signature Format
 
 ```
-{evvmId},{serviceAddress},{hashPayload},{executor},{nonce},{isAsyncExec}
+{evvmId},{senderExecutor},{hashPayload},{originExecutor},{nonce},{isAsyncExec}
 ```
 
 **Components:**
 1. **evvmId**: Network identifier (uint256, typically `1`)
-2. **serviceAddress**: NameService.sol contract address
+2. **senderExecutor**: Address that can call the function via msg.sender (address, `0x0...0` for anyone)
 3. **hashPayload**: Hash of pre-registration parameters (bytes32, from NameServiceHashUtils)
-4. **executor**: Address authorized to execute (address, `0x0...0` for unrestricted)
+4. **originExecutor**: EOA that can initiate the transaction via tx.origin (address, `0x0...0` for anyone)
 5. **nonce**: User's centralized nonce from Core.sol (uint256)
 6. **isAsyncExec**: Execution mode - `true` for async, `false` for sync (boolean)
+
+**Dual-Executor Model:**
+- `senderExecutor`: Controls which address can execute via `msg.sender` (contract or EOA)
+- `originExecutor`: Controls which EOA can initiate via `tx.origin`
+- Both can be `address(0)` for maximum flexibility (anyone can execute/initiate)
+- Hash payload does NOT include executors (only operation parameters)
 
 ## Hash Payload Generation
 
@@ -104,12 +110,13 @@ Core.sol verifies the signature using `validateAndConsumeNonce()`:
 ```solidity
 // Called internally by NameService.sol.preRegistrationUsername()
 Core(coreAddress).validateAndConsumeNonce(
-    user,          // Signer's address
-    hashPayload,   // From NameServiceHashUtils
-    executor,      // Who can execute
-    nonce,         // User's nonce
-    isAsyncExec,   // Execution mode
-    signature      // EIP-191 signature
+    user,             // Signer's address
+    senderExecutor,   // Who can call via msg.sender
+    hashPayload,      // From NameServiceHashUtils
+    originExecutor,   // Who can initiate via tx.origin
+    nonce,            // User's nonce
+    isAsyncExec,      // Execution mode
+    signature         // EIP-191 signature
 );
 ```
 
@@ -140,13 +147,15 @@ bytes32 hashPayload = NameServiceHashUtils.hashDataForPreRegistrationUsername(
 
 **Parameters:**
 - `evvmId`: `1`
-- `serviceAddress`: `0xNameServiceAddress` (deployed NameService.sol)
+- `senderExecutor`: `0x0000000000000000000000000000000000000000` (anyone can call)
 - `hashPayload`: `0xb4c2d8e9f1a6c5d8e7f9b2a3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3`
-- `executor`: `0x0000000000000000000000000000000000000000` (unrestricted)
+- `originExecutor`: `0x0000000000000000000000000000000000000000` (anyone can initiate)
 - `nonce`: `15`
 - `isAsyncExec`: `false`
 
 **Final Message:**
+```
+1,0x0000000000000000000000000000000000000000,0xb4c2d8e9f1a6c5d8e7f9b2a3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3,0x0000000000000000000000000000000000000000,15,false
 ```
 1,0xNameServiceAddress,0xb4c2d8e9f1a6c5d8e7f9b2a3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3,0x0000000000000000000000000000000000000000,15,false
 ```

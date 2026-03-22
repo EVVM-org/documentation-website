@@ -27,17 +27,17 @@ In the first stage, users construct and cryptographically sign their transaction
 Every EVVM transaction follows a standardized format that includes all necessary information:
 
 ```solidity
-string.concat(<evvmId>,",",<service/coreAddress>,",",<HashOfFunction(fucntionName,param1,param2,...,paramN)>,",",<originExecutor/senderExecutor>,",",<nonce>,",",<isASyncExec>)
+string.concat(<evvmId>,",",<senderExecutor>,",",<hashPayload>,",",<originExecutor>,",",<nonce>,",",<isAsyncExec>)
 ```
 
 **Component breakdown:**
 
 - `<evvmId>`: Unique identifier of the target EVVM instance (which virtual blockchain to use)
-- `<service/coreAddress>`: Address of the service or core contract to interact with
-- `<HashOfFunction(fucntionName,param1,param2,...,paramN)>`: Keccak256 hash of the abi-encoded function name and parameters
-- `<originExecutor/senderExecutor>`: Address of the transaction sender or origin executor that will be responsible for execution (if address is zero, any executor can process it)
+- `<senderExecutor>`: Address of the service contract authorized to consume the nonce (`msg.sender`). In most services this is `address(this)`. Setting to `address(0)` allows any service to execute.
+- `<hashPayload>`: Keccak256 hash of the abi-encoded function name and parameters: `keccak256(abi.encode("functionName", param1, param2, ..., paramN))`
+- `<originExecutor>`: Address of the EOA allowed to initiate the transaction (`tx.origin`). Setting to `address(0)` allows any origin.
 - `<nonce>`: Unique number to prevent replay attacks
-- `<isASyncExec>`: Boolean indicating if the nonce execution is asynchronous (true) or synchronous (false)
+- `<isAsyncExec>`: Boolean indicating if the nonce execution is asynchronous (true) or synchronous (false)
 
 ### 2. EIP-191 Signature Generation
 

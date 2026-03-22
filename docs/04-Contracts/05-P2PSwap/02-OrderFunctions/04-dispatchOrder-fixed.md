@@ -7,17 +7,24 @@ sidebar_position: 4
 # dispatchOrder_fillFixedFee
 
 :::info[Signature Verification]
-dispatchOrder_fillFixedFee uses Core.sol's centralized verification via `validateAndConsumeNonce()` with `P2PSwapHashUtils.hashDataForDispatchOrder()`. Includes `originExecutor` parameter (EOA executor verified with tx.origin).
+dispatchOrder_fillFixedFee uses Core.sol's centralized verification via `validateAndConsumeNonce()` with `P2PSwapHashUtils.hashDataForDispatchOrder()`. Includes dual-executor parameters (senderExecutor for msg.sender, originExecutor for tx.origin).
 :::
 
 **Function Signature**:
 ```solidity
 function dispatchOrder_fillFixedFee(
     address user,
-    MetadataDispatchOrder memory metadata,
-    uint256 priorityFeeEvvm,
-    uint256 nonceEvvm,
-    bytes memory signatureEvvm,
+    address tokenA,
+    address tokenB,
+    uint256 orderId,
+    uint256 amountOfTokenBToFill,
+    address senderExecutor,
+    address originExecutor,
+    uint256 nonce,
+    bytes memory signature,
+    uint256 priorityFeePay,
+    uint256 noncePay,
+    bytes memory signaturePay,
     uint256 maxFillFixedFee
 ) external
 ```
@@ -29,34 +36,27 @@ Fills an existing order using a fixed/capped fee model with 10% tolerance. Fee =
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `user` | `address` | Buyer address filling the order |
-| `metadata` | `MetadataDispatchOrder` | Dispatch details including originExecutor, nonce, and signature |
-| `priorityFeeEvvm` | `uint256` | Optional MATE priority fee for faster execution |
-| `nonceEvvm` | `uint256` | Nonce for Core payment transaction (collects tokenB + fee) |
-| `signatureEvvm` | `bytes` | Signature for Core payment authorization |
+| `tokenA` | `address` | Token buyer will receive |
+| `tokenB` | `address` | Token buyer will pay |
+| `orderId` | `uint256` | Order ID to fill |
+| `amountOfTokenBToFill` | `uint256` | Amount to pay (flexible within tolerance) |
+| `senderExecutor` | `address` | Restricts which address can execute this operation via msg.sender (address(0) = anyone can execute) |
+| `originExecutor` | `address` | EOA that will initiate the transaction, verified via tx.origin (address(0) = anyone can initiate) |
+| `nonce` | `uint256` | User's nonce for P2PSwap service operations |
+| `signature` | `bytes` | User's authorization signature |
+| `priorityFeePay` | `uint256` | Optional MATE priority fee for faster execution |
+| `noncePay` | `uint256` | Nonce for Core payment transaction (collects tokenB + fee) |
+| `signaturePay` | `bytes` | Signature for Core payment authorization |
 | `maxFillFixedFee` | `uint256` | Fee cap for this execution (default: 0.001 ETH) |
-
-### MetadataDispatchOrder Structure
-
-```solidity
-struct MetadataDispatchOrder {
-    address tokenA;                // Token buyer will receive
-    address tokenB;                // Token buyer will pay
-    uint256 orderId;               // Order ID to fill
-    uint256 amountOfTokenBToFill;  // Amount to pay (flexible within tolerance)
-    address originExecutor;        // EOA that will execute (verified with tx.origin)
-    uint256 nonce;                 // Core nonce for P2PSwap service
-    bytes signature;               // User's authorization signature
-}
-```
 
 ## Signature Requirements
 
 :::note[Operation Hash]
 ```solidity
 bytes32 hashPayload = P2PSwapHashUtils.hashDataForDispatchOrder(
-    metadata.tokenA,
-    metadata.tokenB,
-    metadata.orderId
+    tokenA,
+    tokenB,
+    orderId
 );
 ```
 
@@ -65,8 +65,16 @@ bytes32 hashPayload = P2PSwapHashUtils.hashDataForDispatchOrder(
 
 **Signature Format**:
 ```
-{evvmId},{p2pSwapAddress},{hashPayload},{originExecutor},{nonce},true
+{evvmId},{senderExecutor},{hashPayload},{originExecutor},{nonce},true
 ```
+
+Where:
+- `evvmId`: Chain ID from `block.chainid`
+- `senderExecutor`: Address that can execute via msg.sender
+- `hashPayload`: Result from `P2PSwapHashUtils.hashDataForDispatchOrder(...)`
+- `originExecutor`: EOA that will initiate the transaction
+- `nonce`: User's nonce for P2PSwap service
+- `true`: Always async execution
 
 **Payment Signature**: Separate signature required for paying tokenB + fee via Core.pay().
 
@@ -127,27 +135,28 @@ Same as proportional model but with capped fee:
 ```solidity
 core.validateAndConsumeNonce(
     user,
+    senderExecutor,
     P2PSwapHashUtils.hashDataForDispatchOrder(
-        metadata.tokenA,
-        metadata.tokenB,
-        metadata.orderId
+        tokenA,
+        tokenB,
+        orderId
     ),
-    metadata.originExecutor,
-    metadata.nonce,
+    originExecutor,
+    nonce,
     true,                          // Always async execution
-    metadata.signature
+    signature
 );
 ```
 
 **Validates**:
 - Signature authenticity via EIP-191
 - Nonce hasn't been consumed
-- Executor is the specified EOA (via `tx.origin`)
+- Executor restrictions (if specified)
 
 **On Failure**:
 - `Core__InvalidSignature()` - Invalid signature
 - `Core__NonceAlreadyUsed()` - Nonce consumed
-- `Core__InvalidExecutor()` - Executing EOA doesn't match originExecutor
+- `Core__InvalidExecutor()` - Executor restrictions not met
 
 ### 2. Market & Order Lookup
 ```solidity

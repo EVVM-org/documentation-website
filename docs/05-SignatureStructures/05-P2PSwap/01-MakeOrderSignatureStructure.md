@@ -5,170 +5,161 @@ sidebar_position: 1
 
 # Make Order Signature Structure
 
+:::info[Centralized Verification]
+P2PSwap signatures are **verified by Core.sol** using `validateAndConsumeNonce()`. Uses `P2PSwapHashUtils.hashDataForMakeOrder()` for hash generation.
+:::
+
 To authorize order creation operations, users must generate a cryptographic signature compliant with the [EIP-191](https://eips.ethereum.org/EIPS/eip-191) standard using the Ethereum Signed Message format.
 
-The signature verification process uses the `SignatureUtil` library which implements the standard Ethereum message signing protocol. The message is constructed by concatenating the EVVM ID, action type, and parameters, then wrapped with the EIP-191 prefix: `"\x19Ethereum Signed Message:\n"` + message length + message content.
+## Signature Format
 
-## Signed Message Format
+```
+{evvmId},{senderExecutor},{hashPayload},{originExecutor},{nonce},{isAsyncExec}
+```
 
-The signature verification uses the `SignatureUtil.verifySignature` function with the following structure:
+**Components:**
+1. **evvmId**: Network identifier (uint256, typically `1`)
+2. **senderExecutor**: Address that can call the function via msg.sender (`0x0...0` for anyone)
+3. **hashPayload**: Hash of make order parameters (bytes32, from P2PSwapHashUtils)
+4. **originExecutor**: EOA that can initiate the transaction via tx.origin (`0x0...0` for anyone)
+5. **nonce**: User's centralized nonce from Core.sol (uint256)
+6. **isAsyncExec**: Always `true` for P2PSwap (async execution)
+
+## Hash Payload Generation
+
+The `hashPayload` is generated using **P2PSwapHashUtils.hashDataForMakeOrder()**:
 
 ```solidity
-SignatureUtil.verifySignature(
-    evvmID,                          // EVVM ID as uint256
-    "makeOrder",                     // Action type
-    string.concat(                   // Concatenated parameters
-        AdvancedStrings.uintToString(_nonce),
-        ",",
-        AdvancedStrings.addressToString(_tokenA),
-        ",",
-        AdvancedStrings.addressToString(_tokenB),
-        ",",
-        AdvancedStrings.uintToString(_amountA),
-        ",",
-        AdvancedStrings.uintToString(_amountB)
-    ),
-    signature,
-    signer
+import {P2PSwapHashUtils} from "@evvm/testnet-contracts/library/signature/P2PSwapHashUtils.sol";
+
+bytes32 hashPayload = P2PSwapHashUtils.hashDataForMakeOrder(
+    tokenA,     // Token offered by seller
+    tokenB,     // Token requested by seller
+    amountA,    // Amount of tokenA offered
+    amountB     // Amount of tokenB requested
+);
+
+// Internal implementation
+// keccak256(abi.encode("makeOrder", tokenA, tokenB, amountA, amountB))
+```
+
+## Centralized Verification
+
+Core.sol verifies the signature using `validateAndConsumeNonce()`:
+
+```solidity
+// Called internally by P2PSwap.sol.makeOrder()
+Core(coreAddress).validateAndConsumeNonce(
+    user,             // Signer's address
+    senderExecutor,   // Who can call via msg.sender
+    hashPayload,      // From P2PSwapHashUtils
+    originExecutor,   // Who can initiate via tx.origin
+    nonce,            // User's nonce
+    true,             // Always async for P2PSwap
+    signature         // EIP-191 signature
 );
 ```
 
-### Internal Message Construction
+## Message Construction
 
-Internally, the `SignatureUtil.verifySignature` function constructs the final message by concatenating:
-
-```solidity
-string.concat(AdvancedStrings.uintToString(evvmID), ",", functionName, ",", inputs)
-```
-
-This results in a message format:
-```
-"{evvmID},makeOrder,{nonce},{tokenA},{tokenB},{amountA},{amountB}"
-```
-
-### EIP-191 Message Hashing
-
-The message is then hashed according to EIP-191 standard:
+The signature message is constructed using **AdvancedStrings.buildSignaturePayload()**:
 
 ```solidity
-bytes32 messageHash = keccak256(
-    abi.encodePacked(
-        "\x19Ethereum Signed Message:\n",
-        AdvancedStrings.uintToString(bytes(message).length),
-        message
-    )
+import {AdvancedStrings} from "@evvm/testnet-contracts/library/utils/AdvancedStrings.sol";
+import {P2PSwapHashUtils} from "@evvm/testnet-contracts/library/signature/P2PSwapHashUtils.sol";
+
+// Step 1: Generate hash payload
+bytes32 hashPayload = P2PSwapHashUtils.hashDataForMakeOrder(
+    tokenA,
+    tokenB,
+    amountA,
+    amountB
 );
+
+// Step 2: Build signature message
+string memory message = AdvancedStrings.buildSignaturePayload(
+    1,                                           // evvmId
+    address(0),                                  // senderExecutor (anyone can call)
+    hashPayload,                                 // Hash from step 1
+    address(0),                                  // originExecutor (anyone can initiate)
+    nonce,                                       // User's current nonce
+    true                                         // isAsyncExec (always true for P2PSwap)
+);
+
+// Result: "1,0x0000000000000000000000000000000000000000,0x[hashPayload],0x0000000000000000000000000000000000000000,[nonce],true"
 ```
-
-This creates the final hash that the user must sign with their private key.
-
-## Message Components
-
-The signature verification takes three main parameters:
-
-**1. EVVM ID (uint256):**
-- Direct uint256 value (converted to string internally)
-- *Purpose*: Identifies the specific EVVM instance
-
-**2. Action Type (String):**
-- Fixed value: `"makeOrder"`
-- *Purpose*: Identifies this as an order creation operation
-
-**3. Concatenated Parameters (String):**
-The parameters are concatenated with comma separators:
-
-**3.1. Nonce (String):**
-- The result of `AdvancedStrings.uintToString(_nonce)`
-- *Purpose*: Provides replay protection for the P2P Swap transaction
-
-**3.2. Token A Address (String):**
-- The result of `AdvancedStrings.addressToString(_tokenA)`
-- *Purpose*: Identifies the token being offered by the order creator
-
-**3.3. Token B Address (String):**
-- The result of `AdvancedStrings.addressToString(_tokenB)`
-- *Purpose*: Identifies the token being requested in exchange
-
-**3.4. Amount A (String):**
-- The result of `AdvancedStrings.uintToString(_amountA)`
-- *Purpose*: Specifies the quantity of tokenA being offered
-
-**3.5. Amount B (String):**
-- The result of `AdvancedStrings.uintToString(_amountB)`
-- *Purpose*: Specifies the quantity of tokenB being requested
 
 ## Example
 
-Here's a practical example of constructing a signature message for creating a swap order:
-
 **Scenario:** User wants to create an order offering 100 USDC for 0.05 ETH
 
-**Parameters:**
-- `evvmID`: `1` (EVVM instance ID)
-- `_nonce`: `15`
-- `_tokenA`: `0xA0b86a33E6441e6e80D0c4C6C7527d72E1d00000` (USDC)
-- `_tokenB`: `0x0000000000000000000000000000000000000000` (ETH)
-- `_amountA`: `100000000` (100 USDC with 6 decimals)
-- `_amountB`: `50000000000000000` (0.05 ETH in wei)
-
-**Signature verification call:**
+**Step 1: Generate Hash Payload**
 ```solidity
-SignatureUtil.verifySignature(
-    1,  // evvmID as uint256
-    "makeOrder", // action type
-    "15,0xa0b86a33e6441e6e80d0c4c6c7527d72e1d00000,0x0000000000000000000000000000000000000000,100000000,50000000000000000",
-    signature,
-    signer
+import {P2PSwapHashUtils} from "@evvm/testnet-contracts/library/signature/P2PSwapHashUtils.sol";
+
+address tokenA = 0xA0b86a33E6441e6e80D0c4C6C7527d72E1d00000;  // USDC
+address tokenB = address(0);  // ETH
+uint256 amountA = 100000000;  // 100 USDC with 6 decimals
+uint256 amountB = 50000000000000000;  // 0.05 ETH in wei
+
+bytes32 hashPayload = P2PSwapHashUtils.hashDataForMakeOrder(
+    tokenA,
+    tokenB,
+    amountA,
+    amountB
+);
+// Result: 0x3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d
+```
+
+**Step 2: Construct Signature Message**
+```
+1,0x0000000000000000000000000000000000000000,0x3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d,0x0000000000000000000000000000000000000000,15,true
+```
+
+Components:
+- `evvmId`: `1`
+- `senderExecutor`: `0x0000...` (anyone can call)
+- `hashPayload`: `0x3c4d...` (from Step 1)
+- `originExecutor`: `0x0000...` (anyone can initiate)
+- `nonce`: `15`
+- `isAsyncExec`: `true` (always async for P2PSwap)
+
+**Step 3: Sign with Wallet**
+```javascript
+const message = "1,0x0000000000000000000000000000000000000000,0x3c4d...c4d,0x0000000000000000000000000000000000000000,15,true";
+const signature = await signer.signMessage(message);
+```
+
+## Function Call
+
+The complete `makeOrder()` function call:
+
+```solidity
+P2PSwap(p2pSwapAddress).makeOrder(
+    user,              // Order creator's address
+    tokenA,            // Token being offered
+    tokenB,            // Token being requested
+    amountA,           // Amount of tokenA
+    amountB,           // Amount of tokenB
+    senderExecutor,    // Address(0) for anyone
+    originExecutor,    // Address(0) for anyone
+    nonce,             // User's nonce from Core.sol
+    signature,         // EIP-191 signature of the message
+    priorityFeePay,    // Optional priority fee
+    noncePay,          // Separate nonce for pay operation
+    signaturePay       // Signature for pay operation
 );
 ```
 
-**Final message to be signed (after internal concatenation):**
-```
-1,makeOrder,15,0xa0b86a33e6441e6e80d0c4c6c7527d72e1d00000,0x0000000000000000000000000000000000000000,100000000,50000000000000000
-```
-
-**EIP-191 formatted message hash:**
-```
-keccak256(abi.encodePacked(
-    "\x19Ethereum Signed Message:\n149",
-    "1,makeOrder,15,0xa0b86a33e6441e6e80d0c4c6c7527d72e1d00000,0x0000000000000000000000000000000000000000,100000000,50000000000000000"
-))
-```
-
-**Concatenated parameters breakdown:**
-1. `15` - P2P Swap nonce for replay protection
-2. `0xa0b86a33e6441e6e80d0c4c6c7527d72e1d00000` - USDC token address (tokenA)
-3. `0x0000000000000000000000000000000000000000` - ETH address (tokenB)
-4. `100000000` - Amount of USDC being offered (100 USDC with 6 decimals)
-5. `50000000000000000` - Amount of ETH being requested (0.05 ETH in wei)
-
-## Signature Implementation Details
-
-The `SignatureUtil` library performs signature verification in the following steps:
-
-1. **Message Construction**: Concatenates `evvmID` (converted to string), `functionName`, and `inputs` with commas
-2. **EIP-191 Formatting**: Prepends `"\x19Ethereum Signed Message:\n"` + message length
-3. **Hashing**: Applies `keccak256` to the formatted message
-4. **Signature Parsing**: Splits the 65-byte signature into `r`, `s`, and `v` components
-5. **Recovery**: Uses `ecrecover` to recover the signer's address
-6. **Verification**: Compares recovered address with expected signer
-
-### Signature Format Requirements
-
-- **Length**: Exactly 65 bytes
-- **Structure**: `[r (32 bytes)][s (32 bytes)][v (1 byte)]`
-- **V Value**: Must be 27 or 28 (automatically adjusted if < 27)
-
 :::tip Technical Details
 
-- **Message Format**: The final message follows the pattern `"{evvmID},{functionName},{parameters}"`
-- **EIP-191 Compliance**: Uses `"\x19Ethereum Signed Message:\n"` prefix with message length
-- **Hash Function**: `keccak256` is used for the final message hash before signing
-- **Signature Recovery**: Uses `ecrecover` to verify the signature against the expected signer
-- **String Conversion**: 
-  - `AdvancedStrings.addressToString` converts addresses to lowercase hex with "0x" prefix
-  - `Strings.toString` converts numbers to decimal strings
-- **EVVM ID**: Identifies the specific EVVM instance for signature verification
-- **Nonce Purpose**: P2P Swap specific nonce prevents replay attacks within the swap system
+- **Dual Signatures**: makeOrder requires TWO signatures:
+  1. One for the makeOrder operation (validates order parameters)
+  2. One for the pay operation (locks tokenA in Core.sol)
+- **Hash Independence**: The hash payload does NOT include executors (only tokenA, tokenB, amountA, amountB)
+- **Operation Name**: "makeOrder" is included in hash via P2PSwapHashUtils
+- **Async Execution**: Always uses async nonces (`isAsyncExec: true`)
+- **Market Creation**: P2PSwap automatically creates markets for new token pairs
+- **Executor Flexibility**: Both executors at address(0) allows anyone to execute the order creation
 
 :::

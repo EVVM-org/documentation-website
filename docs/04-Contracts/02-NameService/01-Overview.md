@@ -37,12 +37,37 @@ The Name Service is a decentralized username management system providing human-r
 
 ## Architecture
 
+### Dual-Executor Transaction Model
+
+NameService inherits the dual-executor system from Core.sol, providing flexible control over transaction execution:
+
+**Executor Parameters:**
+- **senderExecutor**: Controls which address can call the function (`msg.sender`)
+- **originExecutor**: Controls which address initiated the transaction (`tx.origin`)
+
+**Flexibility Options:**
+- Set to `address(0)`: No restriction, any address can execute
+- Set to specific address: Only that address can execute (reverts otherwise)
+- Both can be independently configured per transaction
+
+**Common Usage Patterns:**
+- User transactions: Both set to `address(0)` for maximum flexibility
+- Service calls: `senderExecutor = service address`, `originExecutor = address(0)`
+- Direct execution: Both set to user's address for maximum security
+
+**Service Payment Accountability:**
+When NameService dispatches payments through `requestPay()`, it sets `senderExecutor = address(this)` (the NameService contract) while `originExecutor` comes from the function parameter. This ensures:
+- Clear tracking of service-initiated payments
+- Distinction between user-initiated and service-initiated transactions
+- Proper accountability in the payment system
+
 ### Signature Verification Flow
 
 ```solidity
 // All NameService operations follow this pattern
 core.validateAndConsumeNonce(
     user,                                    // Signer address
+    senderExecutor,                          // msg.sender restriction
     Hash.hashDataFor...(params),            // Operation-specific hash
     originExecutor,                         // tx.origin restriction
     nonce,                                  // User's Core nonce
@@ -53,8 +78,9 @@ core.validateAndConsumeNonce(
 
 **Key Components:**
 - **NameServiceHashUtils**: Generates `hashPayload` for each operation
-- **Core.validateAndConsumeNonce()**: Centralized signature verification
+- **Core.validateAndConsumeNonce()**: Centralized signature verification with dual-executor checks
 - **Async Nonces**: All operations use async execution mode
+- **senderExecutor**: Optional msg.sender restriction for execution control
 - **originExecutor**: Optional tx.origin restriction for security
 
 ### Payment Processing
@@ -71,12 +97,17 @@ core.pay(
     principalToken,                         // Payment token
     amount + priorityFee,                   // Total amount
     priorityFee,                            // Executor reward
-    address(this),                          // Executor address
+    address(this),                          // senderExecutor (service accountability)
+    originExecutor,                         // originExecutor (from parameter)
     nonceEvvm,                              // Payment nonce
     true,                                   // Async
     signatureEvvm                           // Payment signature
 );
 ```
+
+:::info[Service Payment Pattern]
+NameService sets `senderExecutor = address(this)` when dispatching payments, ensuring all service-initiated payments are properly tracked and distinguished from user-initiated transactions.
+:::
 
 **2. Staker Rewards (makeCaPay):**
 ```solidity
@@ -99,7 +130,8 @@ bytes32 hashUsername = keccak256(abi.encodePacked(username, lockNumber));
 preRegistrationUsername(
     user,
     hashUsername,           // Commitment hash
-    originExecutor,
+    address(0),             // Unrestricted senderExecutor
+    address(0),             // Unrestricted originExecutor
     nonce,
     signature,
     priorityFeeEvvm,
@@ -117,7 +149,8 @@ registrationUsername(
     user,
     username,               // Revealed username
     lockNumber,             // Revealed secret
-    originExecutor,
+    address(0),             // Unrestricted senderExecutor
+    address(0),             // Unrestricted originExecutor
     nonce,
     signature,
     priorityFeeEvvm,
@@ -170,6 +203,7 @@ registrationUsername(
 // Every NameService operation validates signature via Core
 core.validateAndConsumeNonce(
     user,                                  // Signer
+    senderExecutor,                        // msg.sender check
     hashPayload,                           // From NameServiceHashUtils
     originExecutor,                        // tx.origin check
     nonce,                                 // Core nonce

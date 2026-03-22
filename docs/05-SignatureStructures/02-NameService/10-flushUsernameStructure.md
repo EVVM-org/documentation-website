@@ -5,79 +5,43 @@ sidebar_position: 10
 
 # Flush Username Signature Structure
 
+:::info[Centralized Verification]
+NameService signatures are **verified by Core.sol** using `validateAndConsumeNonce()`. Uses `NameServiceHashUtils.hashDataForFlushUsername()` for hash generation.
+:::
+
 To authorize the `flushUsername` operation within the Name Service, the user who **currently owns the username** must generate a cryptographic signature compliant with the [EIP-191](https://eips.ethereum.org/EIPS/eip-191) standard using the Ethereum Signed Message format.
 
-The signature verification process uses the `SignatureUtil` library. This signature proves the current username owner's intent and authorization to completely remove and "flush" their username registration from the system.
+## Signature Format
 
-## Signed Message Format
+```
+{evvmId},{senderExecutor},{hashPayload},{originExecutor},{nonce},{isAsyncExec}
+```
 
-The signature verification uses the `SignatureUtil.verifySignature` function with the following structure:
+## Hash Payload Generation
 
 ```solidity
-SignatureUtil.verifySignature(
-    evvmID,                                             // EVVM ID as uint256
-    "flushUsername",                                    // Action type
-    string.concat(                                      // Concatenated parameters
-        _username,
-        ",",
-        AdvancedStrings.uintToString(_nonce)
-    ),
-    signature,
-    signer
-);
-```
+import {NameServiceHashUtils} from "@evvm/testnet-contracts/library/signature/NameServiceHashUtils.sol";
 
-### Internal Message Construction
-
-This results in a message format:
-```
-"{evvmID},flushUsername,{username},{nonce}"
+bytes32 hashPayload = NameServiceHashUtils.hashDataForFlushUsername(username);
+// Internal: keccak256(abi.encode("flushUsername", username))
 ```
 
 ## Example
 
 **Scenario:** Owner wants to permanently delete their username "alice"
 
-**Parameters:**
-- `evvmID`: `1`
-- `_username`: `"alice"`
-- `_nonce`: `25`
-
-**Signature verification call:**
 ```solidity
-SignatureUtil.verifySignature(
-    1,
-    "flushUsername",
-    "alice,25",
-    signature,
-    signer
-);
+string memory username = "alice";
+bytes32 hashPayload = NameServiceHashUtils.hashDataForFlushUsername(username);
 ```
 
-**Final message to be signed:**
-```
-1,flushUsername,alice,25
-```
-
-**EIP-191 formatted message hash:**
-```
-keccak256(abi.encodePacked(
-    "\x19Ethereum Signed Message:\n23",
-    "1,flushUsername,alice,25"
-))
-```
+**Message:** `1,0x0000000000000000000000000000000000000000,0x[hashPayload],0x0000000000000000000000000000000000000000,25,true`
 
 ⚠️ **Warning**: This operation is **irreversible** and will permanently delete the username registration and all associated data.
 
-
-
-:::tip
-
-- The function selector `044695cb` is the first 4 bytes of the keccak256 hash of the function signature for `verifyMessageSignedForFlushUsername`
-- `Strings.toString` converts a number to a string (standard OpenZeppelin utility)
-- The signature verification uses the EIP-191 standard for message signing
-- Only the current owner of the username can flush their own username
-- This operation is **irreversible** and permanently deletes the username registration and all associated data
-- The `_nonce` parameter is the user's general nonce, similar to other deletion operations
-
+:::tip Technical Details
+- **Permanent Deletion**: This operation is **irreversible**
+- **Complete Removal**: Deletes username registration and all associated data
+- **Owner-Only**: Only current username owner can flush their username
+- **Hash Independence**: Hash payload does NOT include executors (only username)
 :::

@@ -11,16 +11,95 @@ All EVVM operations require EIP-191 cryptographic signatures for security. The p
 ## Universal Signature Format
 
 ```
-{evvmId},{serviceAddress},{hashPayload},{executor},{nonce},{isAsyncExec}
+{evvmId},{senderExecutor},{hashPayload},{originExecutor},{nonce},{isAsyncExec}
 ```
 
 **Components:**
 - `{evvmId}`: Network identifier (uint256, typically `1`)
-- `{serviceAddress}`: Address of the service contract being called
+- `{senderExecutor}`: Address that can call the function via msg.sender (`0x0...0` for anyone)
 - `{hashPayload}`: Service-specific hash of operation parameters (bytes32)
-- `{executor}`: Authorized executor address (address, `0x0...0` for unrestricted)
+- `{originExecutor}`: EOA that can initiate the transaction via tx.origin (`0x0...0` for anyone)
 - `{nonce}`: User's centralized nonce from Core.sol (uint256)
 - `{isAsyncExec}`: Execution mode - `true` for async, `false` for sync (boolean)
+
+## Dual-Executor Transaction Model
+
+EVVM uses a **dual-executor system** for flexible transaction control:
+
+### senderExecutor (msg.sender control)
+Controls which address can call the contract function:
+
+```solidity
+// Validated in Core.sol
+if (senderExecutor != address(0) && msg.sender != senderExecutor) {
+    revert Core__InvalidExecutor();
+}
+```
+
+**Common Patterns**:
+- `address(0)`: Anyone can execute (maximum flexibility)
+- `specificAddress`: Only that address can call the function
+- `serviceAddress`: Service can execute on behalf of user
+
+**Use Case**: Allows users to restrict which contracts or addresses can execute their signed transactions (e.g., only through a specific relayer or service).
+
+### originExecutor (tx.origin control)
+Controls which EOA can initiate the entire transaction:
+
+```solidity
+// Validated in Core.sol
+if (originExecutor != address(0) && tx.origin != originExecutor) {
+    revert Core__InvalidExecutor();
+}
+```
+
+**Common Patterns**:
+- `address(0)`: Any EOA can initiate (maximum flexibility)
+- `userEOA`: Only that EOA can initiate the transaction
+- `trustedEOA`: Only specific EOA can initiate (delegation)
+
+**Use Case**: Enables users to ensure only they (or a trusted party) can trigger the transaction, even if `msg.sender` is a contract.
+
+### Flexibility Mechanism
+
+Both executors support `address(0)` for maximum flexibility:
+
+```solidity
+// Example: Public execution (anyone can call, anyone can initiate)
+senderExecutor = address(0);
+originExecutor = address(0);
+
+// Example: Personal execution only
+senderExecutor = address(0);        // Any contract can call
+originExecutor = user;              // But only user's EOA can initiate
+
+// Example: Service-restricted
+senderExecutor = serviceAddress;    // Only service contract can call
+originExecutor = address(0);        // Any EOA can initiate
+
+// Example: Fully restricted
+senderExecutor = relayerContract;   // Only relayer can call
+originExecutor = userEOA;           // Only user's EOA can initiate
+```
+
+### Hash Payload Independence
+
+**Important**: The `hashPayload` does NOT include executor addresses. It contains only operation-specific parameters:
+
+```solidity
+// Example: CoreHashUtils.hashDataForPay
+bytes32 hashPayload = keccak256(
+    abi.encode(
+        "pay",
+        to_address,
+        to_identity,
+        token,
+        amount,
+        priorityFee
+    )
+);
+// Executors are NOT in the hash - they're only in the signature payload
+```
 
 ## Two-Layer Signature Architecture
 
@@ -52,20 +131,17 @@ bytes32 hashPayload = CoreHashUtils.hashDataForPay(
 The `hashPayload` is combined with execution context to create the final message:
 
 ```solidity
-// Signature message construction (simplified)
-string memory message = string.concat(
-    uintToString(evvmId),                    // Network ID
-    ",",
-    addressToString(serviceAddress),         // Service contract
-    ",",
-    bytes32ToString(hashPayload),            // Service-specific hash
-    ",",
-    addressToString(executor),               // Authorized executor
-    ",",
-    uintToString(nonce),                     // User's nonce
-    ",",
-    isAsyncExec ? "true" : "false"          // Execution mode
+// Using AdvancedStrings.buildSignaturePayload
+string memory message = AdvancedStrings.buildSignaturePayload(
+    evvmId,            // Network ID
+    senderExecutor,    // msg.sender control
+    hashPayload,       // Service-specific hash
+    originExecutor,    // tx.origin control
+    nonce,             // User's nonce
+    isAsyncExec        // Execution mode
 );
+
+// Returns: "{evvmId},{senderExecutor},{hashPayload},{originExecutor},{nonce},{isAsyncExec}"
 ```
 
 ### Layer 3: EIP-191 Wrapping
@@ -90,8 +166,9 @@ All signatures are verified by **Core.sol** using `validateAndConsumeNonce()`:
 // Service calls Core.sol for verification
 Core(coreAddress).validateAndConsumeNonce(
     user,              // Signer address
+    senderExecutor,    // Who can call via msg.sender
     hashPayload,       // Service-specific hash
-    executor,          // Who can execute
+    originExecutor,    // Who can initiate via tx.origin
     nonce,             // User's nonce
     isAsyncExec,       // Execution mode
     signature          // EIP-191 signature
@@ -101,8 +178,9 @@ Core(coreAddress).validateAndConsumeNonce(
 **What Core.sol Does:**
 1. Verifies signature matches the signer (EIP-191 recovery)
 2. Validates nonce (checks status, consumes if valid)
-3. Checks executor authorization (if specified)
-4. Optionally delegates to UserValidator (if configured)
+3. Checks senderExecutor authorization (if not `address(0)`, validates msg.sender)
+4. Checks originExecutor authorization (if not `address(0)`, validates tx.origin)
+5. Optionally delegates to UserValidator (if configured)
 
 ## Example: Payment Signature
 
@@ -121,14 +199,14 @@ bytes32 hashPayload = CoreHashUtils.hashDataForPay(
 
 **Step 2: Construct Signature Message**
 ```
-1,0xCoreContractAddress,0xa7f3c2d8e9b4f1a6c5d8e7f9b2a3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1,0x0000000000000000000000000000000000000000,42,false
+1,0x0000000000000000000000000000000000000000,0xa7f3c2d8e9b4f1a6c5d8e7f9b2a3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1,0x0000000000000000000000000000000000000000,42,false
 ```
 
 Components:
 - `evvmId`: `1`
-- `serviceAddress`: `0xCoreContractAddress` (Core.sol)
+- `senderExecutor`: `0x0000...` (anyone can call)
 - `hashPayload`: `0xa7f3...` (from Step 1)
-- `executor`: `0x0000...` (unrestricted)
+- `originExecutor`: `0x0000...` (anyone can initiate)
 - `nonce`: `42`
 - `isAsyncExec`: `false` (sync)
 
@@ -192,9 +270,13 @@ AdvancedStrings.bytes32ToString(hash);     // "0xa7f3..."
 
 ### Security
 - **Never reuse nonces**: Each signature must have a unique nonce
-- **Validate executor**: Use `0x0...0` for public operations, specific address for restricted
+- **Validate executors carefully**: 
+  - Use `address(0)` for both executors for public operations
+  - Use specific `senderExecutor` to restrict which contract can call
+  - Use specific `originExecutor` to restrict which EOA can initiate
+  - Use both for maximum security (specific contract + specific EOA)
 - **Async for time-sensitive**: Use `isAsyncExec=true` for operations needing specific timing
-- **Service address precision**: Always use the correct deployed service address
+- **Hash independence**: Executors are not part of hashPayload, only in signature message
 
 ### Gas Optimization
 - **Batch operations**: Use `batchPay()` instead of multiple `pay()` calls

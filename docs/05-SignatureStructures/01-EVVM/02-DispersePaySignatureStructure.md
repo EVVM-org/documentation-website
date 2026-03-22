@@ -17,16 +17,22 @@ Disperse payments allow distributing a total amount of tokens to multiple recipi
 ## Signature Format
 
 ```
-{evvmId},{serviceAddress},{hashPayload},{executor},{nonce},{isAsyncExec}
+{evvmId},{senderExecutor},{hashPayload},{originExecutor},{nonce},{isAsyncExec}
 ```
 
 **Components:**
 1. **evvmId**: Network identifier (uint256, typically `1`)
-2. **serviceAddress**: Core.sol contract address
+2. **senderExecutor**: Address that can call the function via msg.sender (address, `0x0...0` for anyone)
 3. **hashPayload**: Hash of disperse payment parameters (bytes32, from CoreHashUtils)
-4. **executor**: Address authorized to execute (address, `0x0...0` for unrestricted)
+4. **originExecutor**: EOA that can initiate the transaction via tx.origin (address, `0x0...0` for anyone)
 5. **nonce**: User's centralized nonce from Core.sol (uint256)
 6. **isAsyncExec**: Execution mode - `true` for async, `false` for sync (boolean)
+
+**Dual-Executor Model:**
+- `senderExecutor`: Controls which address can execute via `msg.sender` (contract or EOA)
+- `originExecutor`: Controls which EOA can initiate via `tx.origin`
+- Both can be `address(0)` for maximum flexibility (anyone can execute/initiate)
+- Hash payload does NOT include executors (only operation parameters)
 
 ## Hash Payload Generation
 
@@ -49,7 +55,7 @@ bytes32 hashPayload = CoreHashUtils.hashDataForDispersePay(
 CoreHashUtils creates a deterministic hash that includes the recipient array:
 
 ```solidity
-// Internal implementation (simplified)
+// Actual CoreHashUtils implementation
 function hashDataForDispersePay(
     CoreStructs.DispersePayMetadata[] memory toData,
     address token,
@@ -57,7 +63,13 @@ function hashDataForDispersePay(
     uint256 priorityFee
 ) internal pure returns (bytes32) {
     return keccak256(
-        abi.encode("dispersePay", toData, token, amount, priorityFee)
+        abi.encode(
+            "dispersePay",
+            toData,
+            token,
+            amount,
+            priorityFee
+        )
     );
 }
 ```
@@ -67,6 +79,7 @@ function hashDataForDispersePay(
 - Hash includes the action identifier `"dispersePay"`
 - Total `amount` must equal sum of individual recipient amounts
 - Hash is deterministic: same parameters → same hash
+- **Executors are NOT part of the hash** - they're only in the signature payload
 
 ### DispersePayMetadata Struct
 
@@ -86,12 +99,13 @@ Core.sol verifies the signature using `validateAndConsumeNonce()`:
 ```solidity
 // Called internally by Core.sol.dispersePay()
 Core(coreAddress).validateAndConsumeNonce(
-    user,          // Signer's address
-    hashPayload,   // From CoreHashUtils
-    executor,      // Who can execute
-    nonce,         // User's nonce
-    isAsyncExec,   // Execution mode
-    signature      // EIP-191 signature
+    user,             // Signer's address
+    senderExecutor,   // Who can call via msg.sender
+    hashPayload,      // From CoreHashUtils
+    originExecutor,   // Who can initiate via tx.origin
+    nonce,            // User's nonce
+    isAsyncExec,      // Execution mode
+    signature         // EIP-191 signature
 );
 ```
 
@@ -101,8 +115,9 @@ Core(coreAddress).validateAndConsumeNonce(
 3. Recovers signer from signature
 4. Validates signer matches `user` parameter
 5. Checks nonce status
-6. Validates executor authorization
-7. Marks nonce as consumed
+6. Validates senderExecutor authorization (if not `0x0...0`, checks msg.sender)
+7. Validates originExecutor authorization (if not `0x0...0`, checks tx.origin)
+8. Marks nonce as consumed
 
 ## Complete Example: Disperse 0.1 ETH to 3 Recipients
 
@@ -119,20 +134,22 @@ CoreStructs.DispersePayMetadata[] memory toData =
 // Recipient 1: Address recipient (0.03 ETH)
 toData[0] = CoreStructs.DispersePayMetadata({
     amount: 30000000000000000,
-    to: bytes32(uint256(uint160(0x742d7b6b472c8f4bd58e6f9f6c82e8e6e7c82d8c)))
+    to: 0x742d7b6b472c8f4bd58e6f9f6c82e8e6e7c82d8c,
+    toIdentity: ""  // Empty for address-only
 });
 
 // Recipient 2: Username recipient (0.05 ETH)
-bytes32 aliceHash = keccak256(abi.encodePacked("alice"));
 toData[1] = CoreStructs.DispersePayMetadata({
     amount: 50000000000000000,
-    to: aliceHash
+    to: address(0),
+    toIdentity: "alice"  // Username for NameService resolution
 });
 
 // Recipient 3: Address recipient (0.02 ETH)
 toData[2] = CoreStructs.DispersePayMetadata({
     amount: 20000000000000000,
-    to: bytes32(uint256(uint160(0x8e3f2b4c5d6a7f8e9c1b2a3d4e5f6c7d8e9f0a1b)))
+    to: 0x8e3f2b4c5d6a7f8e9c1b2a3d4e5f6c7d8e9f0a1b,
+    toIdentity: ""  // Empty for address-only
 });
 ```
 
@@ -157,15 +174,15 @@ bytes32 hashPayload = CoreHashUtils.hashDataForDispersePay(
 
 **Parameters:**
 - `evvmId`: `1`
-- `serviceAddress`: `0xCoreContractAddress` (deployed Core.sol)
+- `senderExecutor`: `0x0000000000000000000000000000000000000000` (anyone can call)
 - `hashPayload`: `0xb7c3f2e9a4d5c8e7f9b2a3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4`
-- `executor`: `0x0000000000000000000000000000000000000000` (unrestricted)
+- `originExecutor`: `0x0000000000000000000000000000000000000000` (anyone can initiate)
 - `nonce`: `25`
 - `isAsyncExec`: `false`
 
 **Final Message:**
 ```
-1,0xCoreContractAddress,0xb7c3f2e9a4d5c8e7f9b2a3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4,0x0000000000000000000000000000000000000000,25,false
+1,0x0000000000000000000000000000000000000000,0xb7c3f2e9a4d5c8e7f9b2a3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4,0x0000000000000000000000000000000000000000,25,false
 ```
 
 ### Step 4: EIP-191 Formatted Hash
@@ -173,7 +190,7 @@ bytes32 hashPayload = CoreHashUtils.hashDataForDispersePay(
 ```
 keccak256(abi.encodePacked(
     "\x19Ethereum Signed Message:\n138",
-    "1,0xCoreContractAddress,0xb7c3f2e9a4d5c8e7f9b2a3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4,0x0000000000000000000000000000000000000000,25,false"
+    "1,0x0000000000000000000000000000000000000000,0xb7c3f2e9a4d5c8e7f9b2a3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4,0x0000000000000000000000000000000000000000,25,false"
 ))
 ```
 
@@ -181,7 +198,7 @@ keccak256(abi.encodePacked(
 
 ```javascript
 // Frontend example (ethers.js)
-const message = "1,0xCoreAddress,0xb7c3...d3e4,0x0000...0000,25,false";
+const message = "1,0x0000000000000000000000000000000000000000,0xb7c3...d3e4,0x0000000000000000000000000000000000000000,25,false";
 const signature = await signer.signMessage(message);
 ```
 

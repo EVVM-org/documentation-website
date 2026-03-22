@@ -40,6 +40,75 @@ Gasless cross-chain transactions:
 - **Priority Fees**: Economic incentives for Fisher executors
 - **Nonce-Based Security**: Replay attack prevention
 
+### Fisher Bridge Signature Model
+
+Fisher Bridge on Host Chain Station uses Core.sol's **dual-executor transaction model** with a specialized configuration:
+
+#### Host Chain Station (fisherBridgeSend)
+Uses `Core.validateAndConsumeNonce()` with **hardcoded executors**:
+
+```solidity
+core.validateAndConsumeNonce(
+    from,
+    fisherExecutor.current,  // senderExecutor (hardcoded)
+    hashPayload,
+    fisherExecutor.current,  // originExecutor (hardcoded)
+    nonce,
+    true,                    // async nonce
+    signature
+);
+```
+
+**Why Hardcoded?**
+- Only the Fisher executor can call `fisherBridgeSend()` (enforced by `onlyFisherExecutor` modifier)
+- Both `msg.sender` and `tx.origin` must be the Fisher executor
+- User signature explicitly authorizes the specific Fisher executor address
+- Provides accountability: operations are traceable to the authorized Fisher executor
+
+**Signature Format**:
+```
+{evvmId},{fisherExecutor},{hashPayload},{fisherExecutor},{nonce},true
+```
+
+Where both executor positions use the same `fisherExecutor.current` address.
+
+#### External Chain Station (fisherBridgeSendERC20/Coin)
+Uses **independent asyncNonce system** (NOT Core.sol):
+
+```solidity
+// External chain doesn't have Core.sol
+asyncNonce[from][nonce] mapping
+
+// Validates with SignatureRecover
+SignatureRecover.recoverSigner(
+    buildSignaturePayload(
+        evvmID,
+        fisherExecutor.current,  // Part of signature
+        hashPayload,
+        fisherExecutor.current,  // Part of signature
+        nonce,
+        true
+    ),
+    signature
+) == from
+```
+
+**Key Differences**:
+- No Core.sol on external chains
+- Uses local `asyncNonce` mapping for replay protection
+- Signature format similar but validated differently
+- Fisher executor address still part of signed payload
+
+### Signature Comparison
+
+| Aspect | Host Chain (fisherBridgeSend) | External Chain (fisherBridgeSendERC20) |
+|--------|-------------------------------|---------------------------------------|
+| **Validation** | Core.validateAndConsumeNonce | SignatureRecover.recoverSigner |
+| **Nonce System** | Core.sol centralized | Local asyncNonce mapping |
+| **Executors** | Hardcoded fisherExecutor.current | Encoded in signature payload |
+| **Access Control** | onlyFisherExecutor modifier | onlyFisherExecutor modifier |
+| **Signature Format** | {evvmId},{executor},{hash},{executor},{nonce},true | {evvmId},{executor},{hash},{executor},{nonce},true |
+
 ## When to Use
 
 **Ideal for:**

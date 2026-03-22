@@ -7,17 +7,23 @@ sidebar_position: 2
 # cancelOrder
 
 :::info[Signature Verification]
-cancelOrder uses Core.sol's centralized signature verification via `validateAndConsumeNonce()` with `P2PSwapHashUtils.hashDataForCancelOrder()`. Includes `originExecutor` parameter.
+cancelOrder uses Core.sol's centralized signature verification via `validateAndConsumeNonce()` with `P2PSwapHashUtils.hashDataForCancelOrder()`. Includes dual-executor parameters.
 :::
 
 **Function Signature**:
 ```solidity
 function cancelOrder(
     address user,
-    MetadataCancelOrder memory metadata,
-    uint256 priorityFeeEvvm,
-    uint256 nonceEvvm,
-    bytes memory signatureEvvm
+    address tokenA,
+    address tokenB,
+    uint256 orderId,
+    address senderExecutor,
+    address originExecutor,
+    uint256 nonce,
+    bytes memory signature,
+    uint256 priorityFeePay,
+    uint256 noncePay,
+    bytes memory signaturePay
 ) external
 ```
 
@@ -28,42 +34,43 @@ Cancels an existing order and refunds locked tokenA to the order creator. Only t
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `user` | `address` | Order owner requesting cancellation |
-| `metadata` | `MetadataCancelOrder` | Cancellation details including originExecutor, nonce, and signature |
-| `priorityFeeEvvm` | `uint256` | Optional MATE priority fee for faster execution |
-| `nonceEvvm` | `uint256` | Nonce for Core payment transaction (for priority fee) |
-| `signatureEvvm` | `bytes` | Signature for Core payment authorization (if priority fee > 0) |
-
-### MetadataCancelOrder Structure
-
-```solidity
-struct MetadataCancelOrder {
-    address tokenA;           // Token originally offered
-    address tokenB;           // Token originally requested
-    uint256 orderId;          // Order ID to cancel
-    address originExecutor;   // EOA that will execute (verified with tx.origin)
-    uint256 nonce;            // Core nonce for P2PSwap service
-    bytes signature;          // User's authorization signature
-}
-```
+| `tokenA` | `address` | Token originally offered |
+| `tokenB` | `address` | Token originally requested |
+| `orderId` | `uint256` | Order ID to cancel |
+| `senderExecutor` | `address` | Restricts which address can execute this operation via msg.sender (address(0) = anyone can execute) |
+| `originExecutor` | `address` | EOA that will initiate the transaction, verified via tx.origin (address(0) = anyone can initiate) |
+| `nonce` | `uint256` | User's nonce for P2PSwap service operations |
+| `signature` | `bytes` | User's authorization signature |
+| `priorityFeePay` | `uint256` | Optional MATE priority fee for faster execution |
+| `noncePay` | `uint256` | Nonce for Core payment transaction (for priority fee) |
+| `signaturePay` | `bytes` | Signature for Core payment authorization (if priority fee > 0) |
 
 ## Signature Requirements
 
 :::note[Operation Hash]
 ```solidity
 bytes32 hashPayload = P2PSwapHashUtils.hashDataForCancelOrder(
-    metadata.tokenA,
-    metadata.tokenB,
-    metadata.orderId
+    tokenA,
+    tokenB,
+    orderId
 );
 ```
 :::
 
 **Signature Format**:
 ```
-{evvmId},{p2pSwapAddress},{hashPayload},{originExecutor},{nonce},true
+{evvmId},{senderExecutor},{hashPayload},{originExecutor},{nonce},true
 ```
 
-**Payment Signature** (if priorityFeeEvvm > 0): Separate MATE payment signature required.
+Where:
+- `evvmId`: Chain ID from `block.chainid`
+- `senderExecutor`: Address that can execute via msg.sender
+- `hashPayload`: Result from `P2PSwapHashUtils.hashDataForCancelOrder(...)`
+- `originExecutor`: EOA that will initiate the transaction
+- `nonce`: User's nonce for P2PSwap service
+- `true`: Always async execution
+
+**Payment Signature** (if priorityFeePay > 0): Separate MATE payment signature required.
 
 ## Execution Flow
 
@@ -71,15 +78,16 @@ bytes32 hashPayload = P2PSwapHashUtils.hashDataForCancelOrder(
 ```solidity
 core.validateAndConsumeNonce(
     user,
+    senderExecutor,
     P2PSwapHashUtils.hashDataForCancelOrder(
-        metadata.tokenA,
-        metadata.tokenB,
-        metadata.orderId
+        tokenA,
+        tokenB,
+        orderId
     ),
-    metadata.originExecutor,
-    metadata.nonce,
+    originExecutor,
+    nonce,
     true,                      // Always async execution
-    metadata.signature
+    signature
 );
 ```
 
@@ -87,18 +95,18 @@ core.validateAndConsumeNonce(
 - Signature authenticity via EIP-191
 - Nonce hasn't been consumed
 - Hash matches cancellation parameters
-- Executor is the specified EOA (via `tx.origin`)
+- Executor restrictions (if specified)
 
 **On Failure**:
 - `Core__InvalidSignature()` - Invalid or mismatched signature
 - `Core__NonceAlreadyUsed()` - Nonce already consumed
-- `Core__InvalidExecutor()` - Executing EOA doesn't match originExecutor
+- `Core__InvalidExecutor()` - Executor restrictions not met
 
 ### 2. Market & Order Lookup
 ```solidity
-uint256 market = findMarket(metadata.tokenA, metadata.tokenB);
+uint256 market = findMarket(tokenA, tokenB);
 
-_validateOrderOwnership(market, metadata.orderId, user);
+_validateOrderOwnership(market, orderId, user);
 ```
 
 **Validation**:
@@ -111,27 +119,32 @@ _validateOrderOwnership(market, metadata.orderId, user);
 
 ### 3. Priority Fee Collection (Optional)
 ```solidity
-if (priorityFeeEvvm > 0) {
+if (priorityFeePay > 0) {
     requestPay(
         user,
         MATE_TOKEN_ADDRESS,
         0,                     // No principal payment
-        priorityFeeEvvm,
-        nonceEvvm,
+        priorityFeePay,
+        originExecutor,
+        noncePay,
         true,                  // Always async
-        signatureEvvm
+        signaturePay
     );
 }
 ```
 
 **Action**: If priority fee specified, collects MATE from user for executor reward.
 
+:::note[Service Payment Accountability]
+P2PSwap sets `senderExecutor = address(this)` when calling `requestPay()`, ensuring the payment is attributed to the P2PSwap service.
+:::
+
 ### 4. Refund TokenA
 ```solidity
 makeCaPay(
     user,
-    metadata.tokenA,
-    ordersInsideMarket[market][metadata.orderId].amountA
+    tokenA,
+    ordersInsideMarket[market][orderId].amountA
 );
 ```
 
@@ -139,7 +152,7 @@ makeCaPay(
 
 ### 5. Clear Order
 ```solidity
-_clearOrderAndUpdateMarket(market, metadata.orderId);
+_clearOrderAndUpdateMarket(market, orderId);
 ```
 
 **State Changes**:

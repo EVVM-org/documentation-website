@@ -42,8 +42,9 @@ All P2PSwap user functions follow this pattern:
 // 1. Centralized signature verification
 core.validateAndConsumeNonce(
     user,
+    senderExecutor,  // Controls msg.sender
     P2PSwapHashUtils.hashDataFor[Operation](...),
-    originExecutor,  // or address(0) for makeOrder
+    originExecutor,  // Controls tx.origin
     nonce,
     true,            // Always async execution
     signature
@@ -53,7 +54,7 @@ core.validateAndConsumeNonce(
 // ... market lookup, order validation ...
 
 // 3. Token transfers via Core
-requestPay(user, token, amount, priorityFee, nonceEvvm, true, signatureEvvm);
+requestPay(user, token, amount, priorityFee, originExecutor, noncePay, true, signaturePay);
 makeCaPay(recipient, token, amount);
 
 // 4. Staker rewards
@@ -83,16 +84,92 @@ hashDataForDispatchOrder(tokenA, tokenB, orderId)
 Universal signature format for all P2PSwap operations:
 
 ```
-{evvmId},{p2pSwapAddress},{hashPayload},{originExecutor},{nonce},true
+{evvmId},{senderExecutor},{hashPayload},{originExecutor},{nonce},true
 ```
 
 Where:
 - `evvmId`: Chain ID (from `block.chainid`)
-- `p2pSwapAddress`: P2PSwap contract address
+- `senderExecutor`: Address that can execute the operation via `msg.sender`
 - `hashPayload`: Result from `P2PSwapHashUtils.hashDataFor[Operation](...)`
-- `originExecutor`: EOA address that will execute the transaction (verified with `tx.origin` in Core.sol), or `address(0)` for makeOrder
+- `originExecutor`: EOA address that will initiate the transaction (verified with `tx.origin`)
 - `nonce`: User's nonce for P2PSwap service (from `core.getNonce(user, p2pSwapAddress)`)
 - `true`: Always async execution (`isAsyncExec = true`)
+
+## Dual-Executor Transaction Model
+
+P2PSwap uses **two independent executor parameters** for flexible transaction control:
+
+### senderExecutor (msg.sender control)
+Controls which address can call the contract function:
+
+```solidity
+core.validateAndConsumeNonce(
+    user,
+    senderExecutor,  // Validates msg.sender
+    hashPayload,
+    originExecutor,
+    nonce,
+    true,
+    signature
+);
+```
+
+**Common Patterns**:
+- `address(0)`: Anyone can execute (maximum flexibility)
+- `specificAddress`: Only that address can call the function (restriction)
+- `serviceAddress`: Service can execute on behalf of user
+
+**Use Case**: Allows users to restrict which contracts or addresses can execute their signed transactions (e.g., only through a specific relayer or service).
+
+### originExecutor (tx.origin control)
+Controls which EOA can initiate the entire transaction:
+
+```solidity
+// Validated inside Core.sol
+if (originExecutor != address(0) && tx.origin != originExecutor) {
+    revert Core__InvalidExecutor();
+}
+```
+
+**Common Patterns**:
+- `address(0)`: Any EOA can initiate (maximum flexibility)
+- `userEOA`: Only that EOA can initiate the transaction (personal execution)
+- `trustedEOA`: Only specific EOA can initiate (delegation)
+
+**Use Case**: Enables users to ensure only they (or a trusted party) can trigger the transaction, even if `msg.sender` is a contract.
+
+### Flexibility Mechanism
+
+Both executors support `address(0)` for maximum flexibility:
+
+```solidity
+// Example: Public execution (anyone can call, anyone can initiate)
+senderExecutor = address(0);
+originExecutor = address(0);
+
+// Example: Personal execution only
+senderExecutor = address(0);        // Any contract can call
+originExecutor = user;              // But only user's EOA can initiate
+
+// Example: Service-restricted
+senderExecutor = serviceAddress;    // Only service contract can call
+originExecutor = address(0);        // Any EOA can initiate
+
+// Example: Fully restricted
+senderExecutor = relayerContract;   // Only relayer can call
+originExecutor = userEOA;           // Only user's EOA can initiate
+```
+
+### P2PSwap Functions & Executors
+
+| Function | Typical senderExecutor | Typical originExecutor |
+|----------|------------------------|------------------------|
+| **makeOrder** | address(0) | address(0) |
+| **cancelOrder** | address(0) | user or address(0) |
+| **dispatchOrder_fillPropotionalFee** | address(0) | user or address(0) |
+| **dispatchOrder_fillFixedFee** | address(0) | user or address(0) |
+
+**Note**: makeOrder often uses `address(0)` for both executors to allow maximum flexibility in order creation.
 
 ### Nonce Management
 
@@ -234,12 +311,12 @@ Where `1x = core.getRewardAmount()` (MATE tokens)
 
 ## Operation Summary
 
-| Operation | Purpose | Hash Function | originExecutor |
-|-----------|---------|---------------|----------------|
-| **makeOrder** | Create order, lock tokenA | hashDataForMakeOrder(tokenA, tokenB, amountA, amountB) | ❌ address(0) |
-| **cancelOrder** | Cancel order, refund tokenA | hashDataForCancelOrder(tokenA, tokenB, orderId) | ✅ Yes |
-| **dispatchOrder_fillPropotionalFee** | Fill order with % fee | hashDataForDispatchOrder(tokenA, tokenB, orderId) | ✅ Yes |
-| **dispatchOrder_fillFixedFee** | Fill order with capped fee | hashDataForDispatchOrder(tokenA, tokenB, orderId) | ✅ Yes |
+| Operation | Purpose | Hash Function | Dual-Executor Usage |
+|-----------|---------|---------------|---------------------|
+| **makeOrder** | Create order, lock tokenA | hashDataForMakeOrder(tokenA, tokenB, amountA, amountB) | Both address(0) (flexible) |
+| **cancelOrder** | Cancel order, refund tokenA | hashDataForCancelOrder(tokenA, tokenB, orderId) | User-specified executors |
+| **dispatchOrder_fillPropotionalFee** | Fill order with % fee | hashDataForDispatchOrder(tokenA, tokenB, orderId) | User-specified executors |
+| **dispatchOrder_fillFixedFee** | Fill order with capped fee | hashDataForDispatchOrder(tokenA, tokenB, orderId) | User-specified executors |
 
 ## Admin Functions
 

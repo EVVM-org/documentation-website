@@ -14,6 +14,68 @@ The `SignatureUtil` library provides high-level signature verification specifica
 **License**: EVVM-NONCOMMERCIAL-1.0  
 **Import Path**: `@evvm/testnet-contracts/library/utils/SignatureUtil.sol`
 
+:::warning[Limited Use Case - External Chain Only]
+**SignatureUtil is NOT the standard for EVVM service development.**
+
+This library uses a **legacy signature format** that is only used for:
+- **TreasuryExternalChainStation** (cross-chain operations with independent async nonces)
+- **Custom community services** that operate independently from Core.sol
+
+For **standard EVVM services** (NameService, Staking, P2PSwap, Core.sol payments), use:
+- **`AdvancedStrings.buildSignaturePayload()`** - Builds centralized signature payloads
+- **`Core.validateAndConsumeNonce()`** - Validates and consumes nonces centrally
+- **HashUtils libraries** - Generate function-specific hashes
+
+See [AdvancedStrings documentation](./01-AdvancedStrings.md#buildsignaturepayload) for the current standard.
+:::
+
+## Architecture Context
+
+### Two Signature Patterns in EVVM
+
+#### 1. Centralized Pattern (Standard - 6 parameters)
+Used by Core.sol, NameService, Staking, P2PSwap, and most services:
+
+**Format**: `{evvmId},{senderExecutor},{hashPayload},{originExecutor},{nonce},{isAsyncExec}`
+
+**Built with**: `AdvancedStrings.buildSignaturePayload()`
+
+**Example**:
+```solidity
+// Standard EVVM service signature
+string memory payload = AdvancedStrings.buildSignaturePayload(
+    evvmId,
+    address(this),           // Service contract
+    hashPayload,             // Function-specific hash
+    originExecutor,          // User or relayer
+    nonce,
+    isAsyncExec
+);
+```
+
+#### 2. Independent Pattern (SignatureUtil - This Library)
+Used by TreasuryExternalChainStation ONLY:
+
+**Format**: `{evvmID},{functionName},{inputs}`
+
+**Built with**: `SignatureUtil.verifySignature()`
+
+**Example**:
+```solidity
+// External chain treasury operation
+bool valid = SignatureUtil.verifySignature(
+    evvmID,
+    "bridgeTokens",          // Function name
+    inputs,                  // Comma-separated params
+    signature,
+    user
+);
+```
+
+**Why Different?** External chains don't have access to Core.sol's centralized nonce management, so they use independent async nonces with simpler message construction.
+
+---
+
 ### Key Features
 
 - **One-function verification** for EVVM messages
@@ -37,7 +99,7 @@ function verifySignature(
 **Description**: Verifies that a signature matches the EVVM message format and was signed by the expected address
 
 **Parameters**:
-- `evvmID`: The EVVM blockchain ID (from `IEvvm.getEvvmID()`)
+- `evvmID`: The EVVM blockchain ID (from `Core.getEvvmID()`)
 - `functionName`: Name of the function being called (e.g., "orderCoffee")
 - `inputs`: Comma-separated parameter string (e.g., "latte,2,1000000000000000,12345")
 - `signature`: 65-byte ECDSA signature
@@ -152,7 +214,7 @@ function verifySignature(...) internal pure returns (bool) {
 ### Use Case 1: Service Action Verification
 ```solidity
 contract CoffeeShop {
-    IEvvm evvm;
+    Core core;
     
     function orderCoffee(
         address customer,
@@ -164,7 +226,7 @@ contract CoffeeShop {
     ) external {
         // Verify customer signed this order
         bool validSignature = SignatureUtil.verifySignature(
-            evvm.getEvvmID(),
+            core.getEvvmID(),
             "orderCoffee",
             string.concat(
                 coffeeType,
@@ -220,7 +282,7 @@ function processAction(
     string memory params,
     bytes memory signature
 ) external {
-    uint256 evvmID = evvm.getEvvmID();
+    uint256 evvmID = core.getEvvmID();
     
     // Verify signature if not from trusted executor
     if (msg.sender != trustedExecutor) {

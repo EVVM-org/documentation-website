@@ -5,99 +5,48 @@ sidebar_position: 7
 
 # Add Custom Metadata Signature Structure
 
+:::info[Centralized Verification]
+NameService signatures are **verified by Core.sol** using `validateAndConsumeNonce()`. Uses `NameServiceHashUtils.hashDataForAddCustomMetadata()` for hash generation.
+:::
+
 To authorize the `addCustomMetadata` operation within the Name Service, the user who **currently owns the username** must generate a cryptographic signature compliant with the [EIP-191](https://eips.ethereum.org/EIPS/eip-191) standard using the Ethereum Signed Message format.
 
-The signature verification process uses the `SignatureUtil` library. This signature proves the current username owner's intent and authorization to add or update a specific custom metadata field (`_value`) associated with their identity (`_identity`).
+## Signature Format
 
+```
+{evvmId},{senderExecutor},{hashPayload},{originExecutor},{nonce},{isAsyncExec}
+```
 
-## Signed Message Format
-
-The signature verification uses the `SignatureUtil.verifySignature` function with the following structure:
+## Hash Payload Generation
 
 ```solidity
-SignatureUtil.verifySignature(
-    evvmID,                                             // EVVM ID as uint256
-    "addCustomMetadata",                                // Action type
-    string.concat(                                      // Concatenated parameters
-        _identity,
-        ",",
-        _value,
-        ",",
-        AdvancedStrings.uintToString(_nameServiceNonce)
-    ),
-    signature,
-    signer
+import {NameServiceHashUtils} from "@evvm/testnet-contracts/library/signature/NameServiceHashUtils.sol";
+
+bytes32 hashPayload = NameServiceHashUtils.hashDataForAddCustomMetadata(
+    identity,  // Username
+    value      // Metadata value
 );
+// Internal: keccak256(abi.encode("addCustomMetadata", identity, value))
 ```
-
-### Internal Message Construction
-
-This results in a message format:
-```
-"{evvmID},addCustomMetadata,{identity},{value},{nameServiceNonce}"
-```
-
-## Message Components
-
-**1. EVVM ID (String):**
-- The result of `AdvancedStrings.uintToString(evvmID)`
-- *Purpose*: Identifies the specific EVVM instance
-
-**2. Action Type (String):**
-- Fixed value: `"addCustomMetadata"`
-- *Purpose*: Identifies this as an add custom metadata operation
-
-**3. Concatenated Parameters (String):**
-
-**3.1. Target Identity (String):**
-- The `_identity` string itself
-- *Purpose*: Specifies the identity (username) to which this custom metadata applies
-
-**3.2. Metadata Value (String):**
-- The `_value` string itself, exactly as provided by the user
-- *Purpose*: Represents the custom data being associated with the identity
-
-**3.3. Name Service Nonce (String):**
-- The result of `AdvancedStrings.uintToString(_nameServiceNonce)`
-- *Purpose*: Provides replay protection for metadata operations
 
 ## Example
 
 **Scenario:** Owner wants to add custom metadata to their identity "alice"
 
-**Parameters:**
-- `evvmID`: `1`
-- `_identity`: `"alice"`
-- `_value`: `"https://alice.example.com/profile"`
-- `_nameServiceNonce`: `12`
-
-**Signature verification call:**
 ```solidity
-SignatureUtil.verifySignature(
-    1,
-    "addCustomMetadata",
-    "alice,https://alice.example.com/profile,12",
-    signature,
-    signer
-);
+string memory identity = "alice";
+string memory value = "https://alice.example.com/profile";
+
+bytes32 hashPayload = NameServiceHashUtils.hashDataForAddCustomMetadata(identity, value);
 ```
 
-**Final message to be signed:**
-```
-1,addCustomMetadata,alice,https://alice.example.com/profile,12
-```
-
-**EIP-191 formatted message hash:**
-```
-keccak256(abi.encodePacked(
-    "\x19Ethereum Signed Message:\n59",
-    "1,addCustomMetadata,alice,https://alice.example.com/profile,12"
-))
-```
+**Message:** `1,0x0000000000000000000000000000000000000000,0x[hashPayload],0x0000000000000000000000000000000000000000,12,true`
 
 :::tip Technical Details
-
-- **Message Format**: `"{evvmID},{functionName},{parameters}"`
+- **Custom Fields**: Allows arbitrary data storage linked to username
+- **Owner-Only**: Only current username owner can add metadata
+- **Hash Independence**: Hash payload does NOT include executors
+:::
 - **EIP-191 Compliance**: Uses `"\x19Ethereum Signed Message:\n"` prefix with message length
 - **Authorization**: Only the current owner of the identity can add custom metadata
 - **Flexible Data**: `_value` can contain any string data (URLs, descriptions, custom information)

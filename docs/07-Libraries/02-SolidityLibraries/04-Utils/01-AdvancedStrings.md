@@ -187,6 +187,108 @@ string memory str = AdvancedStrings.bytes32ToString(hash);
 - Logging bytes32 data
 - Creating readable hash representations
 
+---
+
+### `buildSignaturePayload`
+```solidity
+function buildSignaturePayload(
+    uint256 evvmId,
+    address senderExecutor,
+    bytes32 hashPayload,
+    address originExecutor,
+    uint256 nonce,
+    bool isAsyncExec
+) internal pure returns (string memory payload)
+```
+
+**Description**: Builds the complete EIP-191 signature payload for EVVM Core.sol validation. This is the **primary function** for constructing signature messages in the centralized EVVM architecture.
+
+**Parameters**:
+- `evvmId`: Chain-specific EVVM instance identifier
+- `senderExecutor`: Service contract requesting validation (usually `address(this)`)
+- `hashPayload`: Function-specific parameter hash from HashUtils libraries
+- `originExecutor`: Original executor address (user or relayer)
+- `nonce`: Sequential (sync) or user-chosen (async) nonce
+- `isAsyncExec`: Nonce type (`true` = async, `false` = sync)
+
+**Returns**: Comma-separated signature payload string formatted as:
+```
+"{evvmId},{senderExecutor},{hashPayload},{originExecutor},{nonce},{isAsyncExec}"
+```
+
+**Example Output**:
+```
+"1,0xabcd1234...,0x1c8aff95...,0x5678efgh...,42,true"
+```
+
+**Example Usage with Core.sol Pay**:
+```solidity
+import {AdvancedStrings} from "@evvm/testnet-contracts/library/utils/AdvancedStrings.sol";
+import {CoreHashUtils} from "@evvm/testnet-contracts/library/utils/signature/CoreHashUtils.sol";
+
+// Step 1: Generate function-specific hash
+bytes32 hashPayload = CoreHashUtils.hashDataForPay(
+    recipientAddress,
+    "alice",                    // username
+    tokenAddress,
+    1000000000000000000,        // 1 token
+    100000000000000000          // 0.1 token fee
+);
+
+// Step 2: Build signature payload
+string memory payload = AdvancedStrings.buildSignaturePayload(
+    evvmMetadata.EvvmID,        // Chain ID
+    address(this),              // Service contract (senderExecutor)
+    hashPayload,                // Function-specific hash
+    msg.sender,                 // originExecutor
+    nonce,                      // User's nonce
+    true                        // isAsyncExec
+);
+
+// Step 3: Verify signature with payload
+address signer = SignatureRecover.recoverSigner(payload, signature);
+require(signer == expectedUser, "Invalid signature");
+```
+
+**Integration with Core.validateAndConsumeNonce**:
+```solidity
+// Core.sol internally uses buildSignaturePayload for validation
+core.validateAndConsumeNonce(
+    user,
+    hashPayload,
+    originExecutor,
+    nonce,
+    isAsyncExec,
+    signature
+);
+
+// Which internally reconstructs the same payload:
+// AdvancedStrings.buildSignaturePayload(
+//     evvmMetadata.EvvmID,
+//     msg.sender,              // Service calling validateAndConsumeNonce
+//     hashPayload,
+//     originExecutor,
+//     nonce,
+//     isAsyncExec
+// )
+```
+
+**Format Details**:
+- Uses lowercase hex for addresses (`0xabcd...` not `0xABCD...`)
+- Uses lowercase hex for bytes32 hashes (66 characters: `0x` + 64 hex)
+- Uses decimal for uint256 values
+- Uses lowercase `"true"` or `"false"` for booleans
+- All components comma-separated, no spaces
+
+**Related Functions**:
+- `CoreHashUtils.hashDataForPay()` - Generates hashPayload for Core.pay
+- `NameServiceHashUtils.*` - Generates hashPayload for NameService operations
+- `StakingHashUtils.*` - Generates hashPayload for Staking operations
+- `P2PSwapHashUtils.*` - Generates hashPayload for P2PSwap operations
+- `Core.validateAndConsumeNonce()` - Validates signatures using this payload format
+
+---
+
 ## Common Use Cases
 
 ### Use Case 1: Constructing Signature Messages
@@ -277,8 +379,66 @@ function debugTransaction(
 
 ## Integration with EVVM
 
-### Used by SignatureUtil
+### Primary Use: Core.sol Centralized Signatures
+The `buildSignaturePayload` function is the **standard method** for constructing signatures in EVVM services:
+
 ```solidity
+// How EVVM services validate signatures via Core.sol
+import {AdvancedStrings} from "@evvm/testnet-contracts/library/utils/AdvancedStrings.sol";
+import {CoreHashUtils} from "@evvm/testnet-contracts/library/utils/signature/CoreHashUtils.sol";
+import {SignatureRecover} from "@evvm/testnet-contracts/library/primitives/SignatureRecover.sol";
+
+function processPayment(
+    address user,
+    address recipient,
+    address token,
+    uint256 amount,
+    uint256 priorityFee,
+    uint256 nonce,
+    bytes memory signature
+) internal {
+    // Generate function-specific hash
+    bytes32 hashPayload = CoreHashUtils.hashDataForPay(
+        recipient,
+        "",
+        token,
+        amount,
+        priorityFee
+    );
+    
+    // Build signature payload (centralized format)
+    string memory payload = AdvancedStrings.buildSignaturePayload(
+        getEvvmID(),
+        address(this),
+        hashPayload,
+        user,
+        nonce,
+        true
+    );
+    
+    // Verify signature
+    require(
+        SignatureRecover.recoverSigner(payload, signature) == user,
+        "Invalid signature"
+    );
+    
+    // Or use Core.validateAndConsumeNonce directly (recommended):
+    core.validateAndConsumeNonce(
+        user,
+        hashPayload,
+        user,
+        nonce,
+        true,
+        signature
+    );
+}
+```
+
+### Legacy Use: SignatureUtil (External Chain Only)
+For External Chain treasury operations, the older `SignatureUtil` pattern is still used:
+
+```solidity
+// ONLY for TreasuryExternalChainStation - not standard services
 library SignatureUtil {
     function verifySignature(
         uint256 evvmID,
@@ -301,24 +461,15 @@ library SignatureUtil {
 }
 ```
 
-### Used by EvvmService
+### Used with EvvmService
 ```solidity
-abstract contract EvvmService {
-    function validateServiceSignature(
-        string memory functionName,
-        string memory inputs,
-        bytes memory signature,
-        address expectedSigner
-    ) internal view virtual {
-        if (!SignatureUtil.verifySignature(
-            evvm.getEvvmID(), // Converted with AdvancedStrings internally
-            functionName,
-            inputs,
-            signature,
-            expectedSigner
-        )) revert InvalidServiceSignature();
-    }
-}
+// AdvancedStrings is used internally by SignatureUtil when building the message string.
+// In modern EVVM services, prefer core.validateAndConsumeNonce() which handles
+// signature verification and nonce consumption atomically using the centralized format:
+// {evvmId},{senderExecutor},{hashPayload},{originExecutor},{nonce},{isAsyncExec}
+//
+// SignatureUtil.verifySignature() remains useful for custom service-level signatures
+// that follow the simpler "{evvmID},{functionName},{inputs}" format.
 ```
 
 ## Gas Optimization Tips
@@ -338,7 +489,7 @@ string memory message2 = string.concat("Message2: ", AdvancedStrings.uintToStrin
 ### 2. Use Constants for Fixed Strings
 ```solidity
 // Good - use string literals for fixed values
-string memory token0 = getEtherAddress() == address(0) ? "ETH" : "TOKEN";
+string memory token0 = token == address(0) ? "ETH" : "TOKEN";
 
 // Bad - unnecessary conversion
 string memory token0 = AdvancedStrings.addressToString(address(0)); // "0x0000..."

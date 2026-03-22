@@ -11,7 +11,7 @@ This function uses **Core.sol's centralized signature verification** via `valida
 :::
 
 **Function Type**: External  
-**Function Signature**: `makeOffer(address user, string memory username, uint256 amount, uint256 expirationDate, address originExecutor, uint256 nonce, bytes memory signature, uint256 priorityFeeEvvm, uint256 nonceEvvm, bytes memory signatureEvvm) external returns (uint256 offerID)`
+**Function Signature**: `makeOffer(address user, string memory username, uint256 amount, uint256 expirationDate, address senderExecutor, address originExecutor, uint256 nonce, bytes memory signature, uint256 priorityFeeEvvm, uint256 nonceEvvm, bytes memory signatureEvvm) external returns (uint256 offerID)`
 
 Creates a formal, time-limited offer to purchase an existing username by locking principal tokens in the marketplace. The offer commits 99.5% of the amount to potential purchase (0.5% marketplace fee). Can be executed by any address, with staker rewards distributed to `msg.sender` if they are registered as a staker.
 
@@ -23,6 +23,7 @@ Creates a formal, time-limited offer to purchase an existing username by locking
 | `username` | `string` | Target username for purchase offer |
 | `amount` | `uint256` | Total principal tokens to commit (gross amount including 0.5% fee) |
 | `expirationDate` | `uint256` | Unix timestamp when offer automatically expires |
+| `senderExecutor` | `address` | Optional msg.sender restriction. Use `address(0)` for any service, or specify address to restrict execution. |
 | `originExecutor` | `address` | The address authorized to submit this specific signed transaction |
 | `nonce` | `uint256` | User's Core nonce for this signature (prevents replay attacks) |
 | `signature` | `bytes` | EIP-191 signature from `user` authorizing offer creation |
@@ -41,7 +42,7 @@ This function requires **two signatures** from the user:
 Authorizes the marketplace offer creation:
 
 ```
-Message Format: {evvmId},{serviceAddress},{hashPayload},{originExecutor},{nonce},{isAsyncExec}
+Message Format: {evvmId},{senderExecutor},{hashPayload},{originExecutor},{nonce},{isAsyncExec}
 Hash Payload: NameServiceHashUtils.hashDataForMakeOffer(username, amount, expirationDate)
 Async Execution: true (always)
 ```
@@ -61,7 +62,7 @@ bytes32 hashPayload = NameServiceHashUtils.hashDataForMakeOffer(
 string memory message = string.concat(
     Strings.toString(block.chainid),
     ",",
-    Strings.toHexString(address(nameServiceContract)),
+    Strings.toHexString(senderExecutor),
     ",",
     Strings.toHexString(uint256(hashPayload)),
     ",",
@@ -96,6 +97,7 @@ Core.sol validates the signature and consumes the nonce:
 ```solidity
 core.validateAndConsumeNonce(
     user,
+    senderExecutor,
     Hash.hashDataForMakeOffer(username, amount, expirationDate),
     originExecutor,
     nonce,
@@ -107,6 +109,7 @@ core.validateAndConsumeNonce(
 **Validation Steps**:
 - Verifies nonce hasn't been used (prevents replay)
 - Validates EIP-191 signature matches user + payload
+- Confirms `msg.sender == senderExecutor` (if specified)
 - Confirms `tx.origin == originExecutor` (EOA verification)
 - Marks nonce as consumed (prevents double-use)
 
@@ -159,24 +162,33 @@ if (amount == 0)
 Transfers the offer amount from user to NameService contract:
 
 ```solidity
-requestPay(user, amount, priorityFeeEvvm, nonceEvvm, signatureEvvm);
+requestPay(user, amount, priorityFeeEvvm, originExecutor, nonceEvvm, signatureEvvm);
 ```
 
 This internally calls:
 ```solidity
 core.pay(
-    user,                    // Payer
-    address(this),          // Recipient (NameService)
-    amount + priorityFeeEvvm,
-    nonceEvvm,
-    true,                   // Always async
-    signatureEvvm
+    user,                       // Payer
+    address(this),              // Recipient (NameService)
+    "",                         // No identity
+    principalToken,             // PT
+    amount + priorityFeeEvvm,   // Total amount
+    priorityFeeEvvm,            // Priority fee
+    address(this),              // senderExecutor (service accountability)
+    originExecutor,             // originExecutor (from parameter)
+    nonceEvvm,                  // Payment nonce
+    true,                       // Always async
+    signatureEvvm               // Payment sig
 );
 ```
 
 **Token Flow**:
 - User → NameService: `amount + priorityFeeEvvm`
 - Locked for potential username transfer
+
+:::info[Service Payment Accountability]
+When NameService dispatches payments, `senderExecutor` is set to `address(this)` (the NameService contract) while `originExecutor` comes from the function parameter. This ensures proper tracking of service-initiated payments.
+:::
 
 **Reverts With**: Any Core.pay() errors (insufficient balance, invalid signature)
 

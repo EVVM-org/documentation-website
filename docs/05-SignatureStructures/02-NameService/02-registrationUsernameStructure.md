@@ -5,99 +5,104 @@ sidebar_position: 2
 
 # Registration of username Signature Structure 
 
+:::info[Centralized Verification]
+NameService signatures are **verified by Core.sol** using `validateAndConsumeNonce()`. Uses `NameServiceHashUtils.hashDataForRegistrationUsername()` for hash generation.
+:::
+
 To authorize the `registrationUsername` operation (the reveal phase following pre-registration), the user must generate a cryptographic signature compliant with the [EIP-191](https://eips.ethereum.org/EIPS/eip-191) standard using the Ethereum Signed Message format.
 
-The signature verification process uses the `SignatureUtil` library which implements the standard Ethereum message signing protocol. This signature proves ownership of the pre-registration commit by revealing the original username and the secret `clowNumber`. The message is constructed by concatenating the EVVM ID, action type (`"registrationUsername"`), and parameters, then wrapped with the EIP-191 prefix.
+## Signature Format
 
-## Signed Message Format
+```
+{evvmId},{senderExecutor},{hashPayload},{originExecutor},{nonce},{isAsyncExec}
+```
 
-The signature verification uses the `SignatureUtil.verifySignature` function with the following structure:
+**Components:**
+1. **evvmId**: Network identifier (uint256, typically `1`)
+2. **senderExecutor**: Address that can call the function via msg.sender (`0x0...0` for anyone)
+3. **hashPayload**: Hash of registration parameters (bytes32, from NameServiceHashUtils)
+4. **originExecutor**: EOA that can initiate the transaction via tx.origin (`0x0...0` for anyone)
+5. **nonce**: User's centralized nonce from Core.sol (uint256)
+6. **isAsyncExec**: Always `true` for NameService (async execution)
+
+## Hash Payload Generation
+
+The `hashPayload` is generated using **NameServiceHashUtils.hashDataForRegistrationUsername()**:
 
 ```solidity
-SignatureUtil.verifySignature(
-    evvmID,                                             // EVVM ID as uint256
-    "registrationUsername",                             // Action type
-    string.concat(                                      // Concatenated parameters
-        _username,
-        ",",
-        AdvancedStrings.uintToString(_clowNumber),
-        ",",
-        AdvancedStrings.uintToString(_nameServiceNonce)
-    ),
-    signature,
-    signer
+import {NameServiceHashUtils} from "@evvm/testnet-contracts/library/signature/NameServiceHashUtils.sol";
+
+bytes32 hashPayload = NameServiceHashUtils.hashDataForRegistrationUsername(
+    username,    // The username to register
+    lockNumber   // Secret number from pre-registration
+);
+
+// Internal implementation
+// keccak256(abi.encode("registrationUsername", username, lockNumber))
+```
+
+## Centralized Verification
+
+Core.sol verifies the signature using `validateAndConsumeNonce()`:
+
+```solidity
+// Called internally by NameService.sol.registrationUsername()
+Core(coreAddress).validateAndConsumeNonce(
+    user,             // Signer's address
+    senderExecutor,   // Who can call via msg.sender
+    hashPayload,      // From NameServiceHashUtils
+    originExecutor,   // Who can initiate via tx.origin
+    nonce,            // User's nonce
+    true,             // Always async for NameService
+    signature         // EIP-191 signature
 );
 ```
-
-### Internal Message Construction
-
-Internally, the `SignatureUtil.verifySignature` function constructs the final message by concatenating:
-
-```solidity
-string.concat(evvmID, ",", functionName, ",", inputs)
-```
-
-This results in a message format:
-```
-"{evvmID},registrationUsername,{username},{clowNumber},{nameServiceNonce}"
-```
-
-### EIP-191 Message Hashing
-
-The message is then hashed according to EIP-191 standard:
-
-```solidity
-bytes32 messageHash = keccak256(
-    abi.encodePacked(
-        "\x19Ethereum Signed Message:\n",
-        AdvancedStrings.uintToString(bytes(message).length),
-        message
-    )
-);
-```
-
-## Message Components
-
-The signature verification takes three main parameters:
-
-**1. EVVM ID (String):**
-- The result of `AdvancedStrings.uintToString(evvmID)`
-- *Purpose*: Identifies the specific EVVM instance
-
-**2. Action Type (String):**
-- Fixed value: `"registrationUsername"`
-- *Purpose*: Identifies this as a username registration operation (reveal phase)
-
-**3. Concatenated Parameters (String):**
-The parameters are concatenated with comma separators:
-
-**3.1. Username (String):**
-- The `_username` string itself
-- *Purpose*: The actual, plain-text username that the user intends to register. This must match the username used to generate the hash during pre-registration
-
-**3.2. Clow Number (String):**
-- The result of `AdvancedStrings.uintToString(_clowNumber)`
-- *Purpose*: The string representation of the secret `uint256` number chosen by the user during the pre-registration phase
-
-**3.3. Name Service Nonce (String):**
-- The result of `AdvancedStrings.uintToString(_nameServiceNonce)`
-- *Purpose*: Provides replay protection for registration actions by the user
 
 ## Example
 
-Here's a practical example of constructing a signature message for registering a username:
+**Scenario:** User wants to register the username "alice" revealing the secret lockNumber from pre-registration
 
-**Scenario:** User wants to register the username "alice" revealing the secret clowNumber from pre-registration
-
-**Parameters:**
-- `evvmID`: `1` (EVVM instance ID)
-- `_username`: `"alice"`
-- `_clowNumber`: `123456789` (secret value from pre-registration)
-- `_nameServiceNonce`: `5`
-
-**Signature verification call:**
+**Step 1: Generate Hash Payload**
 ```solidity
-SignatureUtil.verifySignature(
+import {NameServiceHashUtils} from "@evvm/testnet-contracts/library/signature/NameServiceHashUtils.sol";
+
+string memory username = "alice";
+uint256 lockNumber = 123456789;  // Secret from pre-registration
+
+bytes32 hashPayload = NameServiceHashUtils.hashDataForRegistrationUsername(
+    username,
+    lockNumber
+);
+// Result: 0x1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b
+```
+
+**Step 2: Construct Signature Message**
+```
+1,0x0000000000000000000000000000000000000000,0x1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b,0x0000000000000000000000000000000000000000,5,true
+```
+
+Components:
+- `evvmId`: `1`
+- `senderExecutor`: `0x0000...` (anyone can call)
+- `hashPayload`: `0x1a2b...` (from Step 1)
+- `originExecutor`: `0x0000...` (anyone can initiate)
+- `nonce`: `5`
+- `isAsyncExec`: `true`
+
+**Step 3: Sign with Wallet**
+```javascript
+const message = "1,0x0000000000000000000000000000000000000000,0x1a2b...a2b,0x0000000000000000000000000000000000000000,5,true";
+const signature = await signer.signMessage(message);
+```
+
+:::tip Technical Details
+
+- **Commit-Reveal Scheme**: Registration is phase 2 after pre-registration (commit). The lockNumber proves ownership of the pre-registration.
+- **Hash Independence**: The hash payload does NOT include executors (only username, lockNumber)
+- **Operation Name**: "registrationUsername" is included in hash via NameServiceHashUtils
+- **Async Execution**: Always uses async nonces (`isAsyncExec: true`)
+
+:::
     1,  // evvmID as uint256
     "registrationUsername", // action type
     "alice,123456789,5",

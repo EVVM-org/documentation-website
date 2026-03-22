@@ -79,17 +79,17 @@ import "@evvm/testnet-contracts/interfaces/ICore.sol";
 import "@evvm/testnet-contracts/interfaces/INameService.sol";
 
 contract MyService {
-    IEvvm public immutable evvm;
+    ICore public immutable core;
     INameService public immutable nameService;
 
-    constructor(address _evvm, address _nameService) {
-        evvm = IEvvm(_evvm);
+    constructor(address _core, address _nameService) {
+        core = ICore(_core);
         nameService = INameService(_nameService);
     }
 
     function makePayment(address to, uint256 amount) external {
-        // Use EVVM interface for payments
-        evvm.pay(/* parameters */);
+        // Use Core interface for payments
+        core.pay(/* parameters */);
     }
 }
 ```
@@ -116,19 +116,17 @@ Here's a complete template demonstrating best practices for EVVM service integra
 pragma solidity ^0.8.13;
 
 import {EvvmService} from "@evvm/testnet-contracts/library/EvvmService.sol";
-import {AdvancedStrings} from "@evvm/testnet-contracts/library/utils/AdvancedStrings.sol";
 
 contract MyEVVMService is EvvmService {
-    // State variables
     address public serviceOwner;
 
     error Unauthorized();
 
     constructor(
-        address _evvmAddress,
+        address _coreAddress,
         address _stakingAddress,
         address _serviceOwner
-    ) EvvmService(_evvmAddress, _stakingAddress) {
+    ) EvvmService(_coreAddress, _stakingAddress) {
         serviceOwner = _serviceOwner;
     }
 
@@ -142,63 +140,61 @@ contract MyEVVMService is EvvmService {
      * @param clientAddress Address of the client
      * @param serviceData Service-specific data
      * @param serviceAmount Amount to charge for the service
+     * @param senderExecutor Address of this contract (pass address(this))
+     * @param originExecutor EOA allowed to initiate (address(0) for any)
      * @param nonce Service nonce for replay protection
-     * @param signature Client's signature authorizing the service
+     * @param isAsyncExec Async (true) or sync (false) nonce
+     * @param signature Client's signature authorizing the service action
      * @param priorityFee_EVVM Fee for fisher executing payment
      * @param nonce_EVVM EVVM payment nonce
-     * @param priorityFlag_EVVM Async (true) or sync (false) nonce
+     * @param isAsyncExec_EVVM Async (true) or sync (false) nonce for payment
      * @param signature_EVVM Payment authorization signature
      */
     function executeService(
         address clientAddress,
         string memory serviceData,
         uint256 serviceAmount,
+        address senderExecutor,
+        address originExecutor,
         uint256 nonce,
+        bool isAsyncExec,
         bytes memory signature,
         uint256 priorityFee_EVVM,
         uint256 nonce_EVVM,
-        bool priorityFlag_EVVM,
+        bool isAsyncExec_EVVM,
         bytes memory signature_EVVM
     ) external {
-        // 1. Verify client signature for service authorization
-        validateServiceSignature(
-            "executeService",
-            string.concat(
-                serviceData,
-                ",",
-                AdvancedStrings.uintToString(serviceAmount),
-                ",",
-                AdvancedStrings.uintToString(nonce)
-            ),
-            signature,
-            clientAddress
+        // 1. Verify client signature and consume nonce (prevents replay attacks)
+        core.validateAndConsumeNonce(
+            clientAddress,
+            senderExecutor,
+            keccak256(abi.encode("executeService", serviceData, serviceAmount)),
+            originExecutor,
+            nonce,
+            isAsyncExec,
+            signature
         );
 
-        // 2. Check nonce hasn't been used (replay protection)
-        verifyAsyncServiceNonce(clientAddress, nonce);
-
-        // 3. Process payment from client to this service
+        // 2. Process payment from client to this service
         requestPay(
             clientAddress,
-            getEtherAddress(),      // ETH token
+            core.getChainHostCoinAddress(),
             serviceAmount,
             priorityFee_EVVM,
+            originExecutor,
             nonce_EVVM,
-            priorityFlag_EVVM,
+            isAsyncExec_EVVM,
             signature_EVVM
         );
 
-        // 4. Execute service logic
+        // 3. Execute service logic
         _performServiceLogic(clientAddress, serviceData);
 
-        // 5. Reward fisher if service is staker
-        if (evvm.isAddressStaker(address(this))) {
-            makeCaPay(msg.sender, getEtherAddress(), priorityFee_EVVM);
-            makeCaPay(msg.sender, getPrincipalTokenAddress(), evvm.getRewardAmount() / 2);
+        // 4. Reward fisher if service is staker
+        if (core.isAddressStaker(address(this))) {
+            makeCaPay(msg.sender, core.getChainHostCoinAddress(), priorityFee_EVVM);
+            makeCaPay(msg.sender, getPrincipalTokenAddress(), core.getRewardAmount() / 2);
         }
-
-        // 6. Mark nonce as used
-        markAsyncServiceNonceAsUsed(clientAddress, nonce);
     }
 
     function _performServiceLogic(
@@ -220,12 +216,12 @@ contract MyEVVMService is EvvmService {
     }
 
     function withdrawFunds(address to) external onlyOwner {
-        uint256 ethBalance = evvm.getBalance(address(this), getEtherAddress());
-        makeCaPay(to, getEtherAddress(), ethBalance);
+        uint256 ethBalance = core.getBalance(address(this), core.getChainHostCoinAddress());
+        makeCaPay(to, core.getChainHostCoinAddress(), ethBalance);
     }
 
     function withdrawRewards(address to) external onlyOwner {
-        uint256 mateBalance = evvm.getBalance(address(this), getPrincipalTokenAddress());
+        uint256 mateBalance = core.getBalance(address(this), getPrincipalTokenAddress());
         makeCaPay(to, getPrincipalTokenAddress(), mateBalance);
     }
 }
@@ -241,15 +237,16 @@ pragma solidity ^0.8.13;
 
 import {ICore} from "@evvm/testnet-contracts/interfaces/ICore.sol";
 import {SignatureUtil} from "@evvm/testnet-contracts/library/utils/SignatureUtil.sol";
-import {AsyncNonceService} from "@evvm/testnet-contracts/library/utils/service/AsyncNonceService.sol";
-import {AdvancedStrings} from "@evvm/testnet-contracts/library/utils/AdvancedStrings.sol";
+import {ICore} from "@evvm/testnet-contracts/interfaces/ICore.sol";
 
-contract ManualEVVMService is AsyncNonceService {
-    IEvvm public immutable evvm;
+contract ManualEVVMService {
+    ICore public immutable core;
     address public serviceOwner;
 
-    constructor(address _evvm, address _owner) {
-        evvm = IEvvm(_evvm);
+    error Unauthorized();
+
+    constructor(address _coreAddress, address _owner) {
+        core = ICore(_coreAddress);
         serviceOwner = _owner;
     }
 
@@ -257,107 +254,92 @@ contract ManualEVVMService is AsyncNonceService {
         address clientAddress,
         string memory serviceData,
         uint256 serviceAmount,
+        address senderExecutor,
+        address originExecutor,
         uint256 nonce,
+        bool isAsyncExec,
         bytes memory signature,
         uint256 priorityFee_EVVM,
         uint256 nonce_EVVM,
-        bool priorityFlag_EVVM,
+        bool isAsyncExec_EVVM,
         bytes memory signature_EVVM
     ) external {
-        // 1. Verify client signature for service authorization
-        require(
-            SignatureUtil.verifySignature(
-                address(evvm),
-                "executeService",
-                string.concat(
-                    serviceData, ",",
-                    AdvancedStrings.uintToString(serviceAmount), ",",
-                    AdvancedStrings.uintToString(nonce)
-                ),
-                signature,
-                clientAddress
-            ),
-            "Invalid signature"
+        // 1. Verify client signature and consume nonce (prevents replay attacks)
+        core.validateAndConsumeNonce(
+            clientAddress,
+            senderExecutor,
+            keccak256(abi.encode("executeService", serviceData, serviceAmount)),
+            originExecutor,
+            nonce,
+            isAsyncExec,
+            signature
         );
 
-        // 2. Check nonce hasn't been used (replay protection)
-        require(verifyAsyncServiceNonce(clientAddress, nonce), "Nonce already used");
-
-        // 3. Process payment from client to this service
-        evvm.pay(
-            clientAddress,      // from
-            address(this),      // to_address
-            "",                 // to_identity
-            address(0),         // ETH token
-            serviceAmount,      // amount
-            priorityFee_EVVM,   // priorityFee
-            nonce_EVVM,         // nonce
-            priorityFlag_EVVM,  // priority
-            address(this),      // executor
-            signature_EVVM      // signature
+        // 2. Process payment from client to this service
+        core.pay(
+            clientAddress,          // from
+            address(this),          // to_address
+            "",                     // to_identity (empty = use address)
+            core.getChainHostCoinAddress(), // token (native coin)
+            serviceAmount,          // amount
+            priorityFee_EVVM,       // priorityFee
+            address(this),          // senderExecutor
+            originExecutor,         // originExecutor
+            nonce_EVVM,             // nonce
+            isAsyncExec_EVVM,       // isAsyncExec
+            signature_EVVM          // signature
         );
 
-        // 4. Execute service logic
-        _performServiceLogic(clientAddress, serviceData, serviceAmount);
+        // 3. Execute service logic
+        _performServiceLogic(clientAddress, serviceData);
 
-        // 5. Reward fisher if service is staker
-        if (evvm.isAddressStaker(address(this))) {
-            evvm.caPay(msg.sender, address(0), priorityFee_EVVM);
-            evvm.caPay(msg.sender, address(1), evvm.getRewardAmount() / 2);
+        // 4. Reward fisher if service is staker
+        if (core.isAddressStaker(address(this))) {
+            core.caPay(msg.sender, core.getChainHostCoinAddress(), priorityFee_EVVM);
+            core.caPay(msg.sender, address(1), core.getRewardAmount() / 2);
         }
-
-        // 6. Mark nonce as used
-        markAsyncServiceNonceAsUsed(clientAddress, nonce);
     }
 
     function _performServiceLogic(
         address client,
-        string memory data,
-        uint256 amount
+        string memory data
     ) internal {
         // Implement your service logic here
     }
 
-    function stakeService(uint256 amount) external {
-        require(msg.sender == serviceOwner, "Unauthorized");
-        // Approve and stake MATE tokens
-        // Implementation depends on your staking contract integration
-    }
-
     function withdrawFunds() external {
-        require(msg.sender == serviceOwner, "Unauthorized");
-        uint256 ethBalance = evvm.getBalance(address(this), address(0));
-        evvm.caPay(serviceOwner, address(0), ethBalance);
+        if (msg.sender != serviceOwner) revert Unauthorized();
+        uint256 ethBalance = core.getBalance(address(this), core.getChainHostCoinAddress());
+        core.caPay(serviceOwner, core.getChainHostCoinAddress(), ethBalance);
     }
 }
 ```
 
 ### Key Implementation Patterns
 
-1. **Interface Integration**: Use `IEvvm` interface for all EVVM operations
+1. **Interface Integration**: Use `ICore` interface for all EVVM Core operations
 2. **Dual Signature Pattern**: Service authorization + payment signatures
-3. **Nonce Management**: Use `AsyncNonceService` for replay protection
-4. **Signature Verification**: Use `SignatureUtil.verifySignature()` for validating client signatures
-5. **Fisher Incentives**: Reward fishers who execute transactions
-6. **Modular Design**: Separate service logic from EVVM integration
+3. **Centralized Nonce Management**: Use `core.validateAndConsumeNonce()` — no custom nonce tracking needed
+4. **Fisher Incentives**: Reward fishers who execute transactions
+5. **Modular Design**: Separate service logic from EVVM integration
 
-### Universal Message Format
+:::tip[Prefer EvvmService]
+The `EvvmService` base contract is recommended over manual integration — it provides `requestPay`, `makeCaPay`, `_makeStakeService`, and other helpers, reducing boilerplate significantly. See [EvvmService documentation](../02-SolidityLibraries/02-EvvmService.md).
+:::
 
-Service signatures follow the standard EVVM pattern:
+### Universal Signature Format
 
-```
-"<evvmID>,<functionName>,<param1>,<param2>,...,<paramN>"
-```
-
-Example for a generic service:
+All EVVM service signatures follow the centralized format established by Core.sol:
 
 ```
-"1,executeService,serviceData,1000000000000000000,100"
+{evvmId},{senderExecutor},{hashPayload},{originExecutor},{nonce},{isAsyncExec}
 ```
+
+Where `hashPayload = keccak256(abi.encode("functionName", param1, param2, ..., paramN))`
 
 This template can be adapted for any service type by:
 
-- Changing function names and parameters
+- Changing function names and parameters in the `hashPayload`
 - Implementing custom service logic in `_performServiceLogic`
 - Adding service-specific state variables and functions
 

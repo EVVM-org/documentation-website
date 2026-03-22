@@ -11,7 +11,7 @@ This function uses **Core.sol's centralized signature verification** via `valida
 :::
 
 **Function Type**: External  
-**Function Signature**: `acceptOffer(address user, string memory username, uint256 offerID, address originExecutor, uint256 nonce, bytes memory signature, uint256 priorityFeeEvvm, uint256 nonceEvvm, bytes memory signatureEvvm) external`
+**Function Signature**: `acceptOffer(address user, string memory username, uint256 offerID, address senderExecutor, address originExecutor, uint256 nonce, bytes memory signature, uint256 priorityFeeEvvm, uint256 nonceEvvm, bytes memory signatureEvvm) external`
 
 Allows the current username owner to accept a marketplace offer, transferring ownership to the offeror and receiving the locked principal tokens. This completes the username sale transaction. Optional priority fee can be paid to incentivize faster execution by staker nodes.
 
@@ -22,6 +22,7 @@ Allows the current username owner to accept a marketplace offer, transferring ow
 | `user` | `address` | Current owner of the username (seller) |
 | `username` | `string` | Username being sold |
 | `offerID` | `uint256` | Identifier of the offer being accepted |
+| `senderExecutor` | `address` | Optional msg.sender restriction. Use `address(0)` for any service, or specify address to restrict execution. |
 | `originExecutor` | `address` | The address authorized to submit this specific signed transaction |
 | `nonce` | `uint256` | User's Core nonce for this signature (prevents replay attacks) |
 | `signature` | `bytes` | EIP-191 signature from `user` (seller) authorizing the sale |
@@ -38,7 +39,7 @@ This function requires **one or two signatures** from the username owner:
 Authorizes the username sale and ownership transfer:
 
 ```
-Message Format: {evvmId},{serviceAddress},{hashPayload},{originExecutor},{nonce},{isAsyncExec}
+Message Format: {evvmId},{senderExecutor},{hashPayload},{originExecutor},{nonce},{isAsyncExec}
 Hash Payload: NameServiceHashUtils.hashDataForAcceptOffer(username, offerID)
 Async Execution: true (always)
 ```
@@ -56,7 +57,7 @@ bytes32 hashPayload = NameServiceHashUtils.hashDataForAcceptOffer(
 string memory message = string.concat(
     Strings.toString(block.chainid),
     ",",
-    Strings.toHexString(address(nameServiceContract)),
+    Strings.toHexString(senderExecutor),
     ",",
     Strings.toHexString(uint256(hashPayload)),
     ",",
@@ -93,6 +94,7 @@ Core.sol validates the signature and consumes the nonce:
 ```solidity
 core.validateAndConsumeNonce(
     user,
+    senderExecutor,
     Hash.hashDataForAcceptOffer(username, offerID),
     originExecutor,
     nonce,
@@ -104,6 +106,7 @@ core.validateAndConsumeNonce(
 **Validation Steps**:
 - Verifies nonce hasn't been used (prevents replay)
 - Validates EIP-191 signature matches user + payload
+- Confirms `msg.sender == senderExecutor` (if specified)
 - Confirms `tx.origin == originExecutor` (EOA verification)
 - Marks nonce as consumed (prevents double-use)
 
@@ -147,6 +150,41 @@ if (
 - `OfferInactive()` - Offer doesn't exist or has expired
 
 ### 4. Optional Priority Fee Payment
+
+If seller provides a priority fee, processes the payment:
+
+```solidity
+if (priorityFeeEvvm > 0) {
+    requestPay(user, 0, priorityFeeEvvm, originExecutor, nonceEvvm, signatureEvvm);
+}
+```
+
+**Payment Details**:
+- Payer: Seller (current username owner)
+- Recipient: NameService contract  
+- Base amount: 0 (no additional payment, transfer from escrow)
+- Priority fee: Variable (set by seller to incentivize execution)
+
+This internally calls:
+```solidity
+core.pay(
+    user,
+    address(this),              // NameService
+    "",                         // No identity
+    principalToken,             // PT
+    priorityFeeEvvm,            // Only priority fee
+    priorityFeeEvvm,            // Priority fee
+    address(this),              // senderExecutor (service accountability)
+    originExecutor,             // originExecutor (from parameter)
+    nonceEvvm,                  // Payment nonce
+    true,                       // Async
+    signatureEvvm               // Payment sig
+);
+```
+
+:::info[Service Payment Accountability]
+When NameService dispatches payments, `senderExecutor` is set to `address(this)` (the NameService contract) while `originExecutor` comes from the function parameter.
+:::
 
 If seller provides a priority fee, processes the payment:
 

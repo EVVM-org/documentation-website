@@ -80,14 +80,22 @@ EVVM uses Version 0x45 (`personal_sign`) for all signature operations. The compl
 
 ### 1. Message Construction
 
-Messages follow the format:
+All EVVM messages follow the unified format:
 ```
-{evvmId},{functionName},{param1},{param2},...,{paramN}
+{evvmId},{senderExecutor},{hashPayload},{originExecutor},{nonce},{isAsyncExec}
 ```
 
-Example for a payment:
+Where:
+- `{evvmId}`: The unique identifier of the EVVM instance (uint256)
+- `{senderExecutor}`: Address of the contract authorized to call the function (`msg.sender`). Use `0x0...0` for any service.
+- `{hashPayload}`: Service-specific keccak256 hash of the operation parameters (bytes32)
+- `{originExecutor}`: Address of the EOA allowed to initiate the transaction (`tx.origin`). Use `0x0...0` for any origin.
+- `{nonce}`: User's nonce from Core.sol (uint256)
+- `{isAsyncExec}`: `true` for async nonce, `false` for sync nonce (boolean)
+
+Example for a payment to service at `0xCafeBabe...`:
 ```
-1,pay,0x742c7b6b472c8f4bd58e6f9f6c82e8e6e7c82d8c,0x0000000000000000000000000000000000000000,50000000000000000,1000000000000000,42,false,0x0000000000000000000000000000000000000000
+1,0xCafeBabe0000000000000000000000000000cafe,0x3a4b...hashPayload...9f2c,0x0000000000000000000000000000000000000000,42,false
 ```
 
 ### 2. EIP-191 Prefix Application

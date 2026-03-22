@@ -11,7 +11,7 @@ This function uses **Core.sol's centralized signature verification** via `valida
 :::
 
 **Function Type**: External  
-**Function Signature**: `withdrawOffer(address user, string memory username, uint256 offerID, address originExecutor, uint256 nonce, bytes memory signature, uint256 priorityFeeEvvm, uint256 nonceEvvm, bytes memory signatureEvvm) external`
+**Function Signature**: `withdrawOffer(address user, string memory username, uint256 offerID, address senderExecutor, address originExecutor, uint256 nonce, bytes memory signature, uint256 priorityFeeEvvm, uint256 nonceEvvm, bytes memory signatureEvvm) external`
 
 Allows the original offeror to cancel their marketplace offer and retrieve the locked principal tokens. This refunds the entire locked amount (99.5% offer + marketplace fees) back to the offeror. Can only be executed by the address that created the offer. Optional priority fee can be paid to incentivize faster execution.
 
@@ -22,6 +22,7 @@ Allows the original offeror to cancel their marketplace offer and retrieve the l
 | `user` | `address` | The address that created the offer (offeror) |
 | `username` | `string` | Username the offer was made for |
 | `offerID` | `uint256` | Identifier of the offer being withdrawn |
+| `senderExecutor` | `address` | Optional msg.sender restriction. Use `address(0)` for any service, or specify address to restrict execution. |
 | `originExecutor` | `address` | EOA that will execute the transaction (verified with tx.origin) |
 | `nonce` | `uint256` | User's Core nonce for this signature (prevents replay attacks) |
 | `signature` | `bytes` | EIP-191 signature from `user` (offeror) authorizing the withdrawal |
@@ -38,7 +39,7 @@ This function requires **one or two signatures** from the offeror:
 Authorizes the offer cancellation and refund:
 
 ```
-Message Format: {evvmId},{serviceAddress},{hashPayload},{originExecutor},{nonce},{isAsyncExec}
+Message Format: {evvmId},{senderExecutor},{hashPayload},{originExecutor},{nonce},{isAsyncExec}
 Hash Payload: NameServiceHashUtils.hashDataForWithdrawOffer(username, offerID)
 Async Execution: true (always)
 ```
@@ -56,7 +57,7 @@ bytes32 hashPayload = NameServiceHashUtils.hashDataForWithdrawOffer(
 string memory message = string.concat(
     Strings.toString(block.chainid),
     ",",
-    Strings.toHexString(address(nameServiceContract)),
+    Strings.toHexString(senderExecutor),
     ",",
     Strings.toHexString(uint256(hashPayload)),
     ",",
@@ -93,6 +94,7 @@ Core.sol validates the signature and consumes the nonce:
 ```solidity
 core.validateAndConsumeNonce(
     user,
+    senderExecutor,
     Hash.hashDataForWithdrawOffer(username, offerID),
     originExecutor,
     nonce,
@@ -104,6 +106,7 @@ core.validateAndConsumeNonce(
 **Validation Steps**:
 - Verifies nonce hasn't been used (prevents replay)
 - Validates EIP-191 signature matches user + payload
+- Confirms `msg.sender == senderExecutor` (if specified)
 - Confirms `tx.origin == originExecutor` (EOA verification)
 - Marks nonce as consumed (prevents double-use)
 
@@ -135,7 +138,7 @@ If offeror provides a priority fee, processes the payment:
 
 ```solidity
 if (priorityFeeEvvm > 0)
-    requestPay(user, 0, priorityFeeEvvm, nonceEvvm, signatureEvvm);
+    requestPay(user, 0, priorityFeeEvvm, originExecutor, nonceEvvm, signatureEvvm);
 ```
 
 **Payment Details**:
@@ -148,6 +151,22 @@ This internally calls:
 ```solidity
 core.pay(
     user,
+    address(this),              // NameService
+    "",                         // No identity
+    principalToken,             // PT
+    priorityFeeEvvm,            // Only priority fee
+    priorityFeeEvvm,            // Priority fee
+    address(this),              // senderExecutor (service accountability)
+    originExecutor,             // originExecutor (from parameter)
+    nonceEvvm,                  // Payment nonce
+    true,                       // Async
+    signatureEvvm               // Payment sig
+);
+```
+
+:::info[Service Payment Accountability]
+When NameService dispatches payments, `senderExecutor` is set to `address(this)` (the NameService contract) while `originExecutor` comes from the function parameter.
+:::
     address(this),
     0 + priorityFeeEvvm,  // Only the fee
     nonceEvvm,

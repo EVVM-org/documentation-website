@@ -11,7 +11,7 @@ This function uses Core.sol's `validateAndConsumeNonce()` for signature verifica
 :::
 
 **Function Type**: `external`  
-**Function Signature**: `preRegistrationUsername(address,bytes32,address,uint256,bytes,uint256,uint256,bytes)`
+**Function Signature**: `preRegistrationUsername(address,bytes32,address,address,uint256,bytes,uint256,uint256,bytes)`
 
 Pre-registers a username hash to prevent front-running attacks during the registration process. This function creates a 30-minute reservation window using a commit-reveal scheme where users commit to a hash of their desired username plus a secret lock number.
 
@@ -21,6 +21,7 @@ Pre-registers a username hash to prevent front-running attacks during the regist
 | --------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | `user`                      | `address` | The address of the end-user initiating the pre-registration.                                                                    |
 | `hashPreRegisteredUsername` | `bytes32` | The commitment hash calculated as `keccak256(abi.encodePacked(username, lockNumber))`.                                      |
+| `senderExecutor`            | `address` | Service address authorized to execute (`msg.sender`). Use `address(0)` for flexible execution - any service can execute and consume the nonce. Use specific address to restrict to that service only. |
 | `originExecutor`            | `address` | Optional tx.origin restriction (use `address(0)` for unrestricted execution).                                                   |
 | `nonce`                     | `uint256` | User's centralized nonce from Core.sol for this operation.                           |
 | `signature`                 | `bytes`   | EIP-191 signature authorizing this operation (verified by Core.sol).                                                     |
@@ -31,8 +32,10 @@ Pre-registers a username hash to prevent front-running attacks during the regist
 :::note[Signature Requirements]
 
 **NameService Signature** (`signature`):
-- Format: `{evvmId},{serviceAddress},{hashPayload},{executor},{nonce},{isAsyncExec}`
-- Uses `NameServiceHashUtils.hashDataForPreRegistrationUsername(hashPreRegisteredUsername)`'
+- Format: `{evvmId},{senderExecutor},{hashPayload},{originExecutor},{nonce},{isAsyncExec}`
+- Uses `NameServiceHashUtils.hashDataForPreRegistrationUsername(hashPreRegisteredUsername)`
+- `senderExecutor`: Set to `address(0)` for flexible execution or specific service address for restriction
+- `originExecutor`: Set to `address(0)` for no restriction or specific address for tx.origin validation
 - Reference: [Pre-Registration Signature Structure](../../../05-SignatureStructures/02-NameService/01-preRegistrationUsernameStructure.md)
 
 **Payment Signature** (`signatureEvvm`) - if `priorityFeeEvvm > 0`:
@@ -63,6 +66,7 @@ bytes32 hashPreRegisteredUsername = keccak256(abi.encodePacked(username, lockNum
 ```solidity
 core.validateAndConsumeNonce(
     user,                                                      // Signer
+    senderExecutor,                                            // msg.sender validation
     Hash.hashDataForPreRegistrationUsername(hashPreRegisteredUsername), // Hash payload
     originExecutor,                                            // tx.origin check
     nonce,                                                     // Core nonce
@@ -72,9 +76,10 @@ core.validateAndConsumeNonce(
 ```
 
 **What Core.sol validates:**
+- ✅ If `senderExecutor != address(0)`: validates `msg.sender` matches `senderExecutor`
+- ✅ If `originExecutor != address(0)`: validates `tx.origin` matches `originExecutor`
 - ✅ Signature matches `user` address
-- ✅ Nonce is valid and available
-- ✅ `tx.origin` matches `originExecutor` (if specified)
+- ✅ Nonce is valid and available (flexible consumption based on `senderExecutor`)
 - ✅ Marks nonce as consumed
 - ✅ Optionally delegates to UserValidator
 
@@ -82,7 +87,7 @@ core.validateAndConsumeNonce(
 
 ```solidity
 if (priorityFeeEvvm > 0) {
-    requestPay(user, 0, priorityFeeEvvm, nonceEvvm, signatureEvvm);
+    requestPay(user, 0, priorityFeeEvvm, originExecutor, nonceEvvm, signatureEvvm);
 }
 ```
 
@@ -95,12 +100,17 @@ core.pay(
     principalToken,                        // PT
     priorityFeeEvvm,                       // Amount
     priorityFeeEvvm,                       // Priority fee
-    address(this),                         // Executor
+    address(this),                         // senderExecutor (NameService)
+    address(this),                         // originExecutor (NameService)
     nonceEvvm,                             // Payment nonce
     true,                                  // Async
     signatureEvvm                          // Payment sig
 );
 ```
+
+:::info[Service Payment Accountability]
+When NameService dispatches payments on behalf of users, both `senderExecutor` and `originExecutor` are set to `address(this)` (NameService address). This provides clear tracking of payment origins and accountability in the EVVM ecosystem.
+:::
 
 ### 3. Commitment Storage
 

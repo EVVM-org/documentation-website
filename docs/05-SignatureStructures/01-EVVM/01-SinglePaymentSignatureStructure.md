@@ -17,16 +17,22 @@ The signature verification is centralized in Core.sol, which validates the signa
 ## Signature Format
 
 ```
-{evvmId},{serviceAddress},{hashPayload},{executor},{nonce},{isAsyncExec}
+{evvmId},{senderExecutor},{hashPayload},{originExecutor},{nonce},{isAsyncExec}
 ```
 
 **Components:**
 1. **evvmId**: Network identifier (uint256, typically `1`)
-2. **serviceAddress**: Core.sol contract address
+2. **senderExecutor**: Address that can call the function via msg.sender (address, `0x0...0` for anyone)
 3. **hashPayload**: Hash of payment parameters (bytes32, from CoreHashUtils)
-4. **executor**: Address authorized to execute (address, `0x0...0` for unrestricted)
+4. **originExecutor**: EOA that can initiate the transaction via tx.origin (address, `0x0...0` for anyone)
 5. **nonce**: User's centralized nonce from Core.sol (uint256)
 6. **isAsyncExec**: Execution mode - `true` for async, `false` for sync (boolean)
+
+**Dual-Executor Model:**
+- `senderExecutor`: Controls which address can execute via `msg.sender` (contract or EOA)
+- `originExecutor`: Controls which EOA can initiate via `tx.origin`
+- Both can be `address(0)` for maximum flexibility (anyone can execute/initiate)
+- Hash payload does NOT include executors (only operation parameters)
 
 ## Hash Payload Generation
 
@@ -48,23 +54,32 @@ bytes32 hashPayload = CoreHashUtils.hashDataForPay(
 CoreHashUtils creates a deterministic hash:
 
 ```solidity
-// Internal implementation (simplified)
+// Actual CoreHashUtils implementation
 function hashDataForPay(
-    bytes32 receiver,
+    address to_address,
+    string memory to_identity,
     address token,
     uint256 amount,
     uint256 priorityFee
-) internal pure returns (bytes32) {
+) public pure returns (bytes32) {
     return keccak256(
-        abi.encodePacked(receiver, token, amount, priorityFee)
+        abi.encode(
+            "pay",
+            to_address,
+            to_identity,
+            token,
+            amount,
+            priorityFee
+        )
     );
 }
 ```
 
 **Key Points:**
-- `receiver` is **bytes32** (use `0x0...0` prefix for address, or username hash)
+- Function name "pay" is included in the hash
+- Both `to_address` and `to_identity` are included (not bytes32)
 - Hash is deterministic: same parameters → same hash
-- No function name embedded
+- **Executors are NOT part of the hash** - they're only in the signature payload
 
 ## Centralized Verification
 
@@ -73,12 +88,13 @@ Core.sol verifies the signature using `validateAndConsumeNonce()`:
 ```solidity
 // Called by services (internal to Core.sol payment functions)
 Core(coreAddress).validateAndConsumeNonce(
-    user,          // Signer's address
-    hashPayload,   // From CoreHashUtils
-    executor,      // Who can execute
-    nonce,         // User's nonce
-    isAsyncExec,   // Execution mode
-    signature      // EIP-191 signature
+    user,             // Signer's address
+    senderExecutor,   // Who can call via msg.sender
+    hashPayload,      // From CoreHashUtils
+    originExecutor,   // Who can initiate via tx.origin
+    nonce,            // User's nonce
+    isAsyncExec,      // Execution mode
+    signature         // EIP-191 signature
 );
 ```
 
@@ -88,29 +104,28 @@ Core(coreAddress).validateAndConsumeNonce(
 3. Recovers signer from signature using ecrecover
 4. Validates signer matches `user` parameter
 5. Checks nonce status (must be available for sync, reserved for async)
-6. Validates executor authorization (if not `0x0...0`)
-7. Marks nonce as consumed
-8. Optionally delegates to UserValidator contract
+6. Validates senderExecutor authorization (if not `0x0...0`, checks msg.sender)
+7. Validates originExecutor authorization (if not `0x0...0`, checks tx.origin)
+8. Marks nonce as consumed
+9. Optionally delegates to UserValidator contract
 
 ## Message Construction
 
 The signature message is constructed internally by Core.sol:
 
 ```solidity
-// Internal Core.sol message construction (simplified)
-string memory message = string.concat(
-    AdvancedStrings.uintToString(evvmId),              // "1"
-    ",",
-    AdvancedStrings.addressToString(address(this)),    // Core.sol address
-    ",",
-    AdvancedStrings.bytes32ToString(hashPayload),      // Hash from CoreHashUtils
-    ",",
-    AdvancedStrings.addressToString(executor),         // Authorized executor
-    ",",
-    AdvancedStrings.uintToString(nonce),               // User's nonce
-    ",",
-    isAsyncExec ? "true" : "false"                     // Execution mode
+// Internal Core.sol message construction using AdvancedStrings.buildSignaturePayload
+string memory message = AdvancedStrings.buildSignaturePayload(
+    evvmId,            // Network ID
+    senderExecutor,    // msg.sender control
+    hashPayload,       // Operation hash
+    originExecutor,    // tx.origin control
+    nonce,             // User's nonce
+    isAsyncExec        // Execution mode
 );
+
+// buildSignaturePayload returns:
+// "{evvmId},{senderExecutor},{hashPayload},{originExecutor},{nonce},{isAsyncExec}"
 ```
 
 ### EIP-191 Message Hashing
@@ -139,15 +154,14 @@ This creates the final hash that the user signs with their private key.
 import {CoreHashUtils} from "@evvm/testnet-contracts/library/signature/CoreHashUtils.sol";
 
 address receiver = 0x742d7b6b472c8f4bd58e6f9f6c82e8e6e7c82d8c;
+string memory identity = "";  // Empty for address-only payment
 address token = address(0);  // ETH
 uint256 amount = 50000000000000000;  // 0.05 ETH
 uint256 priorityFee = 1000000000000000;  // 0.001 ETH
 
-// Convert address to bytes32 (left-padded)
-bytes32 receiverBytes = bytes32(uint256(uint160(receiver)));
-
 bytes32 hashPayload = CoreHashUtils.hashDataForPay(
-    receiverBytes,
+    receiver,
+    identity,
     token,
     amount,
     priorityFee
@@ -160,15 +174,15 @@ bytes32 hashPayload = CoreHashUtils.hashDataForPay(
 
 **Parameters:**
 - `evvmId`: `1`
-- `serviceAddress`: `0xCoreContractAddress` (deployed Core.sol)
+- `senderExecutor`: `0x0000000000000000000000000000000000000000` (anyone can call)
 - `hashPayload`: `0xa7f3c2d8e9b4f1a6c5d8e7f9b2a3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1`
-- `executor`: `0x0000000000000000000000000000000000000000` (unrestricted)
+- `originExecutor`: `0x0000000000000000000000000000000000000000` (anyone can initiate)
 - `nonce`: `42`
 - `isAsyncExec`: `false`
 
 **Final Message:**
 ```
-1,0xCoreContractAddress,0xa7f3c2d8e9b4f1a6c5d8e7f9b2a3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1,0x0000000000000000000000000000000000000000,42,false
+1,0x0000000000000000000000000000000000000000,0xa7f3c2d8e9b4f1a6c5d8e7f9b2a3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1,0x0000000000000000000000000000000000000000,42,false
 ```
 
 ### Step 3: EIP-191 Formatted Hash
@@ -176,7 +190,7 @@ bytes32 hashPayload = CoreHashUtils.hashDataForPay(
 ```
 keccak256(abi.encodePacked(
     "\x19Ethereum Signed Message:\n138",
-    "1,0xCoreContractAddress,0xa7f3c2d8e9b4f1a6c5d8e7f9b2a3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1,0x0000000000000000000000000000000000000000,42,false"
+    "1,0x0000000000000000000000000000000000000000,0xa7f3c2d8e9b4f1a6c5d8e7f9b2a3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1,0x0000000000000000000000000000000000000000,42,false"
 ))
 ```
 
@@ -186,7 +200,7 @@ The user signs the message using MetaMask or another EIP-191 compatible wallet:
 
 ```javascript
 // Frontend example (ethers.js)
-const message = "1,0xCoreAddress,0xa7f3...a0b1,0x0000...0000,42,false";
+const message = "1,0x0000000000000000000000000000000000000000,0xa7f3...a0b1,0x0000000000000000000000000000000000000000,42,false";
 const signature = await signer.signMessage(message);
 ```
 

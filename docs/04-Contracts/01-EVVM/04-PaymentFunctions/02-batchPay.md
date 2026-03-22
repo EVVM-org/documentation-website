@@ -7,7 +7,7 @@ sidebar_position: 2
 # batchPay Function
 
 **Function Type**: `external`  
-**Function Signature**: `batchPay((address,address,string,address,uint256,uint256,address,uint256,bool,bytes)[])`
+**Function Signature**: `batchPay((address,address,string,address,uint256,uint256,address,address,uint256,bool,bytes)[])`
 **Returns**: `(uint256 successfulTransactions, bool[] memory results)`
 
 Processes multiple payments in a single transaction batch with individual success/failure tracking. Each payment instruction can originate from different senders and supports both staker and non-staker payment types, with comprehensive transaction statistics and detailed results for each operation.
@@ -38,6 +38,7 @@ struct BatchData {
     uint256 amount;
     uint256 priorityFee;
     address senderExecutor;
+    address originExecutor;
     uint256 nonce;
     bool isAsyncExec;
     bytes signature;
@@ -52,13 +53,14 @@ struct BatchData {
 | `token`          | `address` | The token address for the transfer.                                                                                                        |
 | `amount`         | `uint256` | The quantity of tokens to transfer from `from` to the recipient.                                                                                    |
 | `priorityFee`    | `uint256` | Fee amount distributed to stakers as reward (only paid if executor is a staker).                                                                    |
-| `senderExecutor` | `address` | Address authorized to execute this transaction. Use `address(0)` to allow any address to execute.                                                   |
+| `senderExecutor` | `address` | Address authorized to execute this transaction (`msg.sender`). Use `address(0)` to allow any service with the correct signature to execute. When set to a specific address, only that executor can consume the nonce. |
+| `originExecutor` | `address` | Address restriction for transaction origin (`tx.origin`). Use `address(0)` to allow any origin. Provides additional security layer for multi-service transaction flows. |
 | `nonce`          | `uint256` | Nonce value for transaction ordering and replay protection (managed centrally by Core.sol).                                              |
 | `isAsyncExec`    | `bool`    | Determines nonce type: `true` for asynchronous (parallel), `false` for synchronous (sequential).                                          |
 | `signature`      | `bytes`   | Cryptographic signature ([EIP-191](https://eips.ethereum.org/EIPS/eip-191)) from the `from` address authorizing this payment.                      |
 
 :::info[Signature Structure]
-For details on signature construction, refer to the [Payment Signature Structure section](../../../05-SignatureStructures/01-EVVM/01-SinglePaymentSignatureStructure.md). Uses the centralized format: `{evvmId},{serviceAddress},{hashPayload},{executor},{nonce},{isAsyncExec}`.
+For details on signature construction, refer to the [Payment Signature Structure section](../../../05-SignatureStructures/01-EVVM/01-SinglePaymentSignatureStructure.md). Uses the centralized format: `{evvmId},{senderExecutor},{hashPayload},{originExecutor},{nonce},{isAsyncExec}`.
 :::
 
 ## Execution Methods
@@ -92,30 +94,32 @@ The function processes each payment in the `batchData` array independently, allo
 3. **For each payment in the array**:
 
    a. **Signature Verification**: Validates the `signature` using Core.sol's centralized signature verification:
-   - Constructs signature payload: `buildSignaturePayload(evvmId, address(this), hashPayload, executor, nonce, isAsyncExec)`
+   - Constructs signature payload: `buildSignaturePayload(evvmId, senderExecutor, hashPayload, originExecutor, nonce, isAsyncExec)`
    - `hashPayload` is generated via `CoreHashUtils.hashDataForPay(to_address, to_identity, token, amount, priorityFee)`
    - If signature is invalid, marks payment as failed and continues to next payment.
 
-   b. **User Validation**: Checks if the user is allowed to execute transactions using `canExecuteUserTransaction()`. If not allowed, marks payment as failed.
+   b. **Sender Executor Validation**: If `senderExecutor` is not `address(0)`, validates that `msg.sender` matches `senderExecutor`. If they don't match, marks payment as failed. When `address(0)`, any service can execute.
 
-   c. **Nonce Management**: Handles nonce verification and updates via Core.sol's centralized nonce system based on `isAsyncExec`:
-   - **Async (isAsyncExec = true)**: Checks if the nonce hasn't been used via `asyncNonceStatus()`, then marks it as used. If already used or reserved by another service, marks payment as failed.
+   c. **Origin Executor Validation**: If `originExecutor` is not `address(0)`, validates that `tx.origin` matches `originExecutor`. If they don't match, marks payment as failed. Provides additional security for multi-service flows.
+
+   d. **User Validation**: Checks if the user is allowed to execute transactions using `canExecuteUserTransaction()`. If not allowed, marks payment as failed.
+
+   e. **Nonce Management**: Handles nonce verification and updates via Core.sol's centralized nonce system based on `isAsyncExec`:
+   - **Async (isAsyncExec = true)**: Checks nonce status via `asyncNonceStatus()`. If `senderExecutor` was `address(0)` in signature, any service can consume it; otherwise only the specified service. If already used or reserved by another service, marks payment as failed.
    - **Sync (isAsyncExec = false)**: Verifies the nonce matches the expected sequential nonce from `nextSyncNonce[from]`, then increments it. If mismatch, marks payment as failed.
 
-   d. **Executor Validation**: If `senderExecutor` is not `address(0)`, checks that `msg.sender` matches the `senderExecutor` address. If they don't match, marks the payment as failed and continues to the next payment.
+   f. **Balance Verification**: Checks if the sender has sufficient balance for both `amount` and `priorityFee` (if executor is a staker). If insufficient, marks payment as failed.
 
-   e. **Balance Verification**: Checks if the sender has sufficient balance for both `amount` and `priorityFee` (if executor is a staker). If insufficient, marks payment as failed.
-
-   f. **Recipient Resolution**: Determines the final recipient address:
+   g. **Recipient Resolution**: Determines the final recipient address:
    - If `to_identity` is provided, resolves it using `getOwnerOfIdentity()` from the NameService.
    - If `to_identity` is empty, uses `to_address`.
    - If identity resolution fails, marks payment as failed.
 
-   g. **Payment Execution**: Executes the main transfer using `_updateBalance()` to move tokens from sender to recipient.
+   h. **Payment Execution**: Executes the main transfer using `_updateBalance()` to move tokens from sender to recipient.
 
-   h. **Priority Fee Distribution**: If the payment succeeded and `priorityFee > 0` and the executor is a staker, transfers the priority fee to the executor.
+   i. **Priority Fee Distribution**: If the payment succeeded and `priorityFee > 0` and the executor is a staker, transfers the priority fee to the executor.
 
-   i. **Result Tracking**: Marks the payment as successful and increments the success counter.
+   j. **Result Tracking**: Marks the payment as successful and increments the success counter.
 
 4. **Staker Rewards**: After processing all payments, if the executor is a staker, grants principal token rewards equal to the number of successful transactions using `_giveReward()`. 
 
