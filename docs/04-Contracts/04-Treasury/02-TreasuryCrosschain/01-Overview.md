@@ -107,7 +107,7 @@ SignatureRecover.recoverSigner(
 | **Nonce System** | Core.sol centralized | Local asyncNonce mapping |
 | **Executors** | Hardcoded fisherExecutor.current | Encoded in signature payload |
 | **Access Control** | onlyFisherExecutor modifier | onlyFisherExecutor modifier |
-| **Signature Format** | {evvmId},{executor},{hash},{executor},{nonce},true | {evvmId},{executor},{hash},{executor},{nonce},true |
+| **Signature Format** | `{evvmId},{executor},{hash},{executor},{nonce},true` | `{evvmId},{executor},{hash},{executor},{nonce},true` |
 
 ## When to Use
 
