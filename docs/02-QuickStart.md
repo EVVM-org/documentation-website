@@ -7,12 +7,10 @@ sidebar_position: 2
 
 Deploy your EVVM virtual blockchain in minutes.
 
-:::info[Building Services Instead?]
-Want to build dApps on existing EVVM? Go to **[How to Create an EVVM Service](./06-HowToMakeAEVVMService.md)**.
-:::
-
-:::info[Want to experiment with a EVVM?]
-You can start with the **[scaffold-evvm](https://github.com/EVVM-org/scaffold-evvm)**.
+:::info[Not sure this is the right guide?]
+- **Building dApps on an existing EVVM?** Check out **[How to Create an EVVM Service](./06-HowToMakeAEVVMService.md)** instead.
+- **Just want to experiment?** Start with the **[scaffold-evvm](https://github.com/EVVM-org/scaffold-evvm)** starter kit.
+- **Are you a Docker user?** Skip the local tooling setup entirely — the **[EVVM Docker Quick Start](./07-Libraries/03-EvvmDocker/02-quickstart.md)** provides a pre-built image with everything ready to run.
 :::
 
 ---
