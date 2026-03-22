@@ -8,8 +8,8 @@ sidebar_position: 2
 
 Deploy a full EVVM instance in minutes — no Foundry, no Bun, no dependency headaches.
 
-:::info[Standard CLI instead?]
-If you prefer to install tools locally, follow the standard **[QuickStart guide](../../02-QuickStart.md)**.
+:::info[Heads up before you start]
+This guide deploys a standard EVVM with default parameters. If you need to customize contracts or deployment settings, or prefer to install tools locally, follow the **[local QuickStart guide](../../02-QuickStart.md)** instead.
 :::
 
 ---
