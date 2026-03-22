@@ -134,7 +134,7 @@ Production URL: https://www.evvm.info`,
           '04-Contracts/**',
           '05-SignatureStructures/**',
           '06-HowToMakeAEVVMService',
-          '07-Libraries/**',
+          '07-LibrariesAndTools/**',
           '08-RegistryEvvm/**',
           '09-evvmCli/**',
           '99-EVVMNoncommercialLicense'

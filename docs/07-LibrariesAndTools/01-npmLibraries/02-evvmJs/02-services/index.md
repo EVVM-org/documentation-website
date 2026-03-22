@@ -17,7 +17,7 @@ Common services:
 
 ## Using services
 
-In order to use services, the user must first create a signer, please refer to the [signers documentation](/docs/Libraries/npmLibraries/evvmJs/signers) to learn how to create signers using either ethersjs or viem.
+In order to use services, the user must first create a signer, please refer to the [signers documentation](/docs/LibrariesAndTools/npmLibraries/evvmJs/signers) to learn how to create signers using either ethersjs or viem.
 After successfully creating a signer, a new service instance can be created, and used to create [SignedActions](#signed-actions) and use [nonces](#nonce-management).
 
 Example: create a `Core` service and sign a payment
@@ -108,4 +108,4 @@ const signedAction = await core.pay({
 
 ## Signed Actions
 
-Signed actions are designed to encapsulate everything needed to send and [execute](/docs/Libraries/npmLibraries/evvmJs/utils#execute) an EVVM transaction anywhere, this could be the same application where the signature was built, or a [fisher](/docs/HowToMakeAEVVMService#who-are-fishers) that caugh the tx from whatever [fishing spot](/docs/ProcessOfATransaction#3-broadcast-to-fishing-spot) the user decided to use.
+Signed actions are designed to encapsulate everything needed to send and [execute](/docs/LibrariesAndTools/npmLibraries/evvmJs/utils#execute) an EVVM transaction anywhere, this could be the same application where the signature was built, or a [fisher](/docs/HowToMakeAEVVMService#who-are-fishers) that caugh the tx from whatever [fishing spot](/docs/ProcessOfATransaction#3-broadcast-to-fishing-spot) the user decided to use.

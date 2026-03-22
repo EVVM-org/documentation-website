@@ -94,7 +94,7 @@ documentation-website/
 │   │   └── 05-P2PSwap/       # P2P swap docs
 │   ├── 05-SignatureStructures/  # EIP-191 signature format docs
 │   ├── 06-HowToMakeAEVVMService.md  # Service building guide
-│   ├── 07-Libraries/         # Library documentation
+│   ├── 07-LibrariesAndTools/         # Library documentation
 │   ├── 08-RegistryEvvm/      # Registry contract docs
 │   ├── 09-evvmCli/           # CLI documentation
 │   └── 99-EVVMNoncommercialLicense.md  # License

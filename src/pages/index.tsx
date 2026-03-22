@@ -229,7 +229,7 @@ function TestSection() {
           <Link className={styles.deployButton} to="/docs/QuickStart">
             One command deployment →
           </Link>
-          <Link className={styles.toolingButton} to="/docs/Libraries/EVVMFrontendTooling">
+          <Link className={styles.toolingButton} to="/docs/LibrariesAndTools/EVVMFrontendTooling">
             Use the Tooling →
           </Link>
         </div>

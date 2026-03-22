@@ -1,0 +1,9 @@
+{
+  "label": "Libraries and Tools",
+  "position": 7,
+  "description": "Libraries and tooling for EVVM development",
+  "link": {
+    "type": "generated-index",
+    "description": "TypeScript/JavaScript libraries, Solidity packages, and Docker tooling for building and deploying with EVVM."
+  }
+}
