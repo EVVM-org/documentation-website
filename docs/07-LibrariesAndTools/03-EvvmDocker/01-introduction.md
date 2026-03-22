@@ -6,11 +6,9 @@ sidebar_position: 1
 
 # EVVM Docker
 
-**EVVM Docker** is an official containerized environment that lets you deploy and manage [EVVM Testnet Contracts](https://github.com/EVVM-org/Testnet-Contracts) without installing any tooling on your machine. Everything — Foundry, Bun, the EVVM CLI, and all dependencies — is pre-built inside a Docker image.
+**EVVM Docker** is a containerized environment for deploying [EVVM Testnet Contracts](https://github.com/EVVM-org/Testnet-Contracts) without installing Foundry, Bun, or any other tooling locally. Everything is pre-built inside a Docker image.
 
 ## Why use EVVM Docker?
-
-The standard EVVM deployment flow requires installing Foundry, Bun, and managing submodule dependencies. EVVM Docker removes that friction entirely:
 
 | Scenario | Benefit |
 |---|---|
@@ -22,55 +20,40 @@ The standard EVVM deployment flow requires installing Foundry, Bun, and managing
 
 ## Docker Image
 
-A pre-built image is published automatically to the **GitHub Container Registry** on every release:
+The image is published to the **GitHub Container Registry** on every release:
 
+```bash
+docker pull ghcr.io/evvm-org/evvm-docker:latest
 ```
-ghcr.io/evvm-org/evvm-docker
-```
-
-Available tags:
 
 | Tag | When updated |
 |---|---|
 | `latest` | Every push to `main` |
 | `3`, `3.0`, `3.0.2` | On versioned releases (`v*.*.*`) |
 
-The image supports both `linux/amd64` and `linux/arm64` (Apple Silicon included).
-
-You can pull it directly without cloning or building:
-
-```bash
-docker pull ghcr.io/evvm-org/evvm-docker:latest
-```
+Supports `linux/amd64` and `linux/arm64` (Apple Silicon included).
 
 ## What's Included
 
-The image is built on `debian:bookworm-slim` and ships with:
+Built on `debian:bookworm-slim`:
 
-- **Foundry** — `forge`, `cast`, `anvil`, `chisel` pre-installed and on `PATH`
+- **Foundry** — `forge`, `cast`, `anvil`, `chisel`
 - **Bun** — JavaScript/TypeScript runtime for the EVVM CLI
-- **EVVM Testnet Contracts** — the full repository cloned and dependencies installed at build time
-- **EVVM CLI** — ready to run via `bun run cli/index.ts`
-- **Make targets** — optional convenience wrappers for all common operations
+- **EVVM Testnet Contracts** — cloned and dependencies installed at build time
+- **EVVM CLI** — ready to run
+- **Makefile** — optional convenience wrappers
 
 ## Prerequisites
 
-### Using the pre-built image
-
-No build step needed — just Docker and Docker Compose:
-
 - [Docker](https://docs.docker.com/get-docker/) **20.10+**
 - [Docker Compose](https://docs.docker.com/compose/install/) **2.0+**
-
-### Building locally
-
-Same requirements, plus ~4 GB of free disk space for the build layer cache.
+- ~4 GB free disk space (only if building locally)
 
 ## Project Structure
 
 ```
 evvm-docker/
-├── Dockerfile              # Image definition (Foundry + Bun + EVVM CLI)
+├── Dockerfile              # Image definition
 ├── docker-compose.yml      # Service configuration and volume mounts
 ├── .env.example            # Environment variables template
 ├── Makefile                # Optional convenience commands
@@ -84,63 +67,51 @@ evvm-docker/
 
 ## Environment Variables
 
-All configuration is provided through a `.env` file mounted into the container at runtime — no credentials are baked into the image.
-
-Copy `.env.example` to `.env` and fill in your values:
+All configuration is passed through a `.env` file mounted at runtime — no credentials are baked into the image.
 
 ```bash
-# ── Single-chain deployment ─────────────────────────────────────
+# Single-chain deployment
 RPC_URL="https://sepolia-rollup.arbitrum.io/rpc"
 
-# ── Cross-chain deployment ──────────────────────────────────────
+# Cross-chain deployment
 EXTERNAL_RPC_URL="https://sepolia-rollup.arbitrum.io/rpc"
 HOST_RPC_URL="https://0xrpc.io/sep"
 
-# ── EVVM Registry (always Ethereum Sepolia) ─────────────────────
+# EVVM Registry (always Ethereum Sepolia)
 EVVM_REGISTRATION_RPC_URL="https://gateway.tenderly.co/public/sepolia"
 
-# ── Contract verification (optional) ───────────────────────────
+# Contract verification (optional)
 ETHERSCAN_API="YOUR_ETHERSCAN_API_KEY"
 ```
 
 :::tip[Public RPC endpoints]
-You can find free public RPC URLs for any testnet at [chainlist.org](https://chainlist.org/).
+Find free public RPC URLs at [chainlist.org](https://chainlist.org/).
 :::
 
 :::warning[Never store private keys in `.env`]
-The `.env` file is for RPC URLs and API keys only. Private keys are managed securely through Foundry's encrypted keystore (see Wallet Management below).
+Use Foundry's encrypted keystore instead (see Wallet Management below).
 :::
 
 ## Wallet Management
 
-Private keys are handled entirely through Foundry's encrypted keystore — they are **never** written to `.env` or any other plain-text file.
-
 ### Docker volume (default)
 
-By default, wallets are stored in a named Docker volume called `foundry-keystores`. This volume persists across all container runs, so you only need to import your key once:
+Wallets are stored in a named Docker volume `foundry-keystores` and persist across all container runs. Import once:
 
 ```bash
-# 1. Open an interactive shell inside the container
 docker compose run --rm --entrypoint /bin/bash evvm-cli
-
-# 2. Import your private key (you will be prompted)
 cast wallet import defaultKey --interactive
-
-# 3. Exit — the wallet is now stored in the volume
 exit
 ```
 
-### Sharing with the host machine (alternative)
+### Host keystore (alternative)
 
-If you already manage wallets locally with Foundry, you can mount your host keystore instead. Edit `docker-compose.yml` and swap the volume entry:
+To share wallets with your host machine, edit `docker-compose.yml`:
 
 ```yaml
 volumes:
-  # Comment out the Docker volume mount
-  # - foundry-keystores:/root/.foundry/keystores
-
-  # Uncomment to use your host keystore (read-only)
-  - ~/.foundry/keystores:/root/.foundry/keystores:ro
+  # - foundry-keystores:/root/.foundry/keystores   # comment out
+  - ~/.foundry/keystores:/root/.foundry/keystores:ro  # uncomment
 ```
 
 ## Data Persistence
@@ -150,8 +121,6 @@ volumes:
 | Wallets / keystores | Named volume `foundry-keystores` | Yes |
 | Deployment outputs | `./output/` (host bind mount) | Yes |
 | Container filesystem | Ephemeral (`--rm`) | No |
-
-Deployment results written to `output/deployments/` are immediately accessible on your host machine after each run.
 
 ## Available Commands
 
