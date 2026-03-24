@@ -91,15 +91,18 @@ Then specify it during deployment:
 
 ## 4. Deploy with CLI
 
-If you are on linux or macOS, run:
+If you are on Linux or macOS, run:
 ```bash
 ./evvm deploy
 ```
 
-If you are on Windows, run on PowerShell:
-```bash
-.\evvm.bat deploy
-```
+:::warning[Windows is not supported]
+The EVVM CLI does not provide a native Windows executable. To use it on a Windows machine, choose one of the following alternatives:
+
+- **Docker** — No local tooling needed. Use the **[EVVM Docker Quick Start](./07-LibrariesAndTools/03-EvvmDocker/02-quickstart.md)** to get a pre-configured environment up and running in minutes.
+- **WSL 2 (Windows Subsystem for Linux)** — Install WSL 2 with a Linux distribution (Ubuntu recommended) and follow the Linux/macOS instructions above. See the [official WSL installation guide](https://learn.microsoft.com/en-us/windows/wsl/install).
+- **Virtual Machine** — Use VirtualBox, VMware, or any hypervisor with a Linux guest OS, then follow the Linux/macOS instructions.
+:::
 
 :::info
 Some systems may require `chmod +x evvm` to make the script executable.
