@@ -25,7 +25,8 @@ yarn add @evvm/evvm-js
 - **Services** — classes (e.g., `EVVM`, `NameService`, `Staking`, `P2PSwap`) that build and sign actions. They do not send transactions directly; they produce `SignedAction` objects.
 - **Signers** — adapters that wrap `ethers` or `viem` wallets and expose a consistent `ISigner` interface used by the services.
 - **SignedAction** — a serializable object containing ABI args, evvmId, signature, and metadata required to execute the call anywhere.
-- **execute()** — helper to push a `SignedAction` through a signer (writes the transaction using the signer’s `writeContract`).
+- **execute()** — helper to push a `SignedAction` through a signer (writes the transaction using the signer's `writeContract`).
+- **Zod Schemas** — Zod schemas for validating signed actions on the server/fisher side (used with `@evvm/x402` middleware).
 
 Use the following pages for practical examples: Services, Signers, Types, Utilities.
 
