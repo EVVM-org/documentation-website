@@ -1,0 +1,11 @@
+{
+  "label": "@evvm/x402",
+  "position": 3,
+  "description": "Middleware for EVVM payments in Express.js and Next.js",
+  "link": {
+    "type": "generated-index",
+    "title": "x402",
+    "description": "Payment middleware for EVVM",
+    "slug": "/npm-libraries/x402"
+  }
+}
