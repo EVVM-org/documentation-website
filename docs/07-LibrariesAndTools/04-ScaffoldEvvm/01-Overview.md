@@ -29,12 +29,12 @@ You're a good fit if you want to:
 
 ## What this section covers
 
-- **[Getting Started](./getting-started/quickstart.md)** — Install, run the wizard, troubleshoot common issues
-- **[Custom Services](./custom-services/overview.md)** — The drop-a-file workflow, manifest, auto-UI, examples
-- **[Frontend Pages](./frontend/overview.md)** — Walkthrough of every interaction page
-- **[CLI Reference](./cli/commands.md)** — Every command the wizard exposes
-- **[EVVMScan Explorer](./explorer/overview.md)** — How to read the in-browser explorer
-- **[Architecture](./architecture/overview.md)** — How the monorepo is organized and how the pieces fit together
+- **[Getting Started](./02-getting-started/quickstart.md)** — Install, run the wizard, troubleshoot common issues
+- **[Custom Services](./03-custom-services/overview.md)** — The drop-a-file workflow, manifest, auto-UI, examples
+- **[Frontend Pages](./04-frontend/overview.md)** — Walkthrough of every interaction page
+- **[CLI Reference](./05-cli/commands.md)** — Every command the wizard exposes
+- **[EVVMScan Explorer](./06-explorer/overview.md)** — How to read the in-browser explorer
+- **[Architecture](./07-architecture/overview.md)** — How the monorepo is organized and how the pieces fit together
 
 For EVVM protocol-level concepts (signatures, contracts, nonces) see the rest of [evvm.info/docs](/docs/intro). The canonical service-authoring guide lives at **[How to make an EVVM service](/docs/HowToMakeAEVVMService)** — this section is the scaffold-evvm shorthand for that workflow.
 
