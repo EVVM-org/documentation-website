@@ -49,6 +49,12 @@ Each staking token costs **`5083 × 10^18` MATE** (the
 `PRICE_OF_STAKING` constant). The default unstake delay in the
 sandbox-tuned local build is **30 seconds**.
 
+> The mode-specific rules above (golden's sync-only nonce, presale's
+> mandatory async-pay, the 800-staker cap, the era reward schedule)
+> are defined by the protocol's
+> **[Staking contract](/docs/Contracts/Staking/Overview)**, not by
+> scaffold-evvm. This page documents how the UI exposes them.
+
 ## Unstaking
 
 Each card has an `isStaking` toggle. Switch it to "Unstake" and the same

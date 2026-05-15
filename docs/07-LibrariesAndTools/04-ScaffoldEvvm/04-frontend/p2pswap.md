@@ -22,7 +22,9 @@ Orders don't expire on-chain — they sit in the order book until
 filled or cancelled.
 
 When you sign, the offered amount is locked into the swap contract via
-the dual-signature pattern (action + EVVM-pay).
+the dual-signature pattern (action + EVVM-pay) — see the protocol's
+**[Signature Structures Overview](/docs/SignatureStructures/Overview)**
+for the action-hash and pay-envelope shapes the contract reconstructs.
 
 ## Cancel an order
 

@@ -167,6 +167,11 @@ sign with the protocol:
    fisher execute. Pass a specific address only if you want to lock
    execution to one EOA.
 
+> For the protocol-side rationale behind each invariant — why the
+> action hash is structured this way, how the unified envelope is
+> built, what the fisher economy expects — see
+> **[How to make an EVVM service](/docs/HowToMakeAEVVMService)**.
+
 ## Patterns to copy
 
 - **Read returns lots of data?** Group it into a `struct` and return that

@@ -53,7 +53,9 @@ Almost always one of:
 
 EVVMScan's transaction-details page shows you the decoded fields the
 contract saw — comparing those to what you signed pinpoints the
-mismatch fast.
+mismatch fast. For the canonical definition of each field (executor
+binding, action hash, nonce track), see the protocol's
+**[EVVM Signature Structures](/docs/SignatureStructures/Overview)**.
 
 ### Can I commit `services/<MyService>/` to git?
 

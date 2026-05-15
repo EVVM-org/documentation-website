@@ -44,6 +44,12 @@ airdrops, or quick batches.
 4. The tx hash is shown on success; click it to jump to the EVVMScan
    transaction page.
 
+> The exact bytes inside that EIP-191 payload — the unified envelope
+> wrapping the action hash, executor pair, nonce, and isAsyncExec — are
+> specified in the protocol's
+> **[EIP-191 Signed Data Standard](/docs/SignatureStructures/EIP191Specification)**.
+> `evvmSignatures.ts` is the scaffold-evvm implementation of that spec.
+
 ## Common gotchas
 
 - **"Insufficient balance"** — your EVVM-side balance for the chosen
