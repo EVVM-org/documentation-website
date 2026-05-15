@@ -1,6 +1,7 @@
 ---
 sidebar_position: 1
 title: Overview
+description: Local development environment for battle-testing EVVM services before paying testnet or mainnet gas — drop a Solidity file, run one command, get a full EVVM stack with auto-generated UI and block explorer.
 ---
 
 # Scaffold-EVVM

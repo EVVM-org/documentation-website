@@ -1,6 +1,7 @@
 ---
 sidebar_position: 4
 title: Auto-UI
+description: How the auto-generated service UI renders read panels, write forms (admin, publicAction, publicPay), and a live event tail from your ABI and manifest.
 ---
 
 # The auto-generated UI

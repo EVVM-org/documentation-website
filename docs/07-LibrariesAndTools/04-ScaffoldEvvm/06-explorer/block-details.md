@@ -1,6 +1,7 @@
 ---
 sidebar_position: 4
 title: Block details
+description: EVVMScan block page — header (hash, miner, gas, timestamp) plus the full transaction list for that block.
 ---
 
 # Block details — `/evvmscan/block/[number]`

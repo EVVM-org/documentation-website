@@ -1,6 +1,7 @@
 ---
 sidebar_position: 5
 title: Troubleshooting
+description: Common scaffold-evvm errors — nonce mismatch, port conflicts, deployment failures — and the cli flush reset command.
 ---
 
 # Troubleshooting

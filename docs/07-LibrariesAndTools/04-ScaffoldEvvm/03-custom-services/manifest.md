@@ -1,6 +1,7 @@
 ---
 sidebar_position: 3
 title: Manifest
+description: Annotate your service functions as admin, publicPay, publicAction, or hidden so the auto-UI groups them and signs the right things.
 ---
 
 # manifest.json

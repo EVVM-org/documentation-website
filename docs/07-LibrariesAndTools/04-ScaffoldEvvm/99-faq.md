@@ -1,6 +1,7 @@
 ---
 sidebar_position: 99
 title: FAQ
+description: Common questions about scaffold-evvm — framework choice, deployment targets, configuration, custom services, and known limitations.
 ---
 
 # Frequently asked questions

@@ -1,6 +1,7 @@
 ---
 sidebar_position: 9
 title: Faucet
+description: One-click MATE top-up for local development; hidden in non-local environments because it bypasses the standard balance flow.
 ---
 
 # Faucet — `/faucet`

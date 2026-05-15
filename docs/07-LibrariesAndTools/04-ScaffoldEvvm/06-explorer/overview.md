@@ -1,6 +1,7 @@
 ---
 sidebar_position: 1
 title: Overview
+description: EVVMScan is the in-browser block explorer at /evvmscan — no backend, no indexer, decodes core EVVM contracts and your custom services.
 ---
 
 # EVVMScan overview

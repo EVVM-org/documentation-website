@@ -1,6 +1,7 @@
 ---
 sidebar_position: 3
 title: Address details
+description: EVVMScan address page — type detection, balances (ETH, MATE, staked), and recent transactions with EVVM-aware direction tagging.
 ---
 
 # Address details — `/evvmscan/address/[address]`

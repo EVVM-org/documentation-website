@@ -1,6 +1,7 @@
 ---
 sidebar_position: 2
 title: Payments
+description: Send EVVM tokens between users via pay or dispersePay — pick recipient by address or username, customize executor and nonce.
 ---
 
 # Payments — `/evvm/payments`

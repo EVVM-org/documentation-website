@@ -1,6 +1,7 @@
 ---
 sidebar_position: 1
 title: CLI commands
+description: Every cli command — start, init, deploy, chain, config, flush, sources, monitor — and what each one does.
 ---
 
 # CLI commands

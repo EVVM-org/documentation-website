@@ -1,6 +1,7 @@
 ---
 sidebar_position: 7
 title: Register
+description: Bootstrap a fresh EVVM user with an initial balance via Core.addBalance — the alternative to the faucet for local setups.
 ---
 
 # Register — `/evvm/register`

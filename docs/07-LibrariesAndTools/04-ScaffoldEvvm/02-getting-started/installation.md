@@ -1,6 +1,7 @@
 ---
 sidebar_position: 1
 title: Installation
+description: Prerequisites (Node, Foundry, Git), the one-time npm install, and how to verify a working scaffold-evvm install.
 ---
 
 # Installation

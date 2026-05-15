@@ -1,6 +1,7 @@
 ---
 sidebar_position: 2
 title: Quickstart
+description: Run the wizard to install dependencies, deploy the protocol contracts, and launch the frontend in a single interactive flow.
 ---
 
 # Quickstart

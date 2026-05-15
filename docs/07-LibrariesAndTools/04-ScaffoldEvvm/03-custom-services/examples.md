@@ -1,6 +1,7 @@
 ---
 sidebar_position: 5
 title: Examples
+description: Bundled Counter (plain contract) and full Tipjar walkthrough (EvvmService with dual-signature flow and the four invariants every service must honor).
 ---
 
 # Examples

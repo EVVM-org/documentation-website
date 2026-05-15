@@ -1,6 +1,7 @@
 ---
 sidebar_position: 4
 title: Two-terminal workflow
+description: Split deployment and frontend across separate terminals for iterative contract development without restarting the UI.
 ---
 
 # Two-terminal workflow

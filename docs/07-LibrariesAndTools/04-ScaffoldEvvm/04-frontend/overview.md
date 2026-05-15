@@ -1,6 +1,7 @@
 ---
 sidebar_position: 1
 title: Overview
+description: Tour of the scaffold-evvm Next.js frontend — one page per EVVM operation, plus the in-browser EVVMScan block explorer.
 ---
 
 # Frontend overview

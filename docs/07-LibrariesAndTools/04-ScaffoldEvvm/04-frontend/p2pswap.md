@@ -1,6 +1,7 @@
 ---
 sidebar_position: 5
 title: P2P Swap
+description: Maker and taker flows for the peer-to-peer order book — post orders, fill them, and read the live order list.
 ---
 
 # P2P Swap — `/evvm/p2pswap`

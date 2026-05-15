@@ -1,6 +1,7 @@
 ---
 sidebar_position: 3
 title: Staking
+description: Three staking modes (Golden, Presale, Public) with live estimated-rewards and total-staked tiles per address.
 ---
 
 # Staking — `/evvm/staking`

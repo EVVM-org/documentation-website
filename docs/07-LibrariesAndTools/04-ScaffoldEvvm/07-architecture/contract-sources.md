@@ -1,6 +1,7 @@
 ---
 sidebar_position: 3
 title: Contract sources
+description: Bundled snapshots of EVVM contracts (testnet and playground) under packages/foundry — what they are, where they come from, when to use which.
 ---
 
 # Contract sources

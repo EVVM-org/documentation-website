@@ -1,6 +1,7 @@
 ---
 sidebar_position: 8
 title: Status
+description: Read-only dashboard for the deployed EVVM stack — contract addresses, admin role, pending proposals, current era, system metadata.
 ---
 
 # Status — `/evvm/status`

@@ -1,6 +1,7 @@
 ---
 sidebar_position: 4
 title: NameService
+description: Tab-by-tab reference for the username lifecycle — pre-register, register, renew, marketplace offers, custom metadata.
 ---
 
 # NameService — `/evvm/nameservice`

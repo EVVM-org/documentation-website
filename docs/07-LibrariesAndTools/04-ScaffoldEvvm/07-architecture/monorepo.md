@@ -1,6 +1,7 @@
 ---
 sidebar_position: 2
 title: Monorepo layout
+description: Workspace layout (cli, services, foundry, hardhat, nextjs) and how the services directory connects the foundry and nextjs packages.
 ---
 
 # Monorepo layout

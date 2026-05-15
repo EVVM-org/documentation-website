@@ -1,6 +1,7 @@
 ---
 sidebar_position: 6
 title: Treasury
+description: Deposit and withdraw ERC-20 tokens between an external chain and the EVVM ledger — no signatures, direct caller balance ops.
 ---
 
 # Treasury — `/evvm/treasury`

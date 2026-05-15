@@ -1,6 +1,7 @@
 ---
 sidebar_position: 3
 title: Wizard walkthrough
+description: Phase-by-phase walkthrough of the wizard — framework choice, source selection, deploy, custom services, frontend launch.
 ---
 
 # Wizard walkthrough

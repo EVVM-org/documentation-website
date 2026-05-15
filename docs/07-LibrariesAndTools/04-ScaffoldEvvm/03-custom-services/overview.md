@@ -1,6 +1,7 @@
 ---
 sidebar_position: 1
 title: Overview
+description: The iteration loop for shipping an EVVM service — drop your .sol file, run the wizard, get an auto-deployed contract and auto-generated UI.
 ---
 
 # Custom services overview

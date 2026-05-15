@@ -1,6 +1,7 @@
 ---
 sidebar_position: 1
 title: Overview
+description: How scaffold-evvm fits together — the wizard phases, what runs on which port, and the canonical configuration files.
 ---
 
 # Architecture overview

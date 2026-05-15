@@ -1,6 +1,7 @@
 ---
 sidebar_position: 2
 title: Transaction details
+description: EVVMScan transaction page — Overview, Logs, and Input Data tabs with EVVM-aware action descriptions for every standard call.
 ---
 
 # Transaction details — `/evvmscan/tx/[hash]`

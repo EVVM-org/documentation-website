@@ -1,6 +1,7 @@
 ---
 sidebar_position: 10
 title: Config
+description: Runtime configuration page — change RPC URL, WalletConnect project ID, and display preferences without a redeploy.
 ---
 
 # Config — `/config`

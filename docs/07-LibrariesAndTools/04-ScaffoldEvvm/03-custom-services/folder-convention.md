@@ -1,6 +1,7 @@
 ---
 sidebar_position: 2
 title: Folder convention
+description: Directory layout the wizard expects under services/, constructor-resolution rules, and the optional Deploy.s.sol escape hatch.
 ---
 
 # Folder convention

@@ -1,6 +1,7 @@
 ---
 sidebar_position: 2
 title: npm scripts
+description: Top-level npm scripts the CLI exposes (wizard, frontend, monitor, flush, lint, build) and the environment variables they consume.
 ---
 
 # Top-level npm scripts
