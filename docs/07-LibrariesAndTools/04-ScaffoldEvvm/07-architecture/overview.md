@@ -64,8 +64,10 @@ scaffold-evvm/
 Three things, in order of how often you'll touch them:
 
 1. **Signature constructors** — Forms that build EIP-191 signatures for
-   every EVVM operation (pay, stake, register, swap, etc.) and submit them
-   via `viem`/`wagmi`.
+   every EVVM operation (pay, stake, register, swap, etc.) and submit
+   them via `viem`/`wagmi`. The signature shapes themselves come from
+   the **[evvm-js SDK](/docs/npm-libraries/evvm-js)** — the same typed
+   client any external app would use.
 2. **EVVMScan** — A self-contained block explorer at `/evvmscan`.
 3. **Custom services UI** — Auto-generated read/write/event panels at
    `/services/<name>` for any contract you've dropped under `services/`.

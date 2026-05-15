@@ -78,7 +78,8 @@ scaffold-evvm releases.
 
 A real-time, ABI-decoded stream of every block, transaction, and
 contract event on the local chain. Auto-loads ABIs from Foundry build
-output, the evvm-js SDK, and bundled fallbacks.
+output, the **[evvm-js SDK](/docs/npm-libraries/evvm-js)**, and bundled
+fallbacks.
 
 Run it in a separate terminal alongside the wizard for debugging.
 

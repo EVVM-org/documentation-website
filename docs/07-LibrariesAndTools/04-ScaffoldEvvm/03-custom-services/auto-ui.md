@@ -43,6 +43,12 @@ a form:
   `tokenAddress`, `amount`). Both signatures are produced and submitted
   together.
 
+Both `publicAction` and `publicPay` are signed client-side via the
+**[evvm-js signers](/docs/LibrariesAndTools/npmLibraries/evvmJs/signers)**
+— scaffold-evvm just feeds the manifest-declared `actionPayload` into
+the SDK, so the envelope your wallet signs is byte-identical to what
+the contract reconstructs in `validateAndConsumeNonce`.
+
 The widget set matches the read panel — `address` inputs accept either
 a hex address or `@username` and resolve via NameService.
 

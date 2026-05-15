@@ -37,7 +37,13 @@ its plugin ecosystem.
 
 ### `@scaffold-evvm/nextjs`
 
-The user-facing app. Notable directories:
+The user-facing app. Depends on the
+**[evvm-js SDK](/docs/npm-libraries/evvm-js)** (`@evvm/evvm-js`) for
+all protocol-typed clients and signers — every signature builder,
+every read hook, and every executor in this workspace routes through
+that package.
+
+Notable directories:
 
 ```
 packages/nextjs/src/

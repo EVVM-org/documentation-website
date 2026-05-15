@@ -31,7 +31,19 @@ most of your time in. It's organized around two ideas:
 | `/services/<slug>` | Auto-generated UI for a single custom service |
 | `/faucet` | Top up your MATE balance |
 | `/config` | Frontend configuration (RPC URL override, project ID) |
-| `/docs` | This documentation site |
+
+## SDK foundation
+
+Every signature, every read, every contract call routes through the
+**[evvm-js SDK](/docs/npm-libraries/evvm-js)** (`@evvm/evvm-js`). The
+SDK provides typed service clients (`Core`, `Staking`, `NameService`,
+`P2PSwap`), the
+**[signers](/docs/LibrariesAndTools/npmLibraries/evvmJs/signers)** that
+build EIP-191 envelopes, and the
+**[utils](/docs/LibrariesAndTools/npmLibraries/evvmJs/utils)** for
+constructing action payloads. Scaffold-evvm's frontend is a thin UI
+layer over the SDK — anything you wire up here works the same way in
+your own app.
 
 ## The shell
 

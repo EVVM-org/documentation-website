@@ -35,7 +35,8 @@ airdrops, or quick batches.
 ## What happens when you click "Sign and submit"
 
 1. The frontend builds the EIP-191 payload via
-   `packages/nextjs/src/lib/evvmSignatures.ts`.
+   `packages/nextjs/src/lib/evvmSignatures.ts`, which wraps the
+   **[evvm-js signers](/docs/LibrariesAndTools/npmLibraries/evvmJs/signers)**.
 2. Your wallet prompts for the signature (one prompt for `pay`, one for
    each recipient on `dispersePay` if your wallet doesn't batch).
 3. The frontend submits the signed call via the executor

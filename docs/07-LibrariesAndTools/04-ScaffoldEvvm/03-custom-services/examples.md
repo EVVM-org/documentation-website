@@ -146,7 +146,11 @@ Add a `manifest.json` to wire the auto-UI for the dual-signature flow:
 
 After deploying, `/services/Tipjar` shows a `tip` form with two
 business inputs (`to`, `amount`) — the auto-UI handles both
-signatures and submits them together.
+signatures and submits them together. The client-side signing uses
+the **[evvm-js signers](/docs/LibrariesAndTools/npmLibraries/evvmJs/signers)**
+and **[services](/docs/LibrariesAndTools/npmLibraries/evvmJs/services)**
+modules; if you outgrow the auto-UI and write a hand-rolled page for
+Tipjar, you'd call the same SDK directly.
 
 ### The four invariants
 

@@ -16,6 +16,8 @@ Scaffold-EVVM is the iteration loop for anyone shipping an EVVM service. Drop yo
 - A **block explorer** at `/evvmscan` that decodes your service's calls and events as first-class citizens alongside the protocol contracts.
 - **23+ signature constructors** for every EVVM operation so you can stress-test how your service interacts with payments, staking, names, and P2P swaps.
 
+Under the hood, scaffold-evvm wires its frontend to the protocol through the **[evvm-js SDK](/docs/npm-libraries/evvm-js)** — the same typed client (`@evvm/evvm-js`) you'd use to integrate EVVM into any other application. The auto-UI, signature constructors, and EVVMScan all build on it, so what you exercise locally is what you ship.
+
 > 🛡️ **Why this matters:** every signature you generate against a service ABI you wrote yesterday is one fewer testnet deploy, one fewer testnet faucet round-trip, one fewer "wait, did I send the right struct?" thirty minutes after pushing. Failing fast locally is the whole point.
 
 ## When to use Scaffold-EVVM
