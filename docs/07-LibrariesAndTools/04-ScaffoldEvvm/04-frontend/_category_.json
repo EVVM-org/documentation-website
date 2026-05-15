@@ -1,0 +1,8 @@
+{
+  "label": "Frontend Pages",
+  "position": 4,
+  "description": "Reference for every page in the bundled Next.js frontend",
+  "link": {
+    "type": "generated-index"
+  }
+}

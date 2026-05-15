@@ -1,0 +1,10 @@
+{
+  "label": "Scaffold-EVVM",
+  "position": 4,
+  "description": "Local development environment for battle-testing EVVM services before paying testnet or mainnet gas",
+  "link": {
+    "type": "generated-index",
+    "title": "Scaffold-EVVM",
+    "description": "Scaffold-EVVM is the iteration loop for anyone shipping an EVVM service. Drop a Solidity file, run one command, and get a full local EVVM stack with your service auto-deployed, an auto-generated UI, a block explorer that decodes your custom calls, and 23+ signature constructors for every protocol operation. Fail fast locally before spending a wei of testnet or mainnet gas."
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "label": "Custom Services",
+  "position": 3,
+  "description": "Drop a Solidity file, get a deployed contract and an auto-generated UI",
+  "link": {
+    "type": "generated-index",
+    "description": "Author a Solidity contract, drop it in services/<YourService>/, run `npm run wizard`, and get an auto-deployed contract on the local chain plus an auto-generated UI with read / write / events panels and the right form per function role."
+  }
+}

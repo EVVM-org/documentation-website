@@ -1,0 +1,8 @@
+{
+  "label": "EVVMScan Explorer",
+  "position": 6,
+  "description": "Block explorer with EVVM-aware decoding for core contracts and custom services",
+  "link": {
+    "type": "generated-index"
+  }
+}
