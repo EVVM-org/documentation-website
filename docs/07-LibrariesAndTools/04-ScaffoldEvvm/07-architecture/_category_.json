@@ -1,0 +1,8 @@
+{
+  "label": "Architecture",
+  "position": 7,
+  "description": "Monorepo layout, contract sources, and the deployment pipeline",
+  "link": {
+    "type": "generated-index"
+  }
+}

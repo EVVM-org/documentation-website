@@ -50,11 +50,6 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: "link",
-      label : "Scaffold EVVM",
-      href : "https://github.com/EVVM-org/scaffold-evvm",
-    },
-    {
-      type: "link",
       label: "EVVM Full Documentation for LLM",
       href: "https://evvm.info/llms-full.txt",
     },

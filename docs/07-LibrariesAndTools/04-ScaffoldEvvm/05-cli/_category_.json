@@ -1,0 +1,8 @@
+{
+  "label": "CLI",
+  "position": 5,
+  "description": "Interactive wizard and command reference for the scaffold-evvm CLI",
+  "link": {
+    "type": "generated-index"
+  }
+}

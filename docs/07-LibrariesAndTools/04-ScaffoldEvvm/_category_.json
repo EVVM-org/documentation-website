@@ -1,0 +1,9 @@
+{
+  "label": "Scaffold-EVVM",
+  "position": 4,
+  "description": "Local development environment for battle-testing EVVM services before paying testnet or mainnet gas",
+  "link": {
+    "type": "doc",
+    "id": "LibrariesAndTools/ScaffoldEvvm/Overview"
+  }
+}
