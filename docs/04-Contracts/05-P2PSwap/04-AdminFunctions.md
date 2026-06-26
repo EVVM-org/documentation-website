@@ -1,234 +1,230 @@
 ---
 title: "Administrative Functions"
-description: "Comprehensive documentation of P2P Swap Contract's administrative and governance functions."
+description: "Time-delayed governance functions for P2P Swap contract administration"
 sidebar_position: 4
 ---
 
 # Administrative Functions
 
 :::info[Implementation Note]
-Administrative functions do **not** use Core.sol's `validateAndConsumeNonce()` pattern. They are directly protected by `onlyOwner` modifier and execute through standard transaction authentication via `msg.sender`.
+Administrative functions do **not** use Core.sol's `validateAndConsumeNonce()` pattern. They are directly protected by `onlyAdmin` modifier and execute through standard transaction authentication via `msg.sender`.
 :::
 
-The P2P Swap Contract implements a comprehensive administrative system with time-delayed governance, secure owner management, and flexible configuration options. All administrative changes follow a proposal-acceptance pattern with mandatory waiting periods for security.
+The P2P Swap Contract implements a comprehensive administrative system with time-delayed governance, secure admin management, and flexible configuration options. All administrative changes follow a proposal-acceptance pattern with mandatory waiting periods for security.
 
-## Owner Management
+## Admin Management
 
-### proposeOwner
+### proposeAdmin
 
-**Function Signature**: `proposeOwner(address _owner)`
+**Function Signature**: `proposeAdmin(address _newOwner)`
 
-Proposes a new contract owner with a 1-day acceptance window.
+Proposes a new administrator with a 1-day acceptance window.
 
-**Access**: Current owner only  
-**Parameters:**
-- `_owner` (address): Address of the proposed new owner
+**Access**: Current admin only
+
+**Input Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `_newOwner` | `address` | Address of the proposed new admin |
 
 **Process:**
-1. Sets `owner_proposal` to the new address
-2. Sets `owner_timeToAccept` to `block.timestamp + 1 days`
-3. Proposed owner has 24 hours to accept
+1. Validates `_newOwner` is not address(0) and not the current admin
+2. Sets `admin.proposal` to the new address
+3. Sets `admin.timeToAccept` to `block.timestamp + 1 days`
 
-### acceptOwner
+**Errors:**
+- `IncorrectAddressInput()` - If `_newOwner` is address(0) or current admin
+- `SenderIsNotAdmin()` - If caller is not the current admin
 
-**Function Signature**: `acceptOwner()`
+---
 
-Accepts the owner proposal and transfers ownership.
+### acceptAdmin
 
-**Access**: Proposed owner only, within acceptance window  
+**Function Signature**: `acceptAdmin()`
+
+Accepts the admin proposal and transfers administration.
+
+**Access**: Proposed admin only, within acceptance window
+
 **Requirements:**
-- Must be called by the proposed owner
-- Must be within the 1-day acceptance window
+- Must be called by the proposed admin (`admin.proposal`)
+- Must be within the 1-day acceptance window (`block.timestamp >= admin.timeToAccept`)
 
 **Process:**
-1. Transfers ownership to the proposed owner
+1. Transfers admin role to the proposed admin
 2. Clears the proposal state
 
-### rejectProposeOwner
+**Errors:**
+- `ProposalNotReadyToAccept()` - If called before timelock expires
+- `SenderIsNotTheProposedAdmin()` - If caller is not the proposed admin
 
-**Function Signature**: `rejectProposeOwner()`
+---
 
-Rejects the owner proposal.
+### rejectProposalAdmin
 
-**Access**: Proposed owner only, within acceptance window  
+**Function Signature**: `rejectProposalAdmin()`
+
+Cancels the pending admin change proposal.
+
+**Access**: Current admin only
+
 **Process:**
-1. Clears the owner proposal
-2. Cancels the ownership transfer
+1. Clears the admin proposal (sets proposal to address(0), timeToAccept to 0)
 
 ## Fee Configuration Management
 
-### Proportional Fee Management
+### proposeBasisPercentageFee
 
-#### proposeFillPropotionalPercentage
+**Function Signature**: `proposeBasisPercentageFee(uint256 _newFee)`
 
-**Function Signature**: `proposeFillPropotionalPercentage(uint256 _seller, uint256 _service, uint256 _mateStaker)`
+Proposes a new proportional fee rate in basis points.
 
-Proposes new fee distribution percentages for proportional fee model.
+**Access**: Admin only
 
-**Access**: Owner only  
-**Parameters:**
-- `_seller` (uint256): Percentage for sellers (basis points)
-- `_service` (uint256): Percentage for service treasury (basis points)
-- `_mateStaker` (uint256): Percentage for MATE stakers (basis points)
+**Input Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `_newFee` | `uint256` | New fee rate in basis points (max 10_000 = 100%) |
 
 **Requirements:**
-- Total must equal 10,000 (100%)
+- `_newFee` must not exceed 10_000
 - 1-day waiting period before acceptance
 
-#### acceptFillPropotionalPercentage
+**Errors:**
+- `IncorrectAddressInput()` - If `_newFee > 10_000`
+- `SenderIsNotAdmin()` - If caller is not admin
 
-**Function Signature**: `acceptFillPropotionalPercentage()`
+---
 
-Accepts the proposed proportional fee distribution.
+### acceptBasisPercentageFee
 
-**Access**: Owner only, within acceptance window
+**Function Signature**: `acceptBasisPercentageFee()`
 
-#### rejectProposeFillPropotionalPercentage
+Finalizes the fee rate change after the time delay.
 
-**Function Signature**: `rejectProposeFillPropotionalPercentage()`
+**Access**: Admin only, within acceptance window
 
-Rejects the proposed proportional fee distribution.
+**Errors:**
+- `ProposalNotReadyToAccept()` - If called before timelock expires
 
-**Access**: Owner only, within acceptance window
+---
 
-### Fixed Fee Management
+### rejectProposalBasisPercentageFee
 
-#### proposeFillFixedPercentage
+**Function Signature**: `rejectProposalBasisPercentageFee()`
 
-**Function Signature**: `proposeFillFixedPercentage(uint256 _seller, uint256 _service, uint256 _mateStaker)`
+Cancels the pending fee rate change proposal.
 
-Proposes new fee distribution percentages for fixed fee model.
+**Access**: Admin only
 
-**Access**: Owner only  
-**Parameters:** Same as proportional fee management  
-**Requirements:** Same validation rules apply
+## Reward Distribution Management
 
-#### acceptFillFixedPercentage / rejectProposeFillFixedPercentage
+### proposeBasisPointsForReward
 
-Similar pattern to proportional fee management functions.
+**Function Signature**: `proposeBasisPointsForReward(uint256 _seller, uint256 _service, uint256 _mateStaker)`
 
-### Base Fee Rate Management
+Proposes a new fee distribution split among seller, service, and staker.
 
-#### proposePercentageFee
+**Access**: Admin only
 
-**Function Signature**: `proposePercentageFee(uint256 _percentageFee)`
+**Input Parameters:**
 
-Proposes a new base percentage fee rate.
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `_seller` | `uint256` | Basis points allocated to the order seller |
+| `_service` | `uint256` | Basis points allocated to the service contract |
+| `_mateStaker` | `uint256` | Basis points allocated to the MATE staker |
 
-**Access**: Owner only  
-**Parameters:**
-- `_percentageFee` (uint256): New fee percentage in basis points (e.g., 500 = 5%)
+**Requirements:**
+- Sum must equal exactly 10_000 basis points
+- 1-day waiting period before acceptance
 
-#### acceptPercentageFee / rejectProposePercentageFee
+**Errors:**
+- `InvalidBasisPoints()` - If sum does not equal 10_000
+- `SenderIsNotAdmin()` - If caller is not admin
 
-Standard proposal-acceptance pattern with 1-day delay.
+---
 
-### Fixed Fee Limit Management
+### acceptBasisPointsForReward
 
-#### proposeMaxLimitFillFixedFee
+**Function Signature**: `acceptBasisPointsForReward()`
 
-**Function Signature**: `proposeMaxLimitFillFixedFee(uint256 _maxLimitFillFixedFee)`
+Finalizes the fee distribution change after the time delay.
 
-Proposes a new maximum limit for fixed fees.
+**Access**: Admin only, within acceptance window
 
-**Access**: Owner only  
-**Parameters:**
-- `_maxLimitFillFixedFee` (uint256): New maximum fee limit in token units
+**Errors:**
+- `ProposalNotReadyToAccept()` - If called before timelock expires
 
-#### acceptMaxLimitFillFixedFee / rejectProposeMaxLimitFillFixedFee
+---
 
-Standard proposal-acceptance pattern with 1-day delay.
+### rejectProposalBasisPointsForReward
+
+**Function Signature**: `rejectProposalBasisPointsForReward()`
+
+Cancels the pending fee distribution change proposal.
+
+**Access**: Admin only
 
 ## Treasury Management
 
 ### proposeWithdrawal
 
-**Function Signature**: `proposeWithdrawal(address _tokenToWithdraw, uint256 _amountToWithdraw, address _to)`
+**Function Signature**: `proposeWithdrawal(address tokenToWithdraw, uint256 amountToWithdraw)`
 
-Proposes withdrawal of accumulated fees from the contract treasury.
+Proposes withdrawal of accumulated service fees.
 
-**Access**: Owner only  
-**Parameters:**
-- `_tokenToWithdraw` (address): Token to withdraw
-- `_amountToWithdraw` (uint256): Amount to withdraw
-- `_to` (address): Recipient address
+**Access**: Admin only
+
+**Input Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `tokenToWithdraw` | `address` | Address of the token to withdraw |
+| `amountToWithdraw` | `uint256` | Amount of tokens to withdraw |
 
 **Requirements:**
-- Amount must not exceed contract balance for the token
+- `amountToWithdraw` must not be zero
+- `amountToWithdraw` must not exceed `totalFeesCollected[tokenToWithdraw]`
 - 1-day waiting period before execution
+
+**Errors:**
+- `IncorrectInput()` - If amountToWithdraw is zero
+- `InsufficientAmount()` - If amount exceeds collected fees
+- `SenderIsNotAdmin()` - If caller is not admin
+
+---
 
 ### acceptWithdrawal
 
 **Function Signature**: `acceptWithdrawal()`
 
-Executes the proposed withdrawal.
+Finalizes the withdrawal of accumulated fees after the time delay.
 
-**Access**: Owner only, within acceptance window  
-**Process:**
-1. Transfers tokens to the specified recipient
-2. Updates contract balance tracking
-3. Clears withdrawal proposal state
-
-### rejectProposeWithdrawal
-
-**Function Signature**: `rejectProposeWithdrawal()`
-
-Cancels the proposed withdrawal.
-
-**Access**: Owner only, within acceptance window
-
-## Staking Management
-
-### stake
-
-**Function Signature**: `stake(uint256 amount)`
-
-Stakes MATE tokens on behalf of the contract.
-
-**Access**: Owner only  
-**Parameters:**
-- `amount` (uint256): Number of staking tokens to purchase
-
-**Requirements:**
-- Contract must have sufficient MATE token balance
-- Uses current staking price from Staking contract
+**Access**: Admin only, within acceptance window
 
 **Process:**
-1. Calculates required MATE tokens (amount × staking price)
-2. Calls internal `_makeStakeService` function
-3. Contract becomes a service staker
+1. Validates timelock has expired
+2. Validates sufficient fees still available
+3. Deducts amount from `totalFeesCollected`
+4. Transfers tokens to admin via `makeCaPay()`
+5. Clears withdrawal proposal state
 
-### unstake
+**Errors:**
+- `ProposalNotReadyToAccept()` - If called before timelock expires
+- `InsufficientPayment()` - If fees no longer available
 
-**Function Signature**: `unstake(uint256 amount)`
+---
 
-Unstakes MATE tokens from the contract's staking position.
+### rejectProposalWithdrawal
 
-**Access**: Owner only  
-**Parameters:**
-- `amount` (uint256): Number of staking tokens to unstake
+**Function Signature**: `rejectProposalWithdrawal()`
 
-**Process:**
-1. Calls internal `_makeUnstakeService` function
-2. Follows standard unstaking procedures and timelock
+Cancels the pending withdrawal proposal.
 
-## Balance Management
-
-### addBalance
-
-**Function Signature**: `addBalance(address _token, uint256 _amount)`
-
-Manually adjusts contract balance tracking for a specific token.
-
-**Access**: Owner only  
-**Parameters:**
-- `_token` (address): Token address
-- `_amount` (uint256): Amount to add to balance tracking
-
-**Use Cases:**
-- Correcting balance discrepancies
-- Accounting for direct token transfers
-- Administrative balance adjustments
+**Access**: Admin only
 
 ## Security Features
 
@@ -236,21 +232,21 @@ Manually adjusts contract balance tracking for a specific token.
 
 All administrative changes follow a mandatory 1-day delay pattern:
 
-1. **Proposal Phase**: Owner proposes changes
+1. **Proposal Phase**: Admin proposes changes
 2. **Waiting Period**: 24-hour delay for transparency
-3. **Execution Window**: Limited time to accept or reject
-4. **Automatic Expiry**: Proposals expire if not acted upon
+3. **Execution Window**: Admin can accept once timelock expires
+4. **Cancellation**: Admin can reject any pending proposal
 
 ### Access Control
 
-- **Owner-Only Functions**: Most administrative functions restricted to contract owner
-- **Proposal-Specific Access**: Some functions require being the proposed party
+- **Admin-Only Functions**: All administrative functions restricted to `admin.current` via `onlyAdmin` modifier
+- **Proposal-Specific Access**: `acceptAdmin()` requires being the proposed admin
 - **Time Window Validation**: All time-sensitive functions validate execution windows
 
 ### Validation Checks
 
-- **Balance Verification**: Withdrawal amounts validated against actual balances
-- **Percentage Validation**: Fee percentages must sum to exactly 100%
+- **Fee Balance**: Withdrawal amounts validated against `totalFeesCollected`
+- **Percentage Validation**: Fee percentages must sum to exactly 10_000
 - **Address Validation**: Non-zero address requirements where applicable
 
 ## Administrative Workflow Examples
@@ -258,50 +254,64 @@ All administrative changes follow a mandatory 1-day delay pattern:
 ### Changing Fee Structure
 
 ```solidity
-// 1. Owner proposes new fee distribution (60% seller, 30% service, 10% stakers)
-p2pSwap.proposeFillPropotionalPercentage(6000, 3000, 1000);
+// 1. Admin proposes new fee distribution (60% seller, 30% service, 10% stakers)
+p2pSwap.proposeBasisPointsForReward(6000, 3000, 1000);
 
 // 2. Wait 24 hours
 
-// 3. Owner accepts the change
-p2pSwap.acceptFillPropotionalPercentage();
+// 3. Admin accepts the change
+p2pSwap.acceptBasisPointsForReward();
+```
+
+### Changing Fee Rate
+
+```solidity
+// 1. Admin proposes new fee rate (3%)
+p2pSwap.proposeBasisPercentageFee(300);
+
+// 2. Wait 24 hours
+
+// 3. Admin accepts the change
+p2pSwap.acceptBasisPercentageFee();
 ```
 
 ### Treasury Withdrawal
 
 ```solidity
-// 1. Owner proposes withdrawal of 100 USDC to treasury address
-p2pSwap.proposeWithdrawal(usdcAddress, 100000000, treasuryAddress);
+// 1. Admin proposes withdrawal of 100 USDC
+p2pSwap.proposeWithdrawal(usdcAddress, 100000000);
 
 // 2. Wait 24 hours
 
-// 3. Owner executes withdrawal
+// 3. Admin executes withdrawal (tokens sent to admin address)
 p2pSwap.acceptWithdrawal();
 ```
 
-### Owner Transfer
+### Admin Transfer
 
 ```solidity
-// 1. Current owner proposes new owner
-p2pSwap.proposeOwner(newOwnerAddress);
+// 1. Current admin proposes new admin
+p2pSwap.proposeAdmin(newAdminAddress);
 
-// 2. New owner accepts within 24 hours
-// (called by newOwnerAddress)
-p2pSwap.acceptOwner();
+// 2. New admin accepts within 24 hours
+// (called by newAdminAddress)
+p2pSwap.acceptAdmin();
 ```
 
 ## Emergency Procedures
 
 ### Proposal Cancellation
 
-Any pending proposal can be cancelled by the appropriate party:
-- Owner proposals: Can be rejected by proposed owner
-- Administrative proposals: Can be rejected by current owner
+Any pending proposal can be cancelled by the admin:
+- Admin proposals: Can be rejected by current admin via `rejectProposalAdmin()`
+- Fee proposals: Can be rejected by admin via `rejectProposalBasisPercentageFee()`
+- Reward proposals: Can be rejected by admin via `rejectProposalBasisPointsForReward()`
+- Withdrawal proposals: Can be rejected by admin via `rejectProposalWithdrawal()`
 
 ### Time Window Management
 
 - All proposals have exactly 24-hour acceptance windows
-- Expired proposals must be re-proposed
+- Proposals can be cancelled and re-proposed at any time
 - No emergency override mechanisms (by design)
 
 The administrative system balances operational flexibility with security through mandatory delays, ensuring all stakeholders have visibility into proposed changes before they take effect.

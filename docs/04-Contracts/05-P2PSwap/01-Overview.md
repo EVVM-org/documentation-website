@@ -1,6 +1,6 @@
 ---
 title: "P2P Swap Contract Overview"
-description: "Decentralized peer-to-peer token exchange with flexible order management and fee structures"
+description: "Decentralized peer-to-peer token exchange with order book functionality and proportional fee model"
 sidebar_position: 1
 ---
 
@@ -17,19 +17,19 @@ The P2P Swap Contract is a decentralized token exchange system enabling trustles
 ### Order Management
 - **Order Creation (`makeOrder`)**: Create swap orders offering one token for another
 - **Order Cancellation (`cancelOrder`)**: Cancel unfilled orders and reclaim tokens
-- **Order Fulfillment**: Two dispatch methods with different fee structures
-- **Market Discovery**: Automatic market creation for new token pairs
+- **Order Fulfillment (`dispatchOrder`)**: Fill existing orders with proportional fee model
+- **Market Discovery**: Automatic market creation for new token pairs via `bytes32` hash IDs
 
 ### Fee Structures
 - **Proportional Fee**: Percentage-based fees (configurable rate, default 5%)
-- **Fixed Fee**: Capped fees with maximum limits (default 0.001 ETH) and 10% tolerance
 - **Three-Way Distribution**: Fees split between sellers (50%), MATE stakers (10%), service treasury (40%)
+- **Time-Delayed Governance**: All fee parameter changes require 1-day timelock
 
 ### Integration
 - **Core.sol**: Centralized signature verification and nonce management
 - **P2PSwapHashUtils**: Hash generation for all operations
 - **Token Transfers**: via `requestPay()` (lock) and `makeCaPay()` (release)
-- **Staking Rewards**: 2-5x MATE rewards for staker executors
+- **Staking Rewards**: 1-2x MATE rewards for staker executors
 - **EIP-191 Signatures**: Authorization for all operations
 
 ## Architecture
@@ -59,9 +59,8 @@ makeCaPay(recipient, token, amount);
 
 // 4. Staker rewards
 if (core.isAddressStaker(msg.sender)) {
-    makeCaPay(msg.sender, MATE_TOKEN_ADDRESS, priorityFee);
+    _sendReward(msg.sender, multiplier);
 }
-_rewardExecutor(msg.sender, 2-5x);
 ```
 
 ### Hash Functions
@@ -69,14 +68,14 @@ _rewardExecutor(msg.sender, 2-5x);
 P2PSwap uses `P2PSwapHashUtils` for operation-specific hash generation:
 
 ```solidity
-// makeOrder: Locks tokenA and creates order
-hashDataForMakeOrder(tokenA, tokenB, amountA, amountB)
+// makeOrder: Locks offeredToken and creates order
+hashDataForMakeOrder(offeredToken, requestedToken, offeredAmount, requestedAmount)
 
-// cancelOrder: Refunds tokenA and deletes order
-hashDataForCancelOrder(tokenA, tokenB, orderId)
+// cancelOrder: Refunds offeredToken and deletes order
+hashDataForCancelOrder(offeredToken, requestedToken, orderId)
 
-// dispatchOrder: Executes trade (both fee models use same hash)
-hashDataForDispatchOrder(tokenA, tokenB, orderId)
+// dispatchOrder: Executes trade (partial or full fill)
+hashDataForDispatchOrder(offeredToken, requestedToken, orderId, amountOut, amountInMax)
 ```
 
 ### Signature Format
@@ -119,8 +118,6 @@ core.validateAndConsumeNonce(
 - `specificAddress`: Only that address can call the function (restriction)
 - `serviceAddress`: Service can execute on behalf of user
 
-**Use Case**: Allows users to restrict which contracts or addresses can execute their signed transactions (e.g., only through a specific relayer or service).
-
 ### originExecutor (tx.origin control)
 Controls which EOA can initiate the entire transaction:
 
@@ -136,52 +133,20 @@ if (originExecutor != address(0) && tx.origin != originExecutor) {
 - `userEOA`: Only that EOA can initiate the transaction (personal execution)
 - `trustedEOA`: Only specific EOA can initiate (delegation)
 
-**Use Case**: Enables users to ensure only they (or a trusted party) can trigger the transaction, even if `msg.sender` is a contract.
-
-### Flexibility Mechanism
-
-Both executors support `address(0)` for maximum flexibility:
-
-```solidity
-// Example: Public execution (anyone can call, anyone can initiate)
-senderExecutor = address(0);
-originExecutor = address(0);
-
-// Example: Personal execution only
-senderExecutor = address(0);        // Any contract can call
-originExecutor = user;              // But only user's EOA can initiate
-
-// Example: Service-restricted
-senderExecutor = serviceAddress;    // Only service contract can call
-originExecutor = address(0);        // Any EOA can initiate
-
-// Example: Fully restricted
-senderExecutor = relayerContract;   // Only relayer can call
-originExecutor = userEOA;           // Only user's EOA can initiate
-```
-
 ### P2PSwap Functions & Executors
 
 | Function | Typical senderExecutor | Typical originExecutor |
 |----------|------------------------|------------------------|
 | **makeOrder** | address(0) | address(0) |
 | **cancelOrder** | address(0) | user or address(0) |
-| **dispatchOrder_fillPropotionalFee** | address(0) | user or address(0) |
-| **dispatchOrder_fillFixedFee** | address(0) | user or address(0) |
-
-**Note**: makeOrder often uses `address(0)` for both executors to allow maximum flexibility in order creation.
+| **dispatchOrder** | address(0) | user or address(0) |
 
 ### Nonce Management
 
-**Current**: Centralized in Core.sol
+Centralized async nonces in Core.sol (unified tracking):
 - Query nonce: `core.getNonce(user, address(p2pSwap))`
 - Automatic consumption: Handled by `core.validateAndConsumeNonce()`
 - Per-user, per-service nonce tracking
-
-**Current**: Centralized async nonces in Core.sol (unified tracking)
-- ❌ `nonceP2PSwap[user][nonce]` (removed)
-- ❌ `verifyAsyncNonce()` (removed)
-- ❌ `markAsyncNonceAsUsed()` (removed)
 
 ### Payment Processing
 
@@ -189,11 +154,11 @@ P2PSwap uses two Core payment patterns:
 
 **requestPay()** - Locks tokens in Core
 ```solidity
-requestPay(user, token, amount, priorityFee, nonce, true, signature);
+requestPay(user, token, amount, priorityFee, originExecutor, noncePay, true, signaturePay);
 ```
 Used for:
-- Locking tokenA when creating orders (makeOrder)
-- Collecting tokenB + fees when filling orders (dispatchOrder)
+- Locking offeredToken when creating orders (makeOrder)
+- Collecting requestedToken + fees when filling orders (dispatchOrder)
 - Collecting priority fees from users
 
 **makeCaPay()** - Releases tokens from Core
@@ -201,54 +166,51 @@ Used for:
 makeCaPay(recipient, token, amount);
 ```
 Used for:
-- Refunding tokenA when canceling (cancelOrder)
-- Paying seller their tokenB (dispatchOrder)
+- Refunding offeredToken when canceling (cancelOrder)
+- Paying seller their requestedToken (dispatchOrder)
 - Distributing fees to stakers and service
-- Transferring tokenA to buyer (dispatchOrder)
+- Transferring offeredToken to buyer (dispatchOrder)
 
 ## Market Structure
 
 ### Market Creation
 
-Markets are automatically created for new token pairs:
+Markets are automatically created for new token pairs using a deterministic `bytes32` hash:
 
 ```solidity
-marketId[tokenA][tokenB] = nextMarketId;
-marketMetadata[marketId] = MarketInformation({
-    tokenA: tokenA,
-    tokenB: tokenB,
-    maxSlot: 0,
-    ordersAvailable: 0
-});
+bytes32 marketId = keccak256(abi.encodePacked(tokenA, tokenB));
 ```
 
 **Key Properties:**
-- Markets are bidirectional: `market(A,B)` handles both A→B and B→A orders
+- Markets are identified by `bytes32` hash of the token pair
 - Each market has independent order ID space (1, 2, 3...)
 - Deleted orders leave gaps that get reused
 - `maxSlot` tracks highest order ID ever used
 - `ordersAvailable` counts active orders
+- `medianPrice` stores the volume-weighted average price (VWAP)
 
 ### Order Storage
 
-Orders stored per-market:
+Orders stored per-market with minimal on-chain data:
 
 ```solidity
-ordersInsideMarket[marketId][orderId] = Order({
+orders[marketId][orderId] = Order({
     seller: userAddress,
-    amountA: tokenA amount locked,
-    amountB: tokenB amount required
+    offeredAmount: totalOfferedAmount,
+    requestedAmount: totalRequestedAmount,
+    amountAvailable: remainingOfferedAmount
 });
 ```
 
 **Order Lifecycle:**
-1. **Created**: Seller locks tokenA, order active
-2. **Filled**: Buyer pays tokenB + fee, receives tokenA, order deleted
-3. **Cancelled**: Seller reclaims tokenA, order deleted
+1. **Created**: Seller locks offeredToken, order active
+2. **Partially Filled**: Buyer pays requestedToken + fee, receives portion of offeredToken
+3. **Fully Filled**: All offeredToken distributed, order slot freed
+4. **Cancelled**: Seller reclaims remaining offeredToken, order deleted
 
 ## Economic Model
 
-### Fee Distribution (Proportional & Fixed)
+### Fee Distribution
 
 When an order is filled, fees are distributed:
 
@@ -266,41 +228,15 @@ When an order is filled, fees are distributed:
 - Treasury accumulates: 2 USDC (40% of fee)
 - Stakers share: 0.5 USDC (10% of fee)
 
-### Fixed Fee Model
-
-**Purpose**: Protects buyers from excessive fees on large orders
-
-**Mechanism:**
-```
-proportionalFee = (amountB * percentageFee) / 10,000
-fixedFee = min(proportionalFee, maxLimitFillFixedFee)
-
-// 10% tolerance range
-minRequired = amountB + (fixedFee * 90%)
-maxRequired = amountB + fixedFee
-
-// Buyer can pay anywhere in range
-if (paid >= minRequired && paid <= maxRequired) {
-    actualFee = paid - amountB
-}
-```
-
-**Tolerance Benefit:**
-- Allows UI flexibility for fee display
-- Handles rounding differences
-- User can choose exact payment amount
-
-**Default Cap**: 0.001 ETH (~$2-3 at typical prices)
-
 ### Staker Rewards
 
 Executors who are registered stakers receive MATE token rewards:
 
-| Operation | Base Reward | With Priority | Notes |
-|-----------|-------------|---------------|-------|
-| **makeOrder** | 2x | 3x | Order creation |
-| **cancelOrder** | 2x | 3x | Order cancellation |
-| **dispatchOrder** | 4x | 5x | Order fulfillment (+ refund handling) |
+| Operation | Reward Multiplier | Notes |
+|-----------|-------------------|-------|
+| **makeOrder** | 1x | Order creation |
+| **cancelOrder** | 1x | Order cancellation |
+| **dispatchOrder** | 2x | Order fulfillment |
 
 Where `1x = core.getRewardAmount()` (MATE tokens)
 
@@ -311,37 +247,34 @@ Where `1x = core.getRewardAmount()` (MATE tokens)
 
 ## Operation Summary
 
-| Operation | Purpose | Hash Function | Dual-Executor Usage |
-|-----------|---------|---------------|---------------------|
-| **makeOrder** | Create order, lock tokenA | hashDataForMakeOrder(tokenA, tokenB, amountA, amountB) | Both address(0) (flexible) |
-| **cancelOrder** | Cancel order, refund tokenA | hashDataForCancelOrder(tokenA, tokenB, orderId) | User-specified executors |
-| **dispatchOrder_fillPropotionalFee** | Fill order with % fee | hashDataForDispatchOrder(tokenA, tokenB, orderId) | User-specified executors |
-| **dispatchOrder_fillFixedFee** | Fill order with capped fee | hashDataForDispatchOrder(tokenA, tokenB, orderId) | User-specified executors |
+| Operation | Purpose | Hash Function |
+|-----------|---------|---------------|
+| **makeOrder** | Create order, lock offeredToken | hashDataForMakeOrder(offeredToken, requestedToken, offeredAmount, requestedAmount) |
+| **cancelOrder** | Cancel order, refund offeredToken | hashDataForCancelOrder(offeredToken, requestedToken, orderId) |
+| **dispatchOrder** | Fill order (partial or full) | hashDataForDispatchOrder(offeredToken, requestedToken, orderId, amountOut, amountInMax) |
 
 ## Admin Functions
 
 P2PSwap includes time-locked governance for parameter updates:
 
-- **Fee Configuration**: Update `percentageFee` (proportional model)
-- **Cap Configuration**: Update `maxLimitFillFixedFee` (fixed model)
+- **Fee Configuration**: Update `percentageFee` (proportional fee rate)
 - **Reward Percentages**: Adjust seller/service/staker fee splits
-- **Ownership Transfer**: Propose and accept new owner
+- **Admin Transfer**: Propose and accept new admin
 - **Treasury Withdrawal**: Extract accumulated service fees
 
-All admin changes require a time-lock period before acceptance.
+All admin changes require a 1-day timelock period before acceptance.
 
 ## Security Features
 
-- ✅ **Nonce Protection**: Centralized Core.sol nonce prevents replay attacks
-- ✅ **Signature Validation**: EIP-191 signatures for all operations
-- ✅ **Ownership Verification**: Only order owner can cancel
-- ✅ **Atomic Operations**: Order fill is atomic (payment → transfer → delete)
-- ✅ **Token Locking**: User tokens locked in Core.sol during order lifetime
-- ✅ **Fee Validation**: Fixed fee model includes minimum payment checks
-- ✅ **Overpayment Refund**: Excess payments automatically refunded
+- **Nonce Protection**: Centralized Core.sol nonce prevents replay attacks
+- **Signature Validation**: EIP-191 signatures for all operations
+- **Ownership Verification**: Only order owner can cancel
+- **Atomic Operations**: Order fill is atomic (payment -> transfer -> delete)
+- **Token Locking**: User tokens locked in Core.sol during order lifetime
+- **Overpayment Refund**: Excess payments automatically refunded
+- **Time-Delayed Governance**: Admin changes require 1-day timelock
 
 ---
 
 **License**: EVVM-NONCOMMERCIAL-1.0  
-**Contract**: P2PSwap.sol  
-**License**: EVVM-NONCOMMERCIAL-1.0
+**Contract**: P2PSwap.sol

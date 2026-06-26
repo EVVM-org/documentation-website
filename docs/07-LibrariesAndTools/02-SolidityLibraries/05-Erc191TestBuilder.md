@@ -137,7 +137,6 @@ function buildMessageSignedForPay(
 import {Erc191TestBuilder} from "@evvm/testnet-contracts/library/Erc191TestBuilder.sol";
 
 function testCorePay() public {
-    // Build message hash
     bytes32 hash = Erc191TestBuilder.buildMessageSignedForPay(
         evvmID,
         recipientAddress,       // to_address
@@ -151,11 +150,9 @@ function testCorePay() public {
         true                   // isAsyncExec
     );
     
-    // Sign message
     (uint8 v, bytes32 r, bytes32 s) = vm.sign(userPrivateKey, hash);
     bytes memory signature = Erc191TestBuilder.buildERC191Signature(v, r, s);
     
-    // Call Core.pay
     vm.prank(executorAddress);
     core.pay(
         userAddress,
@@ -203,7 +200,6 @@ function buildMessageSignedForDispersePay(
 
 **Example**:
 ```solidity
-// Prepare recipient data
 CoreStructs.DispersePayMetadata[] memory toData = 
     new CoreStructs.DispersePayMetadata[](2);
 
@@ -219,7 +215,6 @@ toData[1] = CoreStructs.DispersePayMetadata({
     to_identity: "bob"
 });
 
-// Build hash
 bytes32 hash = Erc191TestBuilder.buildMessageSignedForDispersePay(
     evvmID,
     toData,
@@ -335,7 +330,6 @@ function buildMessageSignedForPublicStaking(
 
 **Example**:
 ```solidity
-// Staking test
 bytes32 stakeHash = Erc191TestBuilder.buildMessageSignedForPublicStaking(
     evvmID,
     true,                   // isStaking
@@ -355,13 +349,13 @@ bytes memory signature = Erc191TestBuilder.buildERC191Signature(v, r, s);
 ```solidity
 function buildMessageSignedForMakeOrder(
     uint256 evvmID,
+    address offeredToken,
+    address requestedToken,
+    uint256 offeredAmount,
+    uint256 requestedAmount,
     address senderExecutor,
     address originExecutor,
-    uint256 nonce,
-    address tokenA,
-    address tokenB,
-    uint256 amountA,
-    uint256 amountB
+    uint256 nonce
 ) internal pure returns (bytes32 messageHash)
 ```
 
@@ -369,43 +363,100 @@ function buildMessageSignedForMakeOrder(
 
 **Parameters**:
 - `evvmID`: Chain ID
+- `offeredToken`: Token offered by seller
+- `requestedToken`: Token requested by seller
+- `offeredAmount`: Amount of offeredToken
+- `requestedAmount`: Amount of requestedToken
 - `senderExecutor`: P2PSwap contract address
 - `originExecutor`: User address
 - `nonce`: Always async
-- `tokenA`: Token offering
-- `tokenB`: Token requesting
-- `amountA`: Amount offering
-- `amountB`: Amount requesting
+
+**Example**:
+```solidity
+bytes32 hash = Erc191TestBuilder.buildMessageSignedForMakeOrder(
+    evvmID,
+    usdcAddress,            // offeredToken
+    ethAddress,             // requestedToken
+    1000 * 10**6,           // offeredAmount (1000 USDC)
+    0.5 ether,              // requestedAmount (0.5 ETH)
+    p2pSwapAddress,         // senderExecutor
+    userAddress,            // originExecutor
+    1                       // nonce
+);
+
+(uint8 v, bytes32 r, bytes32 s) = vm.sign(userPrivateKey, hash);
+bytes memory signature = Erc191TestBuilder.buildERC191Signature(v, r, s);
+```
 
 ### `buildMessageSignedForCancelOrder`
 ```solidity
 function buildMessageSignedForCancelOrder(
     uint256 evvmID,
+    address offeredToken,
+    address requestedToken,
+    uint256 orderId,
     address senderExecutor,
     address originExecutor,
-    uint256 nonce,
-    address tokenA,
-    address tokenB,
-    uint256 orderId
+    uint256 nonce
 ) internal pure returns (bytes32 messageHash)
 ```
 
 **Description**: Builds hash for canceling a P2P swap order
 
+**Parameters**:
+- `evvmID`: Chain ID
+- `offeredToken`: Token that was offered in the order
+- `requestedToken`: Token that was requested in the order
+- `orderId`: Order slot ID to cancel
+- `senderExecutor`: P2PSwap contract address
+- `originExecutor`: User address (order owner)
+- `nonce`: Always async
+
 ### `buildMessageSignedForDispatchOrder`
 ```solidity
 function buildMessageSignedForDispatchOrder(
     uint256 evvmID,
+    address offeredToken,
+    address requestedToken,
+    uint256 orderId,
+    uint256 amountOut,
+    uint256 amountInMax,
     address senderExecutor,
     address originExecutor,
-    uint256 nonce,
-    address tokenA,
-    address tokenB,
-    uint256 orderId
+    uint256 nonce
 ) internal pure returns (bytes32 messageHash)
 ```
 
-**Description**: Builds hash for executing a P2P swap order
+**Description**: Builds hash for filling a P2P swap order (partial or full)
+
+**Parameters**:
+- `evvmID`: Chain ID
+- `offeredToken`: Token offered by seller (buyer receives)
+- `requestedToken`: Token requested by seller (buyer pays)
+- `orderId`: Order slot ID to fill
+- `amountOut`: Amount of offeredToken the buyer wants to receive
+- `amountInMax`: Maximum amount of requestedToken the buyer is willing to pay
+- `senderExecutor`: P2PSwap contract address
+- `originExecutor`: User address (buyer)
+- `nonce`: Always async
+
+**Example**:
+```solidity
+bytes32 hash = Erc191TestBuilder.buildMessageSignedForDispatchOrder(
+    evvmID,
+    usdcAddress,            // offeredToken
+    ethAddress,             // requestedToken
+    3,                      // orderId
+    500 * 10**6,            // amountOut (500 USDC)
+    0.2625 ether,           // amountInMax (0.25 + 5% fee)
+    p2pSwapAddress,         // senderExecutor
+    buyerAddress,           // originExecutor
+    1                       // nonce
+);
+
+(uint8 v, bytes32 r, bytes32 s) = vm.sign(buyerPrivateKey, hash);
+bytes memory signature = Erc191TestBuilder.buildERC191Signature(v, r, s);
+```
 
 ## Testing Utilities
 
@@ -427,117 +478,6 @@ function buildMessageSignedForStateTest(
 **Description**: Generic test function for signature validation testing
 
 **Use Case**: Testing Core.validateAndConsumeNonce with custom parameters
-```
-
-**Message Format**: `"<evvmID>,preRegistrationUsername,<hashUsername>,<nonce>"`
-
-### `buildMessageSignedForRegistrationUsername`
-```solidity
-function buildMessageSignedForRegistrationUsername(
-    uint256 evvmID,
-    string memory _username,
-    uint256 _clowNumber,
-    uint256 _nameServiceNonce
-) internal pure returns (bytes32 messageHash)
-```
-
-**Message Format**: `"<evvmID>,registrationUsername,<username>,<clowNumber>,<nonce>"`
-
-### Username Marketplace Functions
-
-**Available functions**:
-- `buildMessageSignedForMakeOffer` - Create username offer
-- `buildMessageSignedForWithdrawOffer` - Cancel offer
-- `buildMessageSignedForAcceptOffer` - Accept offer
-- `buildMessageSignedForRenewUsername` - Renew username
-
-### Custom Metadata Functions
-
-**Available functions**:
-- `buildMessageSignedForAddCustomMetadata` - Add metadata
-- `buildMessageSignedForRemoveCustomMetadata` - Remove metadata entry
-- `buildMessageSignedForFlushCustomMetadata` - Clear all metadata
-- `buildMessageSignedForFlushUsername` - Delete username
-
-## Staking Functions
-
-### `buildMessageSignedForPublicStaking`
-```solidity
-function buildMessageSignedForPublicStaking(
-    uint256 evvmID,
-    bool _isStaking,
-    uint256 _amountOfStaking,
-    uint256 _nonce
-) internal pure returns (bytes32 messageHash)
-```
-
-**Message Format**: `"<evvmID>,publicStaking,<isStaking>,<amount>,<nonce>"`
-
-**Example**:
-```solidity
-// Staking
-bytes32 stakeHash = Erc191TestBuilder.buildMessageSignedForPublicStaking(
-    123,
-    true,      // is staking
-    100 ether, // amount
-    1          // nonce
-);
-
-// Unstaking
-bytes32 unstakeHash = Erc191TestBuilder.buildMessageSignedForPublicStaking(
-    123,
-    false,     // is unstaking
-    50 ether,  // amount
-    2          // nonce
-);
-```
-
-### `buildMessageSignedForPresaleStaking`
-```solidity
-function buildMessageSignedForPresaleStaking(
-    uint256 evvmID,
-    bool _isStaking,
-    uint256 _amountOfStaking,
-    uint256 _nonce
-) internal pure returns (bytes32 messageHash)
-```
-
-**Message Format**: `"<evvmID>,presaleStaking,<isStaking>,<amount>,<nonce>"`
-
-### `buildMessageSignedForPublicServiceStake`
-```solidity
-function buildMessageSignedForPublicServiceStake(
-    uint256 evvmID,
-    address _serviceAddress,
-    bool _isStaking,
-    uint256 _amountOfStaking,
-    uint256 _nonce
-) internal pure returns (bytes32 messageHash)
-```
-
-**Message Format**: `"<evvmID>,publicServiceStaking,<serviceAddress>,<isStaking>,<amount>,<nonce>"`
-
-## P2P Swap Functions
-
-### `buildMessageSignedForMakeOrder`
-```solidity
-function buildMessageSignedForMakeOrder(
-    uint256 evvmID,
-    uint256 _nonce,
-    address _tokenA,
-    address _tokenB,
-    uint256 _amountA,
-    uint256 _amountB
-) internal pure returns (bytes32 messageHash)
-```
-
-**Message Format**: `"<evvmID>,makeOrder,<nonce>,<tokenA>,<tokenB>,<amountA>,<amountB>"`
-
-### Order Management Functions
-
-**Available functions**:
-- `buildMessageSignedForCancelOrder` - Cancel an order
-- `buildMessageSignedForDispatchOrder` - Execute an order
 
 ## Complete Testing Example
 
@@ -559,23 +499,19 @@ contract CorePaymentTest is Test {
     uint256 evvmID;
     
     function setUp() public {
-        // Create test wallets
         alicePrivateKey = 0xA11CE;
         alice = vm.addr(alicePrivateKey);
         bob = makeAddr("bob");
         
-        // Deploy Core (assuming deployment script)
         core = ICore(deployedCoreAddress);
         evvmID = core.getEvvmID();
         
-        // Setup balances
         vm.deal(alice, 10 ether);
         vm.prank(alice);
         core.addBalance{value: 10 ether}(address(0), 10 ether);
     }
     
     function testPayWithSignature() public {
-        // Build message hash using centralized format
         bytes32 messageHash = Erc191TestBuilder.buildMessageSignedForPay(
             evvmID,
             bob,                // receiver address
@@ -589,11 +525,9 @@ contract CorePaymentTest is Test {
             true                // isAsyncExec
         );
         
-        // Sign message with alice's key
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(alicePrivateKey, messageHash);
         bytes memory signature = Erc191TestBuilder.buildERC191Signature(v, r, s);
         
-        // Execute payment as executor
         vm.prank(executor);
         core.pay(
             alice,
@@ -609,12 +543,10 @@ contract CorePaymentTest is Test {
             signature
         );
         
-        // Verify balances
         assertEq(core.getBalance(bob, address(0)), 1 ether);
     }
     
     function testDispersePay() public {
-        // Prepare recipient data
         CoreStructs.DispersePayMetadata[] memory toData = 
             new CoreStructs.DispersePayMetadata[](2);
         
@@ -630,7 +562,6 @@ contract CorePaymentTest is Test {
             to_identity: ""
         });
         
-        // Build hash
         bytes32 hash = Erc191TestBuilder.buildMessageSignedForDispersePay(
             evvmID,
             toData,
@@ -643,7 +574,6 @@ contract CorePaymentTest is Test {
             true
         );
         
-        // Sign and execute
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(alicePrivateKey, hash);
         bytes memory sig = Erc191TestBuilder.buildERC191Signature(v, r, s);
         
@@ -685,23 +615,13 @@ address user = 0x123...; // Can't sign!
 ```solidity
 function testInvalidSignature() public {
     bytes32 hash = Erc191TestBuilder.buildMessageSignedForPay(
-        evvmID,
-        bob,
-        "",
-        address(0),
-        1 ether,
-        0.001 ether,
-        address(core),
-        alice,
-        1,
-        true
+        evvmID, bob, "", address(0), 1 ether, 0.001 ether,
+        address(core), alice, 1, true
     );
     
-    // Sign with WRONG key
     (uint8 v, bytes32 r, bytes32 s) = vm.sign(wrongPrivateKey, hash);
     bytes memory badSig = Erc191TestBuilder.buildERC191Signature(v, r, s);
     
-    // Should revert with InvalidSignature
     vm.expectRevert();
     core.pay(alice, bob, "", address(0), 1 ether, 0.001 ether, 
              address(core), alice, 1, true, badSig);
@@ -715,13 +635,11 @@ function testNonceReplay() public {
     (uint8 v, bytes32 r, bytes32 s) = vm.sign(alicePrivateKey, hash);
     bytes memory sig = Erc191TestBuilder.buildERC191Signature(v, r, s);
     
-    // First execution succeeds
     vm.prank(executor);
     core.pay(alice, bob, "", address(0), 1 ether, 0.001 ether,
              address(core), alice, 1, true, sig);
     
-    // Replay attack should fail
-    vm.expectRevert(); // Nonce already consumed
+    vm.expectRevert();
     vm.prank(executor);
     core.pay(alice, bob, "", address(0), 1 ether, 0.001 ether,
              address(core), alice, 1, true, sig);
@@ -734,8 +652,6 @@ bytes32 paymentHash;
 bytes memory validSignature;
 
 function setUp() public {
-    // Setup...
-    
     paymentHash = Erc191TestBuilder.buildMessageSignedForPay(
         evvmID, bob, "", address(0), 1 ether, 0.001 ether,
         address(core), alice, 1, true
@@ -746,15 +662,6 @@ function setUp() public {
 }
 
 function testPayment() public {
-    vm.prank(executor);
-    core.pay(alice, bob, "", address(0), 1 ether, 0.001 ether,
-             address(core), alice, 1, true, validSignature);
-}
-
-function testPaymentEvent() public {
-    vm.expectEmit(true, true, false, true);
-    emit Pay(alice, bob, address(0), 1 ether);
-    
     vm.prank(executor);
     core.pay(alice, bob, "", address(0), 1 ether, 0.001 ether,
              address(core), alice, 1, true, validSignature);
@@ -794,7 +701,6 @@ contract MyServiceTest is Test {
     MyService service;
     
     function testServicePayment() public {
-        // Build hash using StateTest function for custom service
         bytes32 hash = Erc191TestBuilder.buildMessageSignedForStateTest(
             evvmID,
             "processPayment",
@@ -818,7 +724,6 @@ contract MyServiceTest is Test {
 ### 6. Test Parameter Encoding
 ```solidity
 function testHashPayloadMatching() public {
-    // Manually construct hash
     bytes32 manualHash = keccak256(abi.encode(
         "pay",
         bob,
@@ -828,40 +733,19 @@ function testHashPayloadMatching() public {
         0.001 ether
     ));
     
-    // Use CoreHashUtils
     bytes32 utilHash = CoreHashUtils.hashDataForPay(
-        bob,
-        "",
-        address(0),
-        1 ether,
-        0.001 ether
+        bob, "", address(0), 1 ether, 0.001 ether
     );
     
-    // Should match
     assertEq(manualHash, utilHash);
     
-    // Build full message with Erc191TestBuilder
     bytes32 messageHash = Erc191TestBuilder.buildMessageSignedForPay(
-        evvmID,
-        bob,
-        "",
-        address(0),
-        1 ether,
-        0.001 ether,
-        address(core),
-        alice,
-        1,
-        true
+        evvmID, bob, "", address(0), 1 ether, 0.001 ether,
+        address(core), alice, 1, true
     );
     
-    // Manually verify it uses utilHash
     string memory payload = AdvancedStrings.buildSignaturePayload(
-        evvmID,
-        address(core),
-        utilHash,
-        alice,
-        1,
-        true
+        evvmID, address(core), utilHash, alice, 1, true
     );
     bytes32 expectedHash = Erc191TestBuilder.buildHashForSign(payload);
     assertEq(messageHash, expectedHash);
@@ -875,7 +759,6 @@ function testHashPayloadMatching() public {
 ```typescript
 import { ethers } from 'ethers';
 
-// Build EVVM centralized message
 async function buildEvvmPaymentSignature(
     signer: ethers.Signer,
     evvmId: number,
@@ -887,7 +770,6 @@ async function buildEvvmPaymentSignature(
     userAddress: string,
     nonce: number
 ): Promise<string> {
-    // Step 1: Generate function-specific hash (matches CoreHashUtils.hashDataForPay)
     const hashPayload = ethers.keccak256(
         ethers.AbiCoder.defaultAbiCoder().encode(
             ['string', 'address', 'string', 'address', 'uint256', 'uint256'],
@@ -895,39 +777,24 @@ async function buildEvvmPaymentSignature(
         )
     );
     
-    // Step 2: Build signature payload (6 parameters)
     const payload = [
         evvmId.toString(),
         coreAddress.toLowerCase(),
         hashPayload.toLowerCase(),
         userAddress.toLowerCase(),
         nonce.toString(),
-        'true' // isAsyncExec
+        'true'
     ].join(',');
     
-    // Step 3: Sign with EIP-191
     return await signer.signMessage(payload);
 }
-
-// Usage
-const signature = await buildEvvmPaymentSignature(
-    wallet,
-    1,                                  // evvmID
-    '0xCore...',                        // Core contract
-    '0xBob...',                         // recipient
-    '0x0000000000000000000000000000000000000000', // ETH
-    ethers.parseEther('1'),             // amount
-    ethers.parseEther('0.001'),         // fee
-    '0xAlice...',                       // user
-    42                                  // nonce
-);
 ```
 
 ### React Hook Example
 
 ```typescript
 import { useSignMessage } from 'wagmi';
-import { keccak256, encodePacked, AbiCoder } from 'ethers';
+import { keccak256, AbiCoder } from 'ethers';
 
 function useEvvmPaymentSignature() {
     const { signMessageAsync } = useSignMessage();
@@ -942,7 +809,6 @@ function useEvvmPaymentSignature() {
         user: string,
         nonce: number
     ): Promise<string> {
-        // Generate hash
         const hashPayload = keccak256(
             AbiCoder.defaultAbiCoder().encode(
                 ['string', 'address', 'string', 'address', 'uint256', 'uint256'],
@@ -950,70 +816,12 @@ function useEvvmPaymentSignature() {
             )
         );
         
-        // Build payload
         const payload = `${evvmId},${coreAddress.toLowerCase()},${hashPayload.toLowerCase()},${user.toLowerCase()},${nonce},true`;
         
-        // Sign
         return await signMessageAsync({ message: payload });
     }
     
     return { signPayment };
-}
-```
-
-## Common Patterns
-
-### Pattern 1: Simple Payment Test
-```solidity
-function testSimplePayment() public {
-    bytes32 hash = Erc191TestBuilder.buildMessageSignedForPay(
-        evvmID, bob, "", address(0), 1 ether, 0.001 ether,
-        address(core), alice, 1, true
-    );
-    (uint8 v, bytes32 r, bytes32 s) = vm.sign(alicePrivateKey, hash);
-    bytes memory sig = Erc191TestBuilder.buildERC191Signature(v, r, s);
-    
-    vm.prank(executor);
-    core.pay(alice, bob, "", address(0), 1 ether, 0.001 ether,
-             address(core), alice, 1, true, sig);
-}
-```
-
-### Pattern 2: Username Registration
-```solidity
-function testUsernameRegistration() public {
-    bytes32 hash = Erc191TestBuilder.buildMessageSignedForRegistrationUsername(
-        evvmID,
-        "alice",
-        100,                // lockNumber
-        nameServiceAddress,
-        alice,
-        1
-    );
-    (uint8 v, bytes32 r, bytes32 s) = vm.sign(alicePrivateKey, hash);
-    bytes memory sig = Erc191TestBuilder.buildERC191Signature(v, r, s);
-    
-    vm.prank(executor);
-    nameService.registrationUsername(alice, "alice", 100, nameServiceAddress, alice, 1, sig);
-}
-```
-
-### Pattern 3: Staking Operation
-```solidity
-function testStaking() public {
-    bytes32 hash = Erc191TestBuilder.buildMessageSignedForPublicStaking(
-        evvmID,
-        true,               // isStaking
-        100 ether,
-        stakingAddress,
-        alice,
-        1
-    );
-    (uint8 v, bytes32 r, bytes32 s) = vm.sign(alicePrivateKey, hash);
-    bytes memory sig = Erc191TestBuilder.buildERC191Signature(v, r, s);
-    
-    vm.prank(executor);
-    staking.publicStaking(alice, true, 100 ether, stakingAddress, alice, 1, sig);
 }
 ```
 
@@ -1032,7 +840,6 @@ function testStaking() public {
 
 **Solution**:
 ```solidity
-// Debug signature payload
 string memory payload = AdvancedStrings.buildSignaturePayload(
     evvmID,
     address(core),          // senderExecutor - verify this matches
@@ -1055,7 +862,6 @@ console.log("Recovered signer:", recovered);
 
 **Solution**: Verify parameter encoding matches contract
 ```solidity
-// Check hash construction
 bytes32 expected = keccak256(abi.encode(
     "pay",
     bob,

@@ -30,17 +30,17 @@ To authorize order creation operations, users must generate a cryptographic sign
 The `hashPayload` is generated using **P2PSwapHashUtils.hashDataForMakeOrder()**:
 
 ```solidity
-import {P2PSwapHashUtils} from "@evvm/testnet-contracts/library/signature/P2PSwapHashUtils.sol";
+import {P2PSwapHashUtils} from "@evvm/testnet-contracts/library/utils/signature/P2PSwapHashUtils.sol";
 
 bytes32 hashPayload = P2PSwapHashUtils.hashDataForMakeOrder(
-    tokenA,     // Token offered by seller
-    tokenB,     // Token requested by seller
-    amountA,    // Amount of tokenA offered
-    amountB     // Amount of tokenB requested
+    offeredToken,     // Token offered by seller
+    requestedToken,   // Token requested by seller
+    offeredAmount,    // Amount of offeredToken offered
+    requestedAmount   // Amount of requestedToken requested
 );
 
 // Internal implementation
-// keccak256(abi.encode("makeOrder", tokenA, tokenB, amountA, amountB))
+// keccak256(abi.encode("makeOrder", offeredToken, requestedToken, offeredAmount, requestedAmount))
 ```
 
 ## Centralized Verification
@@ -66,14 +66,14 @@ The signature message is constructed using **AdvancedStrings.buildSignaturePaylo
 
 ```solidity
 import {AdvancedStrings} from "@evvm/testnet-contracts/library/utils/AdvancedStrings.sol";
-import {P2PSwapHashUtils} from "@evvm/testnet-contracts/library/signature/P2PSwapHashUtils.sol";
+import {P2PSwapHashUtils} from "@evvm/testnet-contracts/library/utils/signature/P2PSwapHashUtils.sol";
 
 // Step 1: Generate hash payload
 bytes32 hashPayload = P2PSwapHashUtils.hashDataForMakeOrder(
-    tokenA,
-    tokenB,
-    amountA,
-    amountB
+    offeredToken,
+    requestedToken,
+    offeredAmount,
+    requestedAmount
 );
 
 // Step 2: Build signature message
@@ -95,18 +95,18 @@ string memory message = AdvancedStrings.buildSignaturePayload(
 
 **Step 1: Generate Hash Payload**
 ```solidity
-import {P2PSwapHashUtils} from "@evvm/testnet-contracts/library/signature/P2PSwapHashUtils.sol";
+import {P2PSwapHashUtils} from "@evvm/testnet-contracts/library/utils/signature/P2PSwapHashUtils.sol";
 
-address tokenA = 0xA0b86a33E6441e6e80D0c4C6C7527d72E1d00000;  // USDC
-address tokenB = address(0);  // ETH
-uint256 amountA = 100000000;  // 100 USDC with 6 decimals
-uint256 amountB = 50000000000000000;  // 0.05 ETH in wei
+address offeredToken = 0xA0b86a33E6441e6e80D0c4C6C7527d72E1d00000;  // USDC
+address requestedToken = address(0);  // ETH
+uint256 offeredAmount = 100000000;  // 100 USDC with 6 decimals
+uint256 requestedAmount = 50000000000000000;  // 0.05 ETH in wei
 
 bytes32 hashPayload = P2PSwapHashUtils.hashDataForMakeOrder(
-    tokenA,
-    tokenB,
-    amountA,
-    amountB
+    offeredToken,
+    requestedToken,
+    offeredAmount,
+    requestedAmount
 );
 // Result: 0x3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d
 ```
@@ -137,15 +137,15 @@ The complete `makeOrder()` function call:
 ```solidity
 P2PSwap(p2pSwapAddress).makeOrder(
     user,              // Order creator's address
-    tokenA,            // Token being offered
-    tokenB,            // Token being requested
-    amountA,           // Amount of tokenA
-    amountB,           // Amount of tokenB
+    offeredToken,      // Token being offered
+    requestedToken,    // Token being requested
+    offeredAmount,     // Amount of offeredToken
+    requestedAmount,   // Amount of requestedToken expected
     senderExecutor,    // Address(0) for anyone
     originExecutor,    // Address(0) for anyone
     nonce,             // User's nonce from Core.sol
     signature,         // EIP-191 signature of the message
-    priorityFeePay,    // Optional priority fee
+    priorityFeePay,    // Optional priority fee in offeredToken
     noncePay,          // Separate nonce for pay operation
     signaturePay       // Signature for pay operation
 );
@@ -155,11 +155,11 @@ P2PSwap(p2pSwapAddress).makeOrder(
 
 - **Dual Signatures**: makeOrder requires TWO signatures:
   1. One for the makeOrder operation (validates order parameters)
-  2. One for the pay operation (locks tokenA in Core.sol)
-- **Hash Independence**: The hash payload does NOT include executors (only tokenA, tokenB, amountA, amountB)
+  2. One for the pay operation (locks offeredToken in Core.sol)
+- **Hash Independence**: The hash payload does NOT include executors (only offeredToken, requestedToken, offeredAmount, requestedAmount)
 - **Operation Name**: "makeOrder" is included in hash via P2PSwapHashUtils
 - **Async Execution**: Always uses async nonces (`isAsyncExec: true`)
-- **Market Creation**: P2PSwap automatically creates markets for new token pairs
+- **Market Creation**: P2PSwap automatically creates markets for new token pairs (via bytes32 hash)
 - **Executor Flexibility**: Both executors at address(0) allows anyone to execute the order creation
 
 :::

@@ -30,16 +30,16 @@ To authorize order cancellation operations, users must generate a cryptographic 
 The `hashPayload` is generated using **P2PSwapHashUtils.hashDataForCancelOrder()**:
 
 ```solidity
-import {P2PSwapHashUtils} from "@evvm/testnet-contracts/library/signature/P2PSwapHashUtils.sol";
+import {P2PSwapHashUtils} from "@evvm/testnet-contracts/library/utils/signature/P2PSwapHashUtils.sol";
 
 bytes32 hashPayload = P2PSwapHashUtils.hashDataForCancelOrder(
-    tokenA,     // Token A in market pair (from original order)
-    tokenB,     // Token B in market pair (from original order)
-    orderId     // ID of order to cancel
+    offeredToken,     // Token offered in the order
+    requestedToken,   // Token requested in the order
+    orderId           // ID of order to cancel
 );
 
 // Internal implementation
-// keccak256(abi.encode("cancelOrder", tokenA, tokenB, orderId))
+// keccak256(abi.encode("cancelOrder", offeredToken, requestedToken, orderId))
 ```
 
 ## Centralized Verification
@@ -65,12 +65,12 @@ The signature message is constructed using **AdvancedStrings.buildSignaturePaylo
 
 ```solidity
 import {AdvancedStrings} from "@evvm/testnet-contracts/library/utils/AdvancedStrings.sol";
-import {P2PSwapHashUtils} from "@evvm/testnet-contracts/library/signature/P2PSwapHashUtils.sol";
+import {P2PSwapHashUtils} from "@evvm/testnet-contracts/library/utils/signature/P2PSwapHashUtils.sol";
 
 // Step 1: Generate hash payload
 bytes32 hashPayload = P2PSwapHashUtils.hashDataForCancelOrder(
-    tokenA,
-    tokenB,
+    offeredToken,
+    requestedToken,
     orderId
 );
 
@@ -93,15 +93,15 @@ string memory message = AdvancedStrings.buildSignaturePayload(
 
 **Step 1: Generate Hash Payload**
 ```solidity
-import {P2PSwapHashUtils} from "@evvm/testnet-contracts/library/signature/P2PSwapHashUtils.sol";
+import {P2PSwapHashUtils} from "@evvm/testnet-contracts/library/utils/signature/P2PSwapHashUtils.sol";
 
-address tokenA = 0xA0b86a33E6441e6e80D0c4C6C7527d72E1d00000;  // USDC
-address tokenB = address(0);  // ETH
+address offeredToken = 0xA0b86a33E6441e6e80D0c4C6C7527d72E1d00000;  // USDC
+address requestedToken = address(0);  // ETH
 uint256 orderId = 3;
 
 bytes32 hashPayload = P2PSwapHashUtils.hashDataForCancelOrder(
-    tokenA,
-    tokenB,
+    offeredToken,
+    requestedToken,
     orderId
 );
 // Result: 0x7f8e9d0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8
@@ -133,14 +133,14 @@ The complete `cancelOrder()` function call:
 ```solidity
 P2PSwap(p2pSwapAddress).cancelOrder(
     user,              // Order owner's address
-    tokenA,            // Token A in market pair
-    tokenB,            // Token B in market pair
+    offeredToken,      // Token offered in the order
+    requestedToken,    // Token requested in the order
     orderId,           // Order ID to cancel
     senderExecutor,    // Address(0) for anyone
     originExecutor,    // Address(0) for anyone
     nonce,             // User's nonce from Core.sol
     signature,         // EIP-191 signature of the message
-    priorityFeePay,    // Optional priority fee
+    priorityFeePay,    // Optional priority fee in MATE/principal token
     noncePay,          // Nonce for pay operation (if needed)
     signaturePay       // Signature for pay operation (if needed)
 );
@@ -151,23 +151,18 @@ P2PSwap(p2pSwapAddress).cancelOrder(
 The signature alone does not prove order ownership. The contract performs additional validation:
 
 1. **Signature Verification**: Confirms the user signed the cancellation request
-2. **Order Existence**: Verifies the order exists in the specified market
-3. **Ownership Check**: Confirms the signer is the original order creator
+2. **Order Existence**: Verifies the order exists (seller != address(0))
+3. **Ownership Check**: Confirms the signer is the original order creator (seller == user)
 4. **Nonce Validation**: Ensures the nonce hasn't been used before
 
 :::tip Technical Details
 
-- **Hash Independence**: The hash payload does NOT include executors (only tokenA, tokenB, orderId)
+- **Hash Independence**: The hash payload does NOT include executors (only offeredToken, requestedToken, orderId)
 - **Operation Name**: "cancelOrder" is included in hash via P2PSwapHashUtils
 - **Async Execution**: Always uses async nonces (`isAsyncExec: true`)
 - **Order Ownership**: Only the original order creator can cancel their order
-- **Market Identification**: Token pair (tokenA, tokenB) identifies the correct market
-- **Refund**: Cancelled orders release locked tokens back to the order creator
-
-::: 
-  - `AdvancedStrings.addressToString` converts addresses to lowercase hex with "0x" prefix
-  - `Strings.toString` converts numbers to decimal strings
-- **Order Identification**: Requires both token pair and order ID to uniquely identify the order
-- **Nonce Independence**: P2P Swap nonces are separate from EVVM payment nonces
+- **Market Identification**: Token pair (offeredToken, requestedToken) identifies the correct market via `getMarketId()`
+- **Refund**: Cancelled orders release remaining `amountAvailable` of offeredToken back to the order creator
+- **Priority Fee**: Paid in MATE/principal token (not offeredToken)
 
 :::

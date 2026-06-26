@@ -13,8 +13,8 @@ existing orders).
 
 Fields:
 
-- **Token A** + **amount A** — what you're giving up (locked into P2PSwap on submit)
-- **Token B** + **amount B** — what you want in return
+- **Offered Token** + **offered amount** — what you're giving up (locked into P2PSwap on submit)
+- **Requested Token** + **requested amount** — what you want in return
 - **Priority fee** — paid to the relayer that submits your `makeOrder`
   call
 
@@ -28,35 +28,28 @@ for the action-hash and pay-envelope shapes the contract reconstructs.
 
 ## Cancel an order
 
-Pulls the offered tokens back. The form takes a single field — the
+Pulls the remaining offered tokens back. The form takes a single field — the
 order ID, which you can find in the order list below the form.
 
 ## Dispatch (fill) an order
 
-Two flavors:
+`dispatchOrder(orderId, amountOut, amountInMax)`
 
-### Proportional fee
+- **amountOut**: Amount of offeredToken the buyer wants to receive
+- **amountInMax**: Maximum amount of requestedToken the buyer is willing to pay (including fee)
 
-`dispatchOrder_fillPropotionalFee(orderId, amountOfTokenBToFill)`
-
-Fee = `amountB × percentageFee / 10_000`. Default `percentageFee` is
+Fee = `netPayment × percentageFee / 10_000`. Default `percentageFee` is
 **500 basis points (5%)** — configurable via governance.
 
-The collected fee splits per the `rewardPercentage` config: 50%
+The collected fee splits per the `basisPointsForReward` config: 50%
 seller / 40% service / 10% mateStaker by default.
 
-### Fixed fee
-
-`dispatchOrder_fillFixedFee(orderId, amountOfTokenBToFill, maxFillFixedFee)`
-
-Fee = `min(proportional fee, maxFillFixedFee)`, with a 10% tolerance
-window — the contract derives the actual fee from the payment within
-`[fee - 10%, fee]`. Default `maxFillFixedFee` is **0.001 ether**.
+Partial fills are supported — the order remains active with reduced `amountAvailable` until fully filled or cancelled.
 
 ## Where to look in the code
 
 - `packages/nextjs/src/app/evvm/p2pswap/page.tsx` — page composition
 - `packages/nextjs/src/lib/evvmSignatures.ts` — `signMakeOrder`,
-  `signCancelOrder`, `signDispatchOrder*`
+  `signCancelOrder`, `signDispatchOrder`
 - `packages/nextjs/src/utils/transactionExecuters/p2pswapExecuter.ts` —
   submit functions
