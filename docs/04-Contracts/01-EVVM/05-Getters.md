@@ -292,27 +292,6 @@ For UserValidator management, see:
 
 
 
-### getNextFisherDepositNonce
-
-**Function Type**: `view`  
-**Function Signature**: `getNextFisherDepositNonce(address)`
-
-Returns the expected nonce for the next Fisher Bridge cross-chain deposit.
-
-#### Input Parameters
-
-| Parameter | Type      | Description                               |
-| --------- | --------- | ----------------------------------------- |
-| `user`    | `address` | Address to check deposit nonce for        |
-
-#### Return Value
-
-| Type      | Description                         |
-| --------- | ----------------------------------- |
-| `uint256` | Next Fisher Bridge deposit nonce    |
-
----
-
 ## Balance and Staking Functions
 
 ### getBalance
@@ -360,21 +339,6 @@ Checks if an address is registered as a staker with transaction processing privi
 
 ## Economic System Functions
 
-### getEraPrincipalToken
-
-**Function Type**: `view`  
-**Function Signature**: `getEraPrincipalToken()`
-
-Gets the current era token threshold that triggers the next reward halving in the deflationary tokenomics system.
-
-#### Return Value
-
-| Type      | Description                      |
-| --------- | -------------------------------- |
-| `uint256` | Current era tokens threshold     |
-
----
-
 ### getRewardAmount
 
 **Function Type**: `view`  
@@ -405,38 +369,6 @@ Gets the total supply of the principal token (MATE) used for era transition calc
 
 ---
 
-## Token Management Functions
-
-### getWhitelistTokenToBeAdded
-
-**Function Type**: `view`  
-**Function Signature**: `getWhitelistTokenToBeAdded()`
-
-Gets the address of the token that is pending whitelist approval after the time delay.
-
-#### Return Value
-
-| Type      | Description                                               |
-| --------- | --------------------------------------------------------- |
-| `address` | Address of the token prepared for whitelisting (zero if none) |
-
----
-
-### getWhitelistTokenToBeAddedDateToSet
-
-**Function Type**: `view`  
-**Function Signature**: `getWhitelistTokenToBeAddedDateToSet()`
-
-Gets the acceptance deadline for pending token whitelist proposals.
-
-#### Return Value
-
-| Type      | Description                                                           |
-| --------- | --------------------------------------------------------------------- |
-| `uint256` | Timestamp when pending token can be whitelisted (0 if no pending proposal) |
-
----
-
 ## Proxy and Governance Functions
 
 ### getCurrentImplementation
@@ -454,18 +386,22 @@ Gets the current active implementation contract address used by the proxy for de
 
 ---
 
-### getProposalImplementation
+### getFullDetailImplementation
 
 **Function Type**: `view`  
-**Function Signature**: `getProposalImplementation()`
+**Function Signature**: `getFullDetailImplementation()`
 
-Gets the proposed implementation contract address pending approval for proxy upgrade.
+Returns the full implementation proposal details including current implementation, proposed implementation, and time-to-accept.
 
 #### Return Value
 
-| Type      | Description                                                    |
-| --------- | -------------------------------------------------------------- |
-| `address` | Address of the proposed implementation contract (zero if none) |
+Returns an `AddressTypeProposal` struct containing:
+
+| Field           | Type      | Description                                        |
+| --------------- | --------- | -------------------------------------------------- |
+| `current`       | `address` | Current active implementation address              |
+| `proposal`      | `address` | Proposed implementation address (zero if none)     |
+| `timeToAccept`  | `uint256` | Timestamp when proposal can be accepted            |
 
 ---
 
@@ -474,13 +410,13 @@ Gets the proposed implementation contract address pending approval for proxy upg
 **Function Type**: `view`  
 **Function Signature**: `getTimeToAcceptImplementation()`
 
-Gets the acceptance deadline for the pending implementation upgrade.
+Returns the time delay required before a proposed implementation upgrade can be accepted. This is a constant value (30 days).
 
 #### Return Value
 
-| Type      | Description                                                              |
-| --------- | ------------------------------------------------------------------------ |
-| `uint256` | Timestamp when implementation upgrade can be executed (0 if no pending proposal) |
+| Type      | Description                                          |
+| --------- | ---------------------------------------------------- |
+| `uint256` | Constant time delay in seconds (30 days) for implementation upgrades |
 
 ---
 
@@ -501,33 +437,22 @@ Gets the current admin address with administrative privileges over the contract.
 
 ---
 
-### getProposalAdmin
+### getFullDetailAdmin
 
 **Function Type**: `view`  
-**Function Signature**: `getProposalAdmin()`
+**Function Signature**: `getFullDetailAdmin()`
 
-Gets the proposed admin address pending approval for admin privileges.
+Returns the full admin proposal details including current admin, proposed admin, and time-to-accept.
 
 #### Return Value
 
-| Type      | Description                                          |
-| --------- | ---------------------------------------------------- |
-| `address` | Address of the proposed admin (zero if no pending proposal) |
+Returns an `AddressTypeProposal` struct containing:
 
----
-
-### getTimeToAcceptAdmin
-
-**Function Type**: `view`  
-**Function Signature**: `getTimeToAcceptAdmin()`
-
-Gets the acceptance deadline for the pending admin change.
-
-#### Return Value
-
-| Type      | Description                                                    |
-| --------- | -------------------------------------------------------------- |
-| `uint256` | Timestamp when admin change can be executed (0 if no pending proposal) |
+| Field           | Type      | Description                                        |
+| --------------- | --------- | -------------------------------------------------- |
+| `current`       | `address` | Current active admin address                       |
+| `proposal`      | `address` | Proposed admin address (zero if no proposal)       |
+| `timeToAccept`  | `uint256` | Timestamp when proposal can be accepted            |
 
 ---
 
@@ -552,12 +477,12 @@ UserValidator is an optional contract that can filter which users are allowed to
 
 ---
 
-### getUserValidatorAddressDetails {#getuservalidatoraddressdetails}
+### getFullDetailUserValidator {#getfulldetailuservalidator}
 
 **Function Type**: `view`  
-**Function Signature**: `getUserValidatorAddressDetails()`
+**Function Signature**: `getFullDetailUserValidator()`
 
-Gets full details of the UserValidator proposal including current validator, proposed validator, and time-lock information.
+Returns the full UserValidator proposal details including current validator, proposed validator, and time-to-accept.
 
 #### Return Value
 
@@ -574,7 +499,7 @@ Returns an `AddressTypeProposal` struct containing:
 ```solidity
 // Get full validator details
 ProposalStructs.AddressTypeProposal memory validatorDetails = 
-    core.getUserValidatorAddressDetails();
+    core.getFullDetailUserValidator();
 
 if (validatorDetails.proposal != address(0)) {
     // There's a pending proposal
@@ -609,14 +534,4 @@ uint256 nextNonce = evvm.getNextCurrentSyncNonce(userAddress);
 
 // Check if async nonce is used
 bool nonceUsed = evvm.getIfUsedAsyncNonce(userAddress, customNonce);
-```
-
-### Token Management Verification
-
-```solidity
-// Check if token is pending whitelist
-address pendingToken = evvm.getWhitelistTokenToBeAdded();
-
-// Get deadline for whitelist proposal
-uint256 deadline = evvm.getWhitelistTokenToBeAddedDateToSet();
 ```

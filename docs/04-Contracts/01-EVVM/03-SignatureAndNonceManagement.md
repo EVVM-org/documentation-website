@@ -10,7 +10,7 @@ Core.sol provides centralized signature verification and nonce management for al
 
 ## validateAndConsumeNonce
 
-**Function Type**: `external`  
+**Function Type**: `public`  
 **Function Signature**: `validateAndConsumeNonce(address,address,bytes32,address,uint256,bool,bytes)`
 
 The primary function used by all EVVM services (NameService, Staking, P2PSwap, Treasury) to validate user signatures and consume nonces atomically. This is the foundation of the centralized signature verification system.
@@ -180,7 +180,7 @@ for (uint256 i = 100; i <= 105; i++) {
 ### revokeAsyncNonce
 
 **Function Type**: `external`  
-**Function Signature**: `revokeAsyncNonce(address,uint256)`
+**Function Signature**: `revokeAsyncNonce(uint256)`
 
 Revokes a previously reserved async nonce, making it available for any service.
 
@@ -188,7 +188,6 @@ Revokes a previously reserved async nonce, making it available for any service.
 
 | Field   | Type      | Description                               |
 | ------- | --------- | ----------------------------------------- |
-| `user`  | `address` | Address that reserved the nonce           |
 | `nonce` | `uint256` | The async nonce to revoke reservation for |
 
 #### Use Cases
@@ -201,7 +200,7 @@ Revokes a previously reserved async nonce, making it available for any service.
 
 1. **Usage Check**: Verifies nonce hasn't been used. Reverts with `AsyncNonceAlreadyUsed` if consumed.
 2. **Reservation Check**: Ensures nonce is currently reserved. Reverts with `AsyncNonceNotReserved` if not.
-3. **Clear**: Sets `asyncNonceReservedPointers[user][nonce] = address(0)`
+3. **Clear**: Sets `asyncNonceReservedPointers[msg.sender][nonce] = address(0)`
 
 :::warning[Access Control]
 Currently, `revokeAsyncNonce` can be called by anyone. In production, consider implementing authorization checks to ensure only the user or authorized addresses can revoke reservations.

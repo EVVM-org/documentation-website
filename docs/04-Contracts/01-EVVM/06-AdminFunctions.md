@@ -48,11 +48,10 @@ One-time setup function to configure the NameService and Treasury contract addre
 
 #### Workflow
 
-```soliditytrue
+```solidity
 // After execution: breakerSetupNameServiceAddress == false (prevents re-execution)
 
-core.initializeSystemContract
-evvm._setupNameServiceAndTreasuryAddress(nameServiceAddr, treasuryAddr);
+core.initializeSystemContracts(nameServiceAddr, treasuryAddr);
 ```
 
 ---
@@ -129,35 +128,6 @@ Allows the proposed admin to accept the admin role after the time delay.
 
 
 
-## NameService Integration
-
-### setNameServiceAddress
-
-**Function Type**: `external onlyAdmin`  
-**Function Signature**: `setNameServiceAddress(address)`
-
-Updates the NameService contract address for identity resolution.
-
-#### Input Parameters
-
-| Parameter              | Type      | Description                           |
-| ---------------------- | --------- | ------------------------------------- |
-| `_nameServiceAddress`  | `address` | Address of the new NameService contract |
-
-#### Security Features
-
-- **Admin-only access**: Only admin can change NameService integration
-- **Immediate effect**: Change takes effect immediately
-- **Critical integration**: Affects identity resolution in payments
-
-#### Use Cases
-
-- Upgrading to a new NameService contract version
-- Switching to a different identity resolution system
-- Fixing integration issues with the current NameService
-
----
-
 ## Token List Management Functions
 
 The EVVM Core contract implements a flexible token permission system using allowList and denyList mechanisms. This enables granular control over which tokens can be used in payments, deposits, and other interactions.
@@ -173,12 +143,16 @@ The active mode is managed through governance proposals.
 
 | Function | Signature |
 |----------|-----------|
-| verifyTokenInteractionAllowance | `function verifyTokenInteractionAllowance(address token) external view` |
+| _verifyTokenInteractionAllowance | `function _verifyTokenInteractionAllowance(address token) internal view` |
 | proposeListStatus | `function proposeListStatus(bytes1 newStatus) external onlyAdmin` |
 | rejectListStatusProposal | `function rejectListStatusProposal() external onlyAdmin` |
 | acceptListStatusProposal | `function acceptListStatusProposal() external onlyAdmin` |
 | setTokenStatusOnAllowList | `function setTokenStatusOnAllowList(address token, bool status) external onlyAdmin` |
 | setTokenStatusOnDenyList | `function setTokenStatusOnDenyList(address token, bool status) external onlyAdmin` |
+
+:::note
+`_verifyTokenInteractionAllowance` is an internal function used by other Core functions (e.g., `_updateBalance`, `dispersePay`). It cannot be called directly from external transactions.
+:::
 
 #### Example Usage
 ```solidity

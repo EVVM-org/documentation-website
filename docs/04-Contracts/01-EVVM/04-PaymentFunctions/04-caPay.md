@@ -13,7 +13,7 @@ Contract-to-address payment function designed for authorized smart contracts to 
 
 ## Key Features
 
-- **Contract-Only Execution:** Only smart contracts (non-EOA addresses) can call this function, verified via bytecode presence
+- **Execution Control:** Execution is controlled by the UserValidator system. If a UserValidator is configured, only addresses allowed by the validator can call this function.
 - **No Signature Required:** Bypasses signature verification as authorization is implicit through contract execution
 - **No Nonce Management:** Does not use EVVM nonce systems since contracts rely on blockchain transaction nonces
 - **Automated Distributions:** Designed for staking rewards, NameService fees, and other automated system payouts
@@ -29,7 +29,7 @@ Contract-to-address payment function designed for authorized smart contracts to 
 
 ## Workflow
 
-1. **Contract Verification**: Validates that the caller (`msg.sender`) is a smart contract by checking its bytecode size using `extcodesize`. Reverts with `NotAnCA` if the caller is an Externally Owned Account (EOA).
+1. **User Validation**: Checks if the caller is allowed to execute transactions via `canExecuteUserTransaction()`. If a UserValidator is configured and the caller is not allowed, reverts with `UserCannotExecuteTransaction()`.
 
 2. **Balance Update**: Executes the token transfer using the `_updateBalance` function:
    - Verifies the calling contract has sufficient token balance
