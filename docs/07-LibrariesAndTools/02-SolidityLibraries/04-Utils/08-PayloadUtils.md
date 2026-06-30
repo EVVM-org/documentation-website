@@ -248,6 +248,6 @@ try PayloadUtils.decodePayload(payload) returns (
 ## Related Documentation
 
 - [Treasury Overview](../../../04-Contracts/04-Treasury/01-Overview.md) - Treasury system overview
-- [HostChainStation](../../../04-Contracts/04-Treasury/02-TreasuryCrosschain/02-HostChainStation/01-Overview.md) - Host chain withdrawal operations
-- [ExternalChainStation](../../../04-Contracts/04-Treasury/02-TreasuryCrosschain/03-ExternalChainStation/01-Overview.md) - External chain deposit operations
+- [HostChainStation](../../../04-Contracts/04-Treasury/02-TreasuryCrosschain/01-Overview.md) - Host chain withdrawal operations
+- [ExternalChainStation](../../../04-Contracts/04-Treasury/02-TreasuryCrosschain/01-Overview.md) - External chain deposit operations
 - [Fisher Bridge Signature](../../../05-SignatureStructures/04-Treasury/01-FisherBridgeSignatureStructure.md) - Cross-chain signature structure
