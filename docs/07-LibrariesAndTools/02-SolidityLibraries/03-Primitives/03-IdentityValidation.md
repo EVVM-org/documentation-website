@@ -165,7 +165,7 @@ Validates an email address with structural checks.
 Valid characters for the prefix include:
 - Letters (A-Z, a-z)
 - Digits (0-9)
-- Symbols: `! " # $ % & ' ( ) * + , - . / : ; < = > ? @ [ \ ] ^ _ ` { | } ~`
+- Symbols: `! " # $ % & ' ( ) * + , - . / : ; < = > ? @ [ \ ] ^ _ { | } ~`
 
 #### Implementation
 
