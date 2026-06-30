@@ -25,9 +25,9 @@ Pre-registers a username hash to prevent front-running attacks during the regist
 | `originExecutor`            | `address` | Optional tx.origin restriction (use `address(0)` for unrestricted execution).                                                   |
 | `nonce`                     | `uint256` | User's centralized nonce from Core.sol for this operation.                           |
 | `signature`                 | `bytes`   | EIP-191 signature authorizing this operation (verified by Core.sol).                                                     |
-| `priorityFeeEvvm`          | `uint256` | Optional fee (in Principal Tokens) paid to `msg.sender` (executor) if they are a staker. |
-| `nonceEvvm`                | `uint256` | **Required if `priorityFeeEvvm > 0`**. User's Core nonce for the payment operation.   |
-| `signatureEvvm`            | `bytes`   | **Required if `priorityFeeEvvm > 0`**. User's signature authorizing the Core payment.           |
+| `priorityFeePay`          | `uint256` | Optional fee (in Principal Tokens) paid to `msg.sender` (executor) if they are a staker. |
+| `noncePay`                | `uint256` | **Required if `priorityFeePay > 0`**. User's Core nonce for the payment operation.   |
+| `signaturePay`            | `bytes`   | **Required if `priorityFeePay > 0`**. User's signature authorizing the Core payment.           |
 
 :::note[Signature Requirements]
 
@@ -38,7 +38,7 @@ Pre-registers a username hash to prevent front-running attacks during the regist
 - `originExecutor`: Set to `address(0)` for no restriction or specific address for tx.origin validation
 - Reference: [Pre-Registration Signature Structure](../../../05-SignatureStructures/02-NameService/01-preRegistrationUsernameStructure.md)
 
-**Payment Signature** (`signatureEvvm`) - if `priorityFeeEvvm > 0`:
+**Payment Signature** (`signaturePay`) - if `priorityFeePay > 0`:
 - Follows Core payment format
 - Uses `CoreHashUtils.hashDataForPay()`
 - Reference: [Payment Signature Structure](../../../05-SignatureStructures/01-EVVM/01-SinglePaymentSignatureStructure.md)
@@ -86,8 +86,8 @@ core.validateAndConsumeNonce(
 ### 2. Priority Fee Processing (if > 0)
 
 ```solidity
-if (priorityFeeEvvm > 0) {
-    requestPay(user, 0, priorityFeeEvvm, originExecutor, nonceEvvm, signatureEvvm);
+if (priorityFeePay > 0) {
+    requestPay(user, 0, priorityFeePay, originExecutor, noncePay, signaturePay);
 }
 ```
 
@@ -98,13 +98,13 @@ core.pay(
     address(this),                         // NameService
     "",                                    // No identity
     principalToken,                        // PT
-    priorityFeeEvvm,                       // Amount
-    priorityFeeEvvm,                       // Priority fee
+    priorityFeePay,                       // Amount
+    priorityFeePay,                       // Priority fee
     address(this),                         // senderExecutor (NameService)
     address(this),                         // originExecutor (NameService)
-    nonceEvvm,                             // Payment nonce
+    noncePay,                             // Payment nonce
     true,                                  // Async
-    signatureEvvm                          // Payment sig
+    signaturePay                          // Payment sig
 );
 ```
 
@@ -133,14 +133,13 @@ identityDetails[key] = IdentityBaseMetadata({
 ### 4. Staker Rewards (if executor is staker)
 
 ```solidity
-if (core.isAddressStaker(msg.sender)) {
-    makeCaPay(msg.sender, core.getRewardAmount() + priorityFeeEvvm);
-}
+if (core.isAddressStaker(msg.sender))
+    makeCaPay(msg.sender, core.getRewardAmount() + priorityFeePay);
 ```
 
 **Reward Breakdown:**
 - Base reward: 1x `core.getRewardAmount()`
-- Priority fee: Full `priorityFeeEvvm` amount
+- Priority fee: Full `priorityFeePay` amount
 - Distributed via `core.caPay()`
 
 ## Execution Methods
@@ -194,12 +193,13 @@ bytes32 hashPayload = NameServiceHashUtils.hashDataForPreRegistrationUsername(
 nameService.preRegistrationUsername(
     user,                                   // 0x742d...
     hashPreRegisteredUsername,              // 0xa7f3...
-    address(0),                             // Unrestricted
+    address(0),                             // Unrestricted senderExecutor
+    address(0),                             // Unrestricted originExecutor
     nonce,                                  // 42
     signature,                              // Operation sig
     1000000000000000000,                    // 1 PT priority fee
-    nonceEvvm,                              // 43
-    signatureEvvm                           // Payment sig
+    noncePay,                              // 43
+    signaturePay                           // Payment sig
 );
 ```
 
@@ -210,8 +210,8 @@ Commitment is now stored and valid for 30 minutes. Must complete registration wi
 ## Important Notes
 
 ### Time Window
-- **Valid for**: 30 minutes from commitment
-- **Must register**: Before `expirationDate` passes
+- **Waiting period**: 30 minutes minimum. Registration is only possible AFTER the 30-minute window expires.
+- **Must register**: After `expirationDate` passes (at least 30 minutes after pre-registration)
 - **If expired**: Must submit new pre-registration
 
 ### Lock Number Security
@@ -251,7 +251,7 @@ Common revert reasons:
 "Nonce already used"                // Nonce was consumed
 "Invalid executor"                  // tx.origin doesn't match originExecutor
 
-// From payment processing (if priorityFeeEvvm > 0)
+// From payment processing (if priorityFeePay > 0)
 "Insufficient balance"              // User lacks PT for fee
 "Payment signature invalid"         // Payment signature failed
 ```

@@ -114,7 +114,7 @@ Allows the proposed admin to accept the role after the mandatory waiting period.
 
 1. **Proposal Validation**: Verifies `msg.sender == admin.proposal`
 2. **Time Lock Validation**: Confirms `admin.timeToAccept <= block.timestamp`
-3. **Role Transfer**: Updates `admin.actual = admin.proposal`
+3. **Role Transfer**: Updates `admin.current = admin.proposal`
 4. **Cleanup**: Resets `admin.proposal = address(0)` and `admin.timeToAccept = 0`
 
 ---
@@ -168,7 +168,7 @@ Allows the admin to confirm the new golden fisher role assignment after the wait
 
 1. **Admin Verification**: Validates caller has admin privileges
 2. **Time Lock Validation**: Confirms `goldenFisher.timeToAccept <= block.timestamp`
-3. **Role Assignment**: Updates `goldenFisher.actual = goldenFisher.proposal`
+3. **Role Assignment**: Updates `goldenFisher.current = goldenFisher.proposal`
 4. **Cleanup**: Resets `goldenFisher.proposal = address(0)` and `goldenFisher.timeToAccept = 0`
 
 ---
@@ -222,7 +222,7 @@ Allows the admin to confirm the new staking unlock period after the waiting peri
 
 1. **Admin Verification**: Validates caller has admin privileges
 2. **Time Lock Validation**: Confirms `secondsToUnlockStaking.timeToAccept <= block.timestamp`
-3. **Configuration Update**: Updates `secondsToUnlockStaking.actual = secondsToUnlockStaking.proposal`
+3. **Configuration Update**: Updates `secondsToUnlockStaking.current = secondsToUnlockStaking.proposal`
 4. **Cleanup**: Resets `secondsToUnlockStaking.proposal = 0` and `secondsToUnlockStaking.timeToAccept = 0`
 
 ---
@@ -276,7 +276,7 @@ Allows the admin to confirm the new full unstaking unlock period after the waiti
 
 1. **Admin Verification**: Validates caller has admin privileges
 2. **Time Lock Validation**: Confirms `secondsToUnllockFullUnstaking.timeToAccept <= block.timestamp`
-3. **Configuration Update**: Updates `secondsToUnllockFullUnstaking.actual = secondsToUnllockFullUnstaking.proposal`
+3. **Configuration Update**: Updates `secondsToUnllockFullUnstaking.current = secondsToUnllockFullUnstaking.proposal`
 4. **Cleanup**: Resets `secondsToUnllockFullUnstaking.proposal = 0` and `secondsToUnllockFullUnstaking.timeToAccept = 0`
 
 ---
@@ -424,8 +424,8 @@ Allows the admin to confirm the new estimator address after the waiting period.
 
 1. **Admin Verification**: Validates caller has admin privileges using `onlyOwner` modifier
 2. **Time Lock Validation**: Confirms `estimatorAddress.timeToAccept <= block.timestamp`
-3. **Contract Update**: Updates `estimatorAddress.actual = estimatorAddress.proposal`
-4. **Instance Update**: Updates `estimator = IEstimator(estimatorAddress.actual)`
+3. **Contract Update**: Updates `estimatorAddress.current = estimatorAddress.proposal`
+4. **Instance Update**: Updates `estimator = IEstimator(estimatorAddress.current)`
 5. **Cleanup**: Resets `estimatorAddress.proposal = address(0)` and `estimatorAddress.timeToAccept = 0`
 
 ---
@@ -436,7 +436,7 @@ Allows the admin to confirm the new estimator address after the waiting period.
 
 ```solidity
 struct AddressTypeProposal {
-    address actual;      // Current active address
+    address current;      // Current active address
     address proposal;    // Proposed new address
     uint256 timeToAccept; // Timestamp when proposal can be accepted
 }
@@ -448,7 +448,7 @@ Used for managing: `admin`, `goldenFisher`, `estimatorAddress`
 
 ```solidity
 struct UintTypeProposal {
-    uint256 actual;      // Current active value
+    uint256 current;      // Current active value
     uint256 proposal;    // Proposed new value
     uint256 timeToAccept; // Timestamp when proposal can be accepted
 }

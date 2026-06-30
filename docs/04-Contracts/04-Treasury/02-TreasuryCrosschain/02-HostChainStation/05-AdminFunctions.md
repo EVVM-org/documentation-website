@@ -27,14 +27,14 @@ Proposes a new admin address with a mandatory time delay for security.
 #### Workflow
 1. **Validation**: Ensures new address is not zero address or current admin
 2. **Proposal Setup**: Sets `admin.proposal = _newOwner`
-3. **Time Lock**: Sets `admin.timeToAccept = block.timestamp + 1 days`
+3. **Time Lock**: Sets `admin.timeToAccept = block.timestamp + 1 minutes`
 
 ```solidity
 function proposeAdmin(address _newOwner) external onlyAdmin {
     if (_newOwner == address(0) || _newOwner == admin.current) revert();
     
     admin.proposal = _newOwner;
-    admin.timeToAccept = block.timestamp + 1 days;
+    admin.timeToAccept = block.timestamp + 1 minutes;
 }
 ```
 
@@ -72,6 +72,8 @@ function acceptAdmin() external {
     admin.current = admin.proposal;
     admin.proposal = address(0);
     admin.timeToAccept = 0;
+
+    _transferOwnership(admin.current);
 }
 ```
 
@@ -93,7 +95,7 @@ Proposes a new fisher executor with the same time-delay mechanism as admin chang
 #### Workflow
 1. **Validation**: Ensures new address is not zero or current executor
 2. **Proposal Setup**: Sets `fisherExecutor.proposal = _newFisherExecutor`
-3. **Time Lock**: Sets `fisherExecutor.timeToAccept = block.timestamp + 1 days`
+3. **Time Lock**: Sets `fisherExecutor.timeToAccept = block.timestamp + 1 minutes`
 
 ### rejectProposalFisherExecutor
 
@@ -205,7 +207,7 @@ Returns the LayerZero execution options used for cross-chain messaging.
 ## Security Features
 
 ### Time-Delayed Governance
-- **1-Day Delay**: All role changes require 24-hour waiting period
+- **1-Minute Delay**: All role changes require a 1-minute waiting period
 - **Proposal/Accept Pattern**: Two-step process prevents accidental changes
 - **Current Admin Control**: Only current admin can propose changes
 - **Self-Accept**: Proposed addresses must accept their own appointments
@@ -236,7 +238,7 @@ modifier onlyFisherExecutor() {
 
 ### Admin Change Process
 1. **Proposal**: Current admin calls `proposeAdmin(newAddress)`
-2. **Wait Period**: 24-hour delay begins
+2. **Wait Period**: 1-minute delay begins
 3. **Acceptance**: Proposed admin calls `acceptAdmin()` after delay
 4. **Completion**: Admin role transferred, proposal state cleared
 

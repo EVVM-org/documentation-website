@@ -6,7 +6,7 @@ sidebar_position: 1
 
 # notifyNewEpoch
 
-**Function Type**: `external`  
+**Function Type**: `public`  
 **Access Control**: `onlyActivator`  
 **Function Signature**: `notifyNewEpoch(address,uint256,uint256,uint256)`
 

@@ -11,7 +11,7 @@ This function uses **Core.sol's centralized signature verification** via `valida
 :::
 
 **Function Type**: External  
-**Function Signature**: `addCustomMetadata(address user, string memory identity, string memory value, address senderExecutor, address originExecutor, uint256 nonce, bytes memory signature, uint256 priorityFeeEvvm, uint256 nonceEvvm, bytes memory signatureEvvm) external`
+**Function Signature**: `addCustomMetadata(address user, string memory identity, string memory value, address senderExecutor, address originExecutor, uint256 nonce, bytes memory signature, uint256 priorityFeePay, uint256 noncePay, bytes memory signaturePay) external`
 
 Associates custom metadata with a registered username using a structured schema format. Supports arbitrary key-value information like social media handles, email addresses, membership affiliations, and more. Each metadata entry is stored in a separate slot with sequential indexing.
 
@@ -26,9 +26,9 @@ Associates custom metadata with a registered username using a structured schema 
 | `originExecutor` | `address` | EOA that will execute the transaction (verified with tx.origin) |
 | `nonce` | `uint256` | User's Core nonce for this signature (prevents replay attacks) |
 | `signature` | `bytes` | EIP-191 signature from `user` authorizing metadata addition |
-| `priorityFeeEvvm` | `uint256` | Optional priority fee for faster processing (paid to staker executor) |
-| `nonceEvvm` | `uint256` | User's Core nonce for the payment signature |
-| `signatureEvvm` | `bytes` | User's signature authorizing the metadata fee payment |
+| `priorityFeePay` | `uint256` | Optional priority fee for faster processing (paid to staker executor) |
+| `noncePay` | `uint256` | User's Core nonce for the payment signature |
+| `signaturePay` | `bytes` | User's signature authorizing the metadata fee payment |
 
 ## Signature Requirements
 
@@ -77,7 +77,7 @@ bytes memory signature = abi.encodePacked(r, s, v);
 Authorizes payment of the metadata fee:
 
 ```
-Payment Amount: getPriceToAddCustomMetadata() + priorityFeeEvvm
+Payment Amount: getPriceToAddCustomMetadata() + priorityFeePay
 Recipient: address(nameServiceContract)
 ```
 
@@ -146,6 +146,7 @@ Core.sol validates the signature and consumes the nonce:
 ```solidity
 core.validateAndConsumeNonce(
     user,
+    senderExecutor,
     Hash.hashDataForAddCustomMetadata(identity, value),
     originExecutor,
     nonce,
@@ -204,9 +205,10 @@ Transfers the metadata fee from user to NameService:
 requestPay(
     user,
     getPriceToAddCustomMetadata(),  // 10x reward amount
-    priorityFeeEvvm,
-    nonceEvvm,
-    signatureEvvm
+    priorityFeePay,
+    originExecutor,
+    noncePay,
+    signaturePay
 );
 ```
 
@@ -220,15 +222,15 @@ This internally calls:
 core.pay(
     user,
     address(this),
-    metadataFee + priorityFeeEvvm,
-    nonceEvvm,
+    metadataFee + priorityFeePay,
+    noncePay,
     true,
-    signatureEvvm
+    signaturePay
 );
 ```
 
 **Token Flow**:
-- User → NameService: `10x reward + priorityFeeEvvm`
+- User → NameService: `10x reward + priorityFeePay`
 - Payment for metadata storage
 
 **Reverts With**: Any Core.pay() errors (insufficient balance, invalid signature)
@@ -243,7 +245,7 @@ if (core.isAddressStaker(msg.sender)) {
         msg.sender,
         (5 * core.getRewardAmount()) +
             ((getPriceToAddCustomMetadata() * 50) / 100) +
-            priorityFeeEvvm
+            priorityFeePay
     );
 }
 ```
@@ -251,9 +253,9 @@ if (core.isAddressStaker(msg.sender)) {
 **Reward Calculation**:
 ```
 Total Reward = Enhanced Base + 50% of Metadata Fee + Priority Fee
-             = 5x base + (10x × 50%) + priorityFeeEvvm
-             = 5x + 5x + priorityFeeEvvm
-             = 10x base reward + priorityFeeEvvm
+             = 5x base + (10x × 50%) + priorityFeePay
+             = 5x + 5x + priorityFeePay
+             = 10x base reward + priorityFeePay
 ```
 
 **Example** (base reward = 0.01 tokens, 1 token priority fee):
@@ -331,12 +333,12 @@ string memory message = string.concat(
 bytes memory signature = signMessage(owner, message);
 
 // Generate payment signature
-uint256 nonceEvvm = core.getNonce(owner, address(core));
-bytes memory signatureEvvm = generatePaymentSignature(
+uint256 noncePay = core.getNonce(owner, address(core));
+bytes memory signaturePay = generatePaymentSignature(
     owner,
     address(nameService),
     metadataFee + priorityFee,
-    nonceEvvm
+    noncePay
 );
 
 // Execute metadata addition
@@ -344,12 +346,13 @@ nameService.addCustomMetadata(
     owner,
     username,
     metadata,
+    address(0),                             // Unrestricted senderExecutor
     originExecutor,
     nonce,
     signature,
     priorityFee,
-    nonceEvvm,
-    signatureEvvm
+    noncePay,
+    signaturePay
 );
 
 // Result:
@@ -422,8 +425,8 @@ This ensures:
 
 ## State Changes
 
-1. **User balance** → Decreased by `metadataFee + priorityFeeEvvm`
-2. **NameService balance** → Increased by `metadataFee + priorityFeeEvvm`
+1. **User balance** → Decreased by `metadataFee + priorityFeePay`
+2. **NameService balance** → Increased by `metadataFee + priorityFeePay`
 3. **identityCustomMetadata[identity][slot]** → New metadata value stored
 4. **identityDetails[identity].customMetadataMaxSlots** → Incremented by 1
 5. **Core nonce** → User's nonce marked as consumed

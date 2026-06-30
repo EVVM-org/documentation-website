@@ -11,7 +11,7 @@ This function uses **Core.sol's centralized signature verification** via `valida
 :::
 
 **Function Type**: External  
-**Function Signature**: `renewUsername(address user, string memory username, address senderExecutor, address originExecutor, uint256 nonce, bytes memory signature, uint256 priorityFeeEvvm, uint256 nonceEvvm, bytes memory signatureEvvm) external`
+**Function Signature**: `renewUsername(address user, string memory username, address senderExecutor, address originExecutor, uint256 nonce, bytes memory signature, uint256 priorityFeePay, uint256 noncePay, bytes memory signaturePay) external`
 
 Extends a username registration by 366 days. The renewal cost is dynamically calculated based on marketplace activity and timing. Usernames can be renewed up to 100 years in advance. The renewal preserves ownership, metadata, and all settings - only the expiration date changes.
 
@@ -25,9 +25,9 @@ Extends a username registration by 366 days. The renewal cost is dynamically cal
 | `originExecutor` | `address` | The address authorized to submit this specific signed transaction |
 | `nonce` | `uint256` | User's Core nonce for this signature (prevents replay attacks) |
 | `signature` | `bytes` | EIP-191 signature from `user` authorizing the renewal |
-| `priorityFeeEvvm` | `uint256` | Optional priority fee for faster processing (paid to staker executor) |
-| `nonceEvvm` | `uint256` | User's Core nonce for the payment signature |
-| `signatureEvvm` | `bytes` | User's signature authorizing the renewal payment |
+| `priorityFeePay` | `uint256` | Optional priority fee for faster processing (paid to staker executor) |
+| `noncePay` | `uint256` | User's Core nonce for the payment signature |
+| `signaturePay` | `bytes` | User's signature authorizing the renewal payment |
 
 ## Signature Requirements
 
@@ -72,7 +72,7 @@ bytes memory signature = abi.encodePacked(r, s, v);
 Authorizes the renewal payment:
 
 ```
-Payment Amount: seePriceToRenew(username) + priorityFeeEvvm
+Payment Amount: seePriceToRenew(username) + priorityFeePay
 Recipient: address(nameServiceContract)
 ```
 
@@ -170,15 +170,14 @@ uint256 priceOfRenew = seePriceToRenew(username);
 ```
 
 **Pricing Rules** (from `seePriceToRenew` function):
-- **Within grace period** (expired < 30 days): Free (0 tokens)
-- **Active offers exist**: Calculated based on highest active offer (variable)
-- **No offers + renewing >1 year early**: 500,000 PT (fixed high cost)
-- **Default**: Calculated based on registration cost model
+- **Active username with no offers**: 500 * 10^18 (500 PT)
+- **Active username with offers**: Highest active offer amount (capped at 500,000 * reward)
+- **Expired username**: 500,000 * core.getRewardAmount()
 
 This dynamic pricing:
-- Incentivizes timely renewals (grace period)
 - Reflects market demand (active offers)
-- Discourages premature renewal (high cost for >1 year early)
+- Provides baseline pricing for inactive markets
+- Scales with network reward structure for expired usernames
 
 ### 6. Payment Processing
 
@@ -188,9 +187,10 @@ Transfers the renewal cost from user to NameService:
 requestPay(
     user,
     priceOfRenew,
-    priorityFeeEvvm,
-    nonceEvvm,
-    signatureEvvm
+    priorityFeePay,
+    originExecutor,
+    noncePay,
+    signaturePay
 );
 ```
 
@@ -199,15 +199,20 @@ This internally calls:
 core.pay(
     user,
     address(this),
-    priceOfRenew + priorityFeeEvvm,
-    nonceEvvm,
+    "",
+    core.getPrincipalTokenAddress(),
+    priceOfRenew + priorityFeePay,
+    priorityFeePay,
+    address(this),
+    originExecutor,
+    noncePay,
     true,
-    signatureEvvm
+    signaturePay
 );
 ```
 
 **Token Flow**:
-- User → NameService: `priceOfRenew + priorityFeeEvvm`
+- User → NameService: `priceOfRenew + priorityFeePay`
 - Payment for 366-day extension
 
 **Reverts With**: Any Core.pay() errors (insufficient balance, invalid signature)
@@ -222,7 +227,7 @@ if (core.isAddressStaker(msg.sender)) {
         msg.sender,
         core.getRewardAmount() +
             ((priceOfRenew * 50) / 100) +
-            priorityFeeEvvm
+                priorityFeePay
     );
 }
 ```
@@ -230,7 +235,7 @@ if (core.isAddressStaker(msg.sender)) {
 **Reward Calculation**:
 ```
 Total Reward = Base Reward + 50% of Renewal Cost + Priority Fee
-             = 1x + (priceOfRenew × 50%) + priorityFeeEvvm
+             = 1x + (priceOfRenew × 50%) + priorityFeePay
 ```
 
 **Example** (1000 token renewal, 10 token priority fee):
@@ -291,24 +296,25 @@ string memory message = string.concat(
 bytes memory signature = signMessage(owner, message);
 
 // Generate payment signature
-uint256 nonceEvvm = core.getNonce(owner, address(core));
-bytes memory signatureEvvm = generatePaymentSignature(
+uint256 noncePay = core.getNonce(owner, address(core));
+bytes memory signaturePay = generatePaymentSignature(
     owner,
     address(nameService),
     renewalCost + priorityFee,
-    nonceEvvm
+    noncePay
 );
 
 // Execute renewal
 nameService.renewUsername(
     owner,
     username,
+    address(0),                             // Unrestricted senderExecutor
     originExecutor,
     nonce,
     signature,
     priorityFee,
-    nonceEvvm,
-    signatureEvvm
+    noncePay,
+    signaturePay
 );
 
 // Result:
@@ -354,62 +360,48 @@ nameService.renewUsername(
 
 The `seePriceToRenew(username)` function returns different costs based on context:
 
-#### 1. Grace Period Renewal (Free)
+#### 1. Active Username (No Offers)
 ```
-Condition: expired < 30 days ago
-Cost: 0 tokens
-Reasoning: Encourage owners to reclaim recently expired usernames
+Condition: username is active (expirationDate >= block.timestamp) AND no active offers
+Cost: 500 * 10^18 (500 PT)
+Reasoning: Baseline pricing for active usernames with no market activity
 ```
 
-#### 2. Market-Based Pricing
+#### 2. Active Username (With Offers)
 ```
-Condition: Active offers exist for the username
-Cost: Calculated from highest active offer
+Condition: username is active AND has active, non-expired offers
+Cost: Highest active offer amount (capped at 500,000 * reward amount)
 Reasoning: Reflect true market demand/value
 ```
 
-#### 3. Premature Renewal Penalty
+#### 3. Expired Username
 ```
-Condition: Current expiration > 1 year in future
-Cost: 500,000 PT (fixed high cost)
-Reasoning: Discourage excessive future locking
-```
-
-#### 4. Standard Renewal
-```
-Condition: Default case
-Cost: Based on standard registration cost model
-Reasoning: Consistent baseline pricing
+Condition: username has expired (expirationDate < block.timestamp)
+Cost: 500,000 * core.getRewardAmount()
+Reasoning: High cost for re-registration of expired names
 ```
 
 ### Example Price Scenarios
 
-**Scenario A - Grace Period**:
+**Scenario A - Active, No Offers**:
 ```
 Username: "alice"
-Expired: 15 days ago
-Price: 0 PT (free reclaim)
+Status: Active, no offers
+Price: 500 PT (baseline)
 ```
 
-**Scenario B - High Demand Username**:
+**Scenario B - Active, High Demand**:
 ```
 Username: "crypto"
 Active Offers: 5 offers, highest = 10,000 PT
-Price: ~Calculated based on 10,000 PT offer
+Price: ~Based on 5% of highest offer (capped at 500,000 * reward)
 ```
 
-**Scenario C - Premature Renewal**:
+**Scenario C - Expired Username**:
 ```
 Username: "bob"
-Current Expiration: 400 days from now
-Price: 500,000 PT (penalty pricing)
-```
-
-**Scenario D - Standard Renewal**:
-```
-Username: "alice123"
-Expiring: In 30 days, no offers
-Price: ~Standard cost (e.g., 100-1000 PT)
+Status: Expired
+Price: 500,000 * core.getRewardAmount()
 ```
 
 ## Economic Model
@@ -441,8 +433,8 @@ This is the **highest percentage reward** in the NameService contract, reflectin
 
 ## State Changes
 
-1. **User balance** → Decreased by `priceOfRenew + priorityFeeEvvm`
-2. **NameService balance** → Increased by `priceOfRenew + priorityFeeEvvm`
+1. **User balance** → Decreased by `priceOfRenew + priorityFeePay`
+2. **NameService balance** → Increased by `priceOfRenew + priorityFeePay`
 3. **identityDetails[username].expirationDate** → Increased by 366 days
 4. **Core nonce** → User's nonce marked as consumed
 5. **Staker balance** (if applicable) → Increased by substantial reward (50% of cost + priority)
@@ -471,12 +463,12 @@ The 36,500-day (100-year) limit prevents:
 
 Users can still achieve indefinite ownership through periodic renewals.
 
-### Grace Period Strategy
+### Pricing Strategy
 
-The grace period (expired < 30 days = free) creates beneficial dynamics:
-- Original owners have time to reclaim (no immediate loss)
-- Reduces accidental expiration consequences
-- Incentivizes quick reclamation over marketplace purchases
+The pricing model incentivizes active marketplace participation:
+- **Active with offers**: Market-driven pricing reflects true demand
+- **Active without offers**: Baseline 500 PT ensures fair access
+- **Expired**: High cost discourages letting usernames lapse
 
 ### Renewal vs Re-Registration
 
@@ -486,11 +478,11 @@ Renewal advantages over letting expire and re-registering:
 - **Faster**: No commit-reveal required (immediate)
 - **Continuous**: No gap in ownership/availability
 
-### Premature Renewal Economics
+### Expired Username Economics
 
-The 500,000 PT cost for renewing >1 year early serves important functions:
-- **Prevents hoarding**: Discourages locking up names far in advance
-- **Market liquidity**: Encourages owners to potentially sell vs hold empty
+The 500,000 * reward cost for expired usernames serves important functions:
+- **Prevents hoarding**: High cost for expired names discourages squatting
+- **Market liquidity**: Encourages timely renewals vs letting names lapse
 - **Fair access**: Allows market to determine true value vs preemptive locking
 
-Most users should renew within 1 year of expiration to avoid penalty pricing.
+Most users should renew before expiration to avoid the high expired username pricing.

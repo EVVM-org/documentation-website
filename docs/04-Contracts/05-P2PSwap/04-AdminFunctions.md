@@ -45,11 +45,11 @@ Proposes a new administrator with a 1-day acceptance window.
 
 Accepts the admin proposal and transfers administration.
 
-**Access**: Proposed admin only, within acceptance window
+**Access**: Proposed admin only
 
 **Requirements:**
 - Must be called by the proposed admin (`admin.proposal`)
-- Must be within the 1-day acceptance window (`block.timestamp >= admin.timeToAccept`)
+- Must be after the 1-day timelock expires (`block.timestamp >= admin.timeToAccept`)
 
 **Process:**
 1. Transfers admin role to the proposed admin
@@ -71,6 +71,9 @@ Cancels the pending admin change proposal.
 
 **Process:**
 1. Clears the admin proposal (sets proposal to address(0), timeToAccept to 0)
+
+**Errors:**
+- `SenderIsNotAdmin()` - If caller is not the current admin
 
 ## Fee Configuration Management
 
@@ -104,10 +107,11 @@ Proposes a new proportional fee rate in basis points.
 
 Finalizes the fee rate change after the time delay.
 
-**Access**: Admin only, within acceptance window
+**Access**: Admin only, after timelock expires
 
 **Errors:**
 - `ProposalNotReadyToAccept()` - If called before timelock expires
+- `SenderIsNotAdmin()` - If caller is not the current admin
 
 ---
 
@@ -118,6 +122,9 @@ Finalizes the fee rate change after the time delay.
 Cancels the pending fee rate change proposal.
 
 **Access**: Admin only
+
+**Errors:**
+- `SenderIsNotAdmin()` - If caller is not the current admin
 
 ## Reward Distribution Management
 
@@ -153,10 +160,11 @@ Proposes a new fee distribution split among seller, service, and staker.
 
 Finalizes the fee distribution change after the time delay.
 
-**Access**: Admin only, within acceptance window
+**Access**: Admin only, after timelock expires
 
 **Errors:**
 - `ProposalNotReadyToAccept()` - If called before timelock expires
+- `SenderIsNotAdmin()` - If caller is not the current admin
 
 ---
 
@@ -167,6 +175,9 @@ Finalizes the fee distribution change after the time delay.
 Cancels the pending fee distribution change proposal.
 
 **Access**: Admin only
+
+**Errors:**
+- `SenderIsNotAdmin()` - If caller is not the current admin
 
 ## Treasury Management
 
@@ -203,7 +214,7 @@ Proposes withdrawal of accumulated service fees.
 
 Finalizes the withdrawal of accumulated fees after the time delay.
 
-**Access**: Admin only, within acceptance window
+**Access**: Admin only, after timelock expires
 
 **Process:**
 1. Validates timelock has expired
@@ -215,6 +226,7 @@ Finalizes the withdrawal of accumulated fees after the time delay.
 **Errors:**
 - `ProposalNotReadyToAccept()` - If called before timelock expires
 - `InsufficientPayment()` - If fees no longer available
+- `SenderIsNotAdmin()` - If caller is not the current admin
 
 ---
 
@@ -225,6 +237,9 @@ Finalizes the withdrawal of accumulated fees after the time delay.
 Cancels the pending withdrawal proposal.
 
 **Access**: Admin only
+
+**Errors:**
+- `SenderIsNotAdmin()` - If caller is not the current admin
 
 ## Security Features
 

@@ -6,7 +6,7 @@ sidebar_position: 2
 # fisherBridgeReceive
 
 **Function Type**: `external`  
-**Function Signature**: `fisherBridgeReceive(address,address,address,uint256,uint256,bytes)`  
+**Function Signature**: `fisherBridgeReceive(address,address,address,uint256,uint256,uint256,bytes)`  
 **Access Control**: `onlyFisherExecutor`  
 **Returns**: `void`
 
@@ -21,6 +21,7 @@ Receives Fisher bridge transactions from external chain and credits EVVM balance
 | `tokenAddress` | `address` | Token contract address or `address(0)` for native coin |
 | `priorityFee` | `uint256` | Fee amount paid to the fisher executor |
 | `amount` | `uint256` | Amount to credit to the recipient's EVVM balance |
+| `nonce` | `uint256` | Nonce for async signature verification |
 | `signature` | `bytes` | Cryptographic signature ([EIP-191](https://eips.ethereum.org/EIPS/eip-191)) from the `from` address authorizing this transaction. |
 
 ## Access Control
@@ -41,17 +42,18 @@ modifier onlyFisherExecutor() {
 ### 1. Signature Verification
 ```solidity
 core.validateAndConsumeNonce(
-    from,
+    from,                        // signer
+    fisherExecutor.current,      // senderExecutor
     Hash.hashDataForFisherBridge(
         addressToReceive,
         tokenAddress,
         priorityFee,
         amount
     ),
-    fisherExecutor.current,
-    nonce,
-    true,
-    signature
+    fisherExecutor.current,      // originExecutor
+    nonce,                       // nonce
+    true,                        // isAsyncExec
+    signature                    // signature
 );
 ```
 

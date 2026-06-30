@@ -18,10 +18,10 @@ The `goldenStaking` function provides administrative control over staking operat
 | ----------------- | ------- | ----------------------------------------- |
 | `isStaking`       | bool    | `true` = Stake, `false` = Unstake         |
 | `amountOfStaking` | uint256 | Amount of staking tokens to stake/unstake |
-| `signature_EVVM`  | bytes   | EVVM authorization signature              |
+| `signaturePay`    | bytes   | EVVM authorization signature              |
 
 :::note
-The EVVM payment signature (`signature_EVVM`) follows the [Single Payment Signature Structure](../../../../05-SignatureStructures/01-EVVM/01-SinglePaymentSignatureStructure.md).
+The EVVM payment signature (`signaturePay`) follows the [Single Payment Signature Structure](../../../../05-SignatureStructures/01-EVVM/01-SinglePaymentSignatureStructure.md).
 :::
 
 ## Workflow

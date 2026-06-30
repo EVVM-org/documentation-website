@@ -99,9 +99,9 @@ core.pay(
     priorityFee,                            // Executor reward
     address(this),                          // senderExecutor (service accountability)
     originExecutor,                         // originExecutor (from parameter)
-    nonceEvvm,                              // Payment nonce
+    noncePay,                              // Payment nonce
     true,                                   // Async
-    signatureEvvm                           // Payment signature
+    signaturePay                           // Payment signature
 );
 ```
 
@@ -134,9 +134,9 @@ preRegistrationUsername(
     address(0),             // Unrestricted originExecutor
     nonce,
     signature,
-    priorityFeeEvvm,
-    nonceEvvm,
-    signatureEvvm
+    priorityFeePay,
+    noncePay,
+    signaturePay
 );
 ```
 - Stores commitment for 30 minutes
@@ -153,13 +153,13 @@ registrationUsername(
     address(0),             // Unrestricted originExecutor
     nonce,
     signature,
-    priorityFeeEvvm,
-    nonceEvvm,
-    signatureEvvm
+    priorityFeePay,
+    noncePay,
+    signaturePay
 );
 ```
 - Validates commitment matches reveal
-- Must occur within 30-minute window
+- Must wait at least 30 minutes after pre-registration before registering
 - Grants 366 days of ownership
 
 ### 3. Management
@@ -230,10 +230,10 @@ core.validateAndConsumeNonce(
 - **Pre-registration**: 1x reward + priorityFee
 - **Registration**: 50x reward + priorityFee
 - **Make Offer**: 1x reward + 0.125% offer amount + priorityFee
-- **Withdraw Offer**: 1x reward + priorityFee
+- **Withdraw Offer**: 1x reward + marketplace incentive + priorityFee
 - **Accept Offer**: Calculated based on offer amount + priorityFee
-- **Renew Username**: 1x reward + priorityFee
-- **Metadata Operations**: 1x reward + priorityFee each
+- **Renew Username**: 1x reward + 50% of renewal cost + priorityFee
+- **Add Metadata**: 5x reward + 50% of fee + priorityFee
 - **Flush Username**: 10x reward + priorityFee
 
 ## NameServiceHashUtils Functions
@@ -316,7 +316,7 @@ Hash.hashDataForFlushUsername(username)
 - **Modular Functions**: Separate contracts for different functionality areas
 - **Upgrade Safety**: Time-locked governance prevents immediate changes
 - **Gas Optimization**: Efficient operations for common use cases
-- **Comprehensive API**: Over 30 getter functions for complete system state access
+- **Comprehensive API**: 24 getter functions for complete system state access
 
 ### Data Storage
 - **On-Chain Metadata**: All usernames and metadata stored on blockchain
@@ -336,9 +336,8 @@ Hash.hashDataForFlushUsername(username)
 - **Standard Compliance**: Email validation follows RFC standards for maximum compatibility
 - **Character Set Control**: Username validation ensures consistent identifier formats
 
-### Event System
-- **Comprehensive Logging**: All operations emit detailed events
-- **Integration Support**: Events enable external system integration
-- **Audit Trail**: Complete history of all username operations
+### State Tracking
+- **Storage Updates**: State changes are tracked via storage updates
+- **Note**: NameService does not emit events
 
 The Name Service represents a foundational layer for decentralized identity within the EVVM ecosystem, providing the infrastructure for human-readable addresses, rich profile information, and secure username trading.

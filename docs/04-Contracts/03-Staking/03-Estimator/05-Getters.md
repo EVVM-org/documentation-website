@@ -50,13 +50,13 @@ Returns the current epoch identifier in bytes32 format, which is the format used
 
 ## Administrative Metadata Getters
 
-All administrative getters return a `ProposalMetadata` structure:
+All administrative getters return an `AddressTypeProposal` structure:
 
 ```solidity
-struct ProposalMetadata {
-    address actual;       // Current active address
+struct AddressTypeProposal {
+    address current;       // Current active address
     address proposal;     // Proposed new address
-    uint256 acceptedTime; // Timestamp when proposal can be accepted
+    uint256 timeToAccept; // Timestamp when proposal can be accepted
 }
 ```
 
@@ -65,16 +65,16 @@ struct ProposalMetadata {
 ### `getActivatorMetadata`
 
 **Function Signature**: `getActivatorMetadata()`  
-**Returns**: `ProposalMetadata memory`
+**Returns**: `AddressTypeProposal memory`
 
 Returns the activator address metadata, including the current activator, any pending proposal, and the acceptance timestamp.
 
 ---
 
-### `getEvvmAddressMetadata`
+### `getCoreAddressMetadata`
 
-**Function Signature**: `getEvvmAddressMetadata()`  
-**Returns**: `ProposalMetadata memory`
+**Function Signature**: `getCoreAddressMetadata()`  
+**Returns**: `AddressTypeProposal memory`
 
 Returns the EVVM contract address metadata, including the current address, any pending proposal, and the acceptance timestamp.
 
@@ -83,7 +83,7 @@ Returns the EVVM contract address metadata, including the current address, any p
 ### `getAddressStakingMetadata`
 
 **Function Signature**: `getAddressStakingMetadata()`  
-**Returns**: `ProposalMetadata memory`
+**Returns**: `AddressTypeProposal memory`
 
 Returns the Staking contract address metadata, including the current address, any pending proposal, and the acceptance timestamp.
 
@@ -92,7 +92,7 @@ Returns the Staking contract address metadata, including the current address, an
 ### `getAdminMetadata`
 
 **Function Signature**: `getAdminMetadata()`  
-**Returns**: `ProposalMetadata memory`
+**Returns**: `AddressTypeProposal memory`
 
 Returns the admin address metadata, including the current admin, any pending proposal, and the acceptance timestamp.
 
@@ -115,6 +115,6 @@ console.log("Total Pool:", epochData.totalPool);
 const adminMeta = await estimator.getAdminMetadata();
 if (adminMeta.proposal !== ethers.ZeroAddress) {
     console.log("Pending admin change to:", adminMeta.proposal);
-    console.log("Can accept after:", new Date(adminMeta.acceptedTime * 1000));
+    console.log("Can accept after:", new Date(adminMeta.timeToAccept * 1000));
 }
 ```

@@ -11,7 +11,7 @@ This function uses **Core.sol's centralized signature verification** via `valida
 :::
 
 **Function Type**: External  
-**Function Signature**: `makeOffer(address user, string memory username, uint256 amount, uint256 expirationDate, address senderExecutor, address originExecutor, uint256 nonce, bytes memory signature, uint256 priorityFeeEvvm, uint256 nonceEvvm, bytes memory signatureEvvm) external returns (uint256 offerID)`
+**Function Signature**: `makeOffer(address user, string memory username, uint256 amount, uint256 expirationDate, address senderExecutor, address originExecutor, uint256 nonce, bytes memory signature, uint256 priorityFeePay, uint256 noncePay, bytes memory signaturePay) external returns (uint256 offerID)`
 
 Creates a formal, time-limited offer to purchase an existing username by locking principal tokens in the marketplace. The offer commits 99.5% of the amount to potential purchase (0.5% marketplace fee). Can be executed by any address, with staker rewards distributed to `msg.sender` if they are registered as a staker.
 
@@ -27,9 +27,9 @@ Creates a formal, time-limited offer to purchase an existing username by locking
 | `originExecutor` | `address` | The address authorized to submit this specific signed transaction |
 | `nonce` | `uint256` | User's Core nonce for this signature (prevents replay attacks) |
 | `signature` | `bytes` | EIP-191 signature from `user` authorizing offer creation |
-| `priorityFeeEvvm` | `uint256` | Optional priority fee for faster processing (paid to staker executor) |
-| `nonceEvvm` | `uint256` | User's Core nonce for the payment signature |
-| `signatureEvvm` | `bytes` | User's signature authorizing the payment transfer |
+| `priorityFeePay` | `uint256` | Optional priority fee for faster processing (paid to staker executor) |
+| `noncePay` | `uint256` | User's Core nonce for the payment signature |
+| `signaturePay` | `bytes` | User's signature authorizing the payment transfer |
 
 **Returns**: `uint256 offerID` - Sequential identifier assigned to the created offer
 
@@ -79,10 +79,10 @@ bytes memory signature = abi.encodePacked(r, s, v);
 
 ### 2. Payment Signature (Core.sol)
 
-Authorizes the payment of `amount + priorityFeeEvvm`:
+Authorizes the payment of `amount + priorityFeePay`:
 
 ```
-Payment Amount: amount + priorityFeeEvvm
+Payment Amount: amount + priorityFeePay
 Recipient: address(nameServiceContract)
 ```
 
@@ -162,7 +162,7 @@ if (amount == 0)
 Transfers the offer amount from user to NameService contract:
 
 ```solidity
-requestPay(user, amount, priorityFeeEvvm, originExecutor, nonceEvvm, signatureEvvm);
+requestPay(user, amount, priorityFeePay, originExecutor, noncePay, signaturePay);
 ```
 
 This internally calls:
@@ -172,18 +172,18 @@ core.pay(
     address(this),              // Recipient (NameService)
     "",                         // No identity
     principalToken,             // PT
-    amount + priorityFeeEvvm,   // Total amount
-    priorityFeeEvvm,            // Priority fee
+    amount + priorityFeePay,   // Total amount
+    priorityFeePay,            // Priority fee
     address(this),              // senderExecutor (service accountability)
     originExecutor,             // originExecutor (from parameter)
-    nonceEvvm,                  // Payment nonce
+    noncePay,                  // Payment nonce
     true,                       // Always async
-    signatureEvvm               // Payment sig
+    signaturePay               // Payment sig
 );
 ```
 
 **Token Flow**:
-- User → NameService: `amount + priorityFeeEvvm`
+- User → NameService: `amount + priorityFeePay`
 - Locked for potential username transfer
 
 :::info[Service Payment Accountability]
@@ -238,23 +238,21 @@ principalTokenTokenLockedForWithdrawOffers +=
 
 ### 8. Staker Reward Distribution
 
-If executor is a registered staker, distributes rewards:
+Distributes rewards to executor:
 
 ```solidity
-if (core.isAddressStaker(msg.sender)) {
-    makeCaPay(
-        msg.sender,
-        core.getRewardAmount() +         // Base reward (1x)
-            ((amount * 125) / 100_000) + // 0.125% of offer
-            priorityFeeEvvm              // Priority fee
-    );
-}
+makeCaPay(
+    msg.sender,
+    core.getRewardAmount() +         // Base reward (1x)
+        ((amount * 125) / 100_000) + // 0.125% of offer
+        priorityFeePay              // Priority fee
+);
 ```
 
 **Reward Calculation**:
 ```
 Total Reward = Base Reward + Marketplace Incentive + Priority Fee
-             = 1x + (amount × 0.125%) + priorityFeeEvvm
+             = 1x + (amount × 0.125%) + priorityFeePay
 ```
 
 **Example** (50 token offer, 1 token priority fee):
@@ -314,12 +312,12 @@ string memory message = string.concat(
 bytes memory signature = signMessage(user, message);
 
 // Generate payment signature (amount + priority fee)
-uint256 nonceEvvm = core.getNonce(user, address(core));
-bytes memory signatureEvvm = generatePaymentSignature(
+uint256 noncePay = core.getNonce(user, address(core));
+bytes memory signaturePay = generatePaymentSignature(
     user,
     address(nameService),
     amount + priorityFee,
-    nonceEvvm
+    noncePay
 );
 
 // Execute offer creation
@@ -328,12 +326,13 @@ uint256 offerID = nameService.makeOffer(
     username,
     amount,
     expirationDate,
+    address(0),                             // Unrestricted senderExecutor
     originExecutor,
     nonce,
     signature,
     priorityFee,
-    nonceEvvm,
-    signatureEvvm
+    noncePay,
+    signaturePay
 );
 
 // offerID = 0 (first offer for this username)
@@ -399,8 +398,8 @@ This creates a marketplace incentive for stakers to process offers while maintai
 
 ## State Changes
 
-1. **User balance** → Decreased by `amount + priorityFeeEvvm`
-2. **NameService balance** → Increased by `amount + priorityFeeEvvm`
+1. **User balance** → Decreased by `amount + priorityFeePay`
+2. **NameService balance** → Increased by `amount + priorityFeePay`
 3. **usernameOffers[username][offerID]** → New offer metadata stored
 4. **principalTokenTokenLockedForWithdrawOffers** → Increased by locked amount
 5. **identityDetails[username].offerMaxSlots** → Potentially incremented

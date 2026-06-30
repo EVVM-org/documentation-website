@@ -105,7 +105,7 @@ Allows the admin to execute the proposed withdrawal of principal tokens after th
 
 This two-step, time-locked process allows the admin to safely update the address of the core EVVM contract dependency, ensuring the NameService contract can adapt to future infrastructure changes.
 
-### `proposeChangeEVVMContractAddress`
+### `proposeChangeEvvmAddress`
 
 **Function Type**: `public` (`onlyAdmin`)
 **Function Signature**: `proposeChangeEvvmAddress(address _newEvvmAddress)`

@@ -191,6 +191,7 @@ if (isStaker) _sendReward(msg.sender, 1);
 ### Input Validation Errors (P2PSwapError)
 - `ZeroAmount()` - offeredAmount or requestedAmount is zero
 - `SameTokenPair()` - offeredToken equals requestedToken
+- `UnexpectedBehavior()` - ordersAvailable < maxSlot but no free slot found during iteration
 
 ### Core.sol Errors
 - `Core__InvalidSignature()` - Signature validation failed

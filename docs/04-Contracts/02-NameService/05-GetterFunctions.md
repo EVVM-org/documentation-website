@@ -7,7 +7,7 @@ sidebar_position: 5
 # Getter Functions
 
 :::info[Implementation Note]
-Getter functions are **view functions** that do not modify state. They do NOT use Core.sol's signature verification system. References to "EVVM" in function names (e.g., `getEvvmAddress`) refer to the **Core.sol** contract address.
+Getter functions are **view functions** that do not modify state. They do NOT use Core.sol's signature verification system. References to "EVVM" in function names (e.g., `getCoreAddress`) refer to the **Core.sol** contract address.
 :::
 
 This section documents the view functions available in the Name Service contract that allow querying system state, user information, pricing details, and administrative data. These functions are read-only and do not modify the blockchain state.
@@ -332,9 +332,9 @@ Returns the price to register a specific username. Price is fully dynamic based 
 
 Calculates the cost to renew a username registration. Pricing varies based on timing and market demand:
 
-- Free if renewed before expiration (within grace period)
-- Variable cost based on highest active offer (minimum 500 Principal Token)
-- Fixed 500,000 Principal Token if renewed more than 1 year before expiration
+- **Active username with no offers**: 500 * 10^18 (500 PT)
+- **Active username with offers**: Highest active offer amount (capped at 500,000 * reward)
+- **Expired username**: 500,000 * core.getRewardAmount()
 
 #### Parameters
 
@@ -414,30 +414,6 @@ Returns the cost to completely remove a username and all its data. Includes cost
 
 ---
 
-## Nonce Management Functions
-
-### `checkIfNameServiceNonceIsAvailable`
-
-**Function Type**: `public view**  
-**Function Signature**: `checkIfNameServiceNonceIsAvailable(address _user, uint256 _nonce) returns (bool)`
-
-Checks if a nonce has been used by a specific user to prevent replay attacks.
-
-#### Parameters
-
-| Parameter | Type      | Description                    |
-| --------- | --------- | ------------------------------ |
-| `_user`   | `address` | Address of the user to check   |
-| `_nonce`  | `uint256` | Nonce value to verify          |
-
-#### Returns
-
-| Type   | Description                                      |
-| ------ | ------------------------------------------------ |
-| `bool` | `true` if nonce used, `false` if still available |
-
----
-
 ## Administrative Getter Functions
 
 ### `getAdmin`
@@ -479,31 +455,31 @@ Returns information about pending token withdrawal proposals.
 | ----------------------- | ------------------------------------------------------ |
 | `(uint256, uint256)`    | Proposed withdrawal amount and acceptance deadline     |
 
-### `getEvvmAddress`
+### `getCoreAddress`
 
 **Function Type**: `public view`  
-**Function Signature**: `getEvvmAddress() returns (address)`
+**Function Signature**: `getCoreAddress() returns (address)`
 
-Returns the address of the EVVM contract used for payment processing.
+Returns the address of the Core contract used for payment processing.
 
 #### Returns
 
 | Type      | Description                         |
 | --------- | ----------------------------------- |
-| `address` | The current EVVM contract address   |
+| `address` | The current Core contract address   |
 
-### `getEvvmAddressFullDetails`
+### `getCoreAddressFullDetails`
 
 **Function Type**: `public view`  
-**Function Signature**: `getEvvmAddressFullDetails() returns (address, address, uint256)`
+**Function Signature**: `getCoreAddressFullDetails() returns (address, address, uint256)`
 
-Returns complete EVVM address information including pending proposals.
+Returns complete Core address information including pending proposals.
 
 #### Returns
 
 | Type                              | Description                                           |
 | --------------------------------- | ----------------------------------------------------- |
-| `(address, address, uint256)`     | Current EVVM address, proposed address, acceptance time |
+| `(address, address, uint256)`     | Current Core address, proposed address, acceptance time |
 
 ---
 
@@ -558,7 +534,7 @@ Validates email address format:
 **Function**: `isValidPhoneNumberNumber(string memory _phoneNumber)` (internal pure)
 
 Validates phone number format:
-- Must be 6-19 digits only
+- Must be 6-19 digits only (note: code uses inverted logic checking `< 20 && > 5` to reject invalid lengths)
 - No special characters or letters allowed
 - Returns `true` for valid format
 

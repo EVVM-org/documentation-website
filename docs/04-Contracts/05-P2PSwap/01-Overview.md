@@ -167,9 +167,10 @@ makeCaPay(recipient, token, amount);
 ```
 Used for:
 - Refunding offeredToken when canceling (cancelOrder)
-- Paying seller their requestedToken (dispatchOrder)
-- Distributing fees to stakers and service
 - Transferring offeredToken to buyer (dispatchOrder)
+- Refunding overpayment (dispatchOrder)
+- Paying priority fees to staker executors (makeOrder, cancelOrder)
+- Withdrawing accumulated fees (acceptWithdrawal)
 
 ## Market Structure
 
@@ -240,10 +241,11 @@ Executors who are registered stakers receive MATE token rewards:
 
 Where `1x = core.getRewardAmount()` (MATE tokens)
 
-**Priority Fee:** Additional MATE paid by user to executor
+**Priority Fee:** Additional fee paid by user to executor. The token varies by operation: offeredToken for makeOrder, MATE/principal token for cancelOrder, requestedToken for dispatchOrder.
 - Optional but incentivizes faster execution
 - Paid before operation execution
-- Distributed to executor if they're a staker
+- Distributed to executor if they're a staker (makeOrder, cancelOrder)
+- Distributed to executor regardless of staker status (dispatchOrder)
 
 ## Operation Summary
 

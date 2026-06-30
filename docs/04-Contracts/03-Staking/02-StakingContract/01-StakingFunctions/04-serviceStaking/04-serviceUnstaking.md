@@ -52,11 +52,11 @@ Service unstaking is subject to the same time lock restrictions as user unstakin
 
 ### Re-staking Cooldown
 - Must wait after complete unstaking before staking again
-- Controlled by `secondsToUnlockStaking.actual`
+- Controlled by `secondsToUnlockStaking.current`
 
 ### Full Unstaking Cooldown  
-- Must wait the full period (default 21 days) for complete unstaking
-- Controlled by `secondsToUnlockFullUnstaking.actual`
+- Must wait the full period (default 5 days) for complete unstaking
+- Controlled by `secondsToUnllockFullUnstaking.current`
 - Applies when unstaking all remaining tokens
 
 ## Error Conditions
@@ -67,7 +67,6 @@ The function may revert with:
 |-------|-----------|
 | `AddressIsNotAService()` | Caller is not a contract account (EOA attempted access) |
 | `AddressMustWaitToFullUnstake()` | Full unstaking cooldown period not met |
-| `InsufficientStakingBalance()` | Attempting to unstake more than available |
 
 ## Integration Points
 

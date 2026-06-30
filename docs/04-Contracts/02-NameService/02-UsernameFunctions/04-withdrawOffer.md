@@ -11,7 +11,7 @@ This function uses **Core.sol's centralized signature verification** via `valida
 :::
 
 **Function Type**: External  
-**Function Signature**: `withdrawOffer(address user, string memory username, uint256 offerID, address senderExecutor, address originExecutor, uint256 nonce, bytes memory signature, uint256 priorityFeeEvvm, uint256 nonceEvvm, bytes memory signatureEvvm) external`
+**Function Signature**: `withdrawOffer(address user, string memory username, uint256 offerID, address senderExecutor, address originExecutor, uint256 nonce, bytes memory signature, uint256 priorityFeePay, uint256 noncePay, bytes memory signaturePay) external`
 
 Allows the original offeror to cancel their marketplace offer and retrieve the locked principal tokens. This refunds the entire locked amount (99.5% offer + marketplace fees) back to the offeror. Can only be executed by the address that created the offer. Optional priority fee can be paid to incentivize faster execution.
 
@@ -26,9 +26,9 @@ Allows the original offeror to cancel their marketplace offer and retrieve the l
 | `originExecutor` | `address` | EOA that will execute the transaction (verified with tx.origin) |
 | `nonce` | `uint256` | User's Core nonce for this signature (prevents replay attacks) |
 | `signature` | `bytes` | EIP-191 signature from `user` (offeror) authorizing the withdrawal |
-| `priorityFeeEvvm` | `uint256` | Optional priority fee for faster processing (paid to staker executor) |
-| `nonceEvvm` | `uint256` | User's Core nonce for the payment signature |
-| `signatureEvvm` | `bytes` | User's signature authorizing the priority fee payment (if > 0) |
+| `priorityFeePay` | `uint256` | Optional priority fee for faster processing (paid to staker executor) |
+| `noncePay` | `uint256` | User's Core nonce for the payment signature |
+| `signaturePay` | `bytes` | User's signature authorizing the priority fee payment (if > 0) |
 
 ## Signature Requirements
 
@@ -72,12 +72,12 @@ bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n
 bytes memory signature = abi.encodePacked(r, s, v);
 ```
 
-### 2. Payment Signature (Conditional - Only if priorityFeeEvvm > 0)
+### 2. Payment Signature (Conditional - Only if priorityFeePay > 0)
 
 If providing a priority fee, authorizes payment to the executor:
 
 ```
-Payment Amount: priorityFeeEvvm (only the fee, no base amount)
+Payment Amount: priorityFeePay (only the fee, no base amount)
 Recipient: address(nameServiceContract)
 ```
 
@@ -137,8 +137,8 @@ if (usernameOffers[username][offerID].offerer != user)
 If offeror provides a priority fee, processes the payment:
 
 ```solidity
-if (priorityFeeEvvm > 0)
-    requestPay(user, 0, priorityFeeEvvm, originExecutor, nonceEvvm, signatureEvvm);
+if (priorityFeePay > 0)
+    requestPay(user, 0, priorityFeePay, originExecutor, noncePay, signaturePay);
 ```
 
 **Payment Details**:
@@ -154,26 +154,19 @@ core.pay(
     address(this),              // NameService
     "",                         // No identity
     principalToken,             // PT
-    priorityFeeEvvm,            // Only priority fee
-    priorityFeeEvvm,            // Priority fee
+    priorityFeePay,            // Only priority fee
+    priorityFeePay,            // Priority fee
     address(this),              // senderExecutor (service accountability)
     originExecutor,             // originExecutor (from parameter)
-    nonceEvvm,                  // Payment nonce
+    noncePay,                  // Payment nonce
     true,                       // Async
-    signatureEvvm               // Payment sig
+    signaturePay               // Payment sig
 );
 ```
 
 :::info[Service Payment Accountability]
 When NameService dispatches payments, `senderExecutor` is set to `address(this)` (the NameService contract) while `originExecutor` comes from the function parameter.
 :::
-    address(this),
-    0 + priorityFeeEvvm,  // Only the fee
-    nonceEvvm,
-    true,
-    signatureEvvm
-);
-```
 
 **Reverts With**: Any Core.pay() errors (invalid signature, insufficient balance)
 
@@ -207,24 +200,22 @@ usernameOffers[username][offerID].offerer = address(0);
 
 ### 6. Staker Reward Distribution
 
-If executor is a registered staker, distributes rewards:
+Distributes rewards to executor:
 
 ```solidity
-if (core.isAddressStaker(msg.sender)) {
-    makeCaPay(
-        msg.sender,
-        core.getRewardAmount() +
-            ((usernameOffers[username][offerID].amount * 1) / 796) +
-            priorityFeeEvvm
+makeCaPay(
+    msg.sender,
+    core.getRewardAmount() +
+        ((usernameOffers[username][offerID].amount * 1) / 796) +
+        priorityFeePay
     );
-}
 ```
 
 **Reward Calculation**:
 ```
 Total Reward = Base Reward + Marketplace Fee Share + Priority Fee
-             = 1x + (offerAmount / 796) + priorityFeeEvvm
-             = 1x + ~0.1256% of offer + priorityFeeEvvm
+             = 1x + (offerAmount / 796) + priorityFeePay
+             = 1x + ~0.1256% of offer + priorityFeePay
 ```
 
 **Example** (100 token offer, 1 token priority fee):
@@ -289,12 +280,12 @@ string memory message = string.concat(
 bytes memory signature = signMessage(offeror, message);
 
 // Generate priority fee payment signature (if providing fee)
-uint256 nonceEvvm = core.getNonce(offeror, address(core));
-bytes memory signatureEvvm = generatePaymentSignature(
+uint256 noncePay = core.getNonce(offeror, address(core));
+bytes memory signaturePay = generatePaymentSignature(
     offeror,
     address(nameService),
     priorityFee,  // Only the fee, base amount = 0
-    nonceEvvm
+    noncePay
 );
 
 // Execute offer withdrawal
@@ -302,12 +293,13 @@ nameService.withdrawOffer(
     offeror,
     username,
     offerID,
+    address(0),                             // Unrestricted senderExecutor
     originExecutor,
     nonce,
     signature,
     priorityFee,
-    nonceEvvm,
-    signatureEvvm
+    noncePay,
+    signaturePay
 );
 
 // Result:
@@ -399,7 +391,7 @@ Priority fees go 100% to the executing staker.
 ## State Changes
 
 1. **Offeror balance** → Increased by offer amount (via caPay refund)
-2. **Offeror balance** (if priority fee) → Decreased by `priorityFeeEvvm`
+2. **Offeror balance** (if priority fee) → Decreased by `priorityFeePay`
 3. **usernameOffers[username][offerID].offerer** → Set to address(0) (offer cancelled)
 4. **principalTokenTokenLockedForWithdrawOffers** → Decreased by unlocked amount
 5. **Core nonce** → Offeror's nonce marked as consumed
@@ -424,9 +416,9 @@ This allows offerors to reclaim funds whenever needed, even if their offer wasn'
 
 ### Zero Priority Fee Handling
 
-When `priorityFeeEvvm = 0`:
+When `priorityFeePay = 0`:
 - `requestPay` check skips the call entirely
-- No payment signature required (`signatureEvvm` can be empty)
+- No payment signature required (`signaturePay` can be empty)
 - Only the withdraw offer signature is validated
 - Reduces gas cost significantly (~85,000 gas saved)
 

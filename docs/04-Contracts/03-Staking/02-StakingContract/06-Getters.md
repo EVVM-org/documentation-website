@@ -136,8 +136,8 @@ Calculates when a user can perform full unstaking (withdraw all tokens) based on
 
 1. **Backward History Search**: Iterates through user's history from most recent to oldest transaction
 2. **Zero Balance Detection**: Searches for the last transaction where `totalStaked == 0`
-3. **Cooldown Calculation**: If found, returns `timestamp + secondsToUnlockFullUnstaking.actual`
-4. **Fallback Logic**: If no zero balance found in history, uses first transaction timestamp `userHistory[_account][0].timestamp + secondsToUnlockFullUnstaking.actual`
+3. **Cooldown Calculation**: If found, returns `timestamp + secondsToUnllockFullUnstaking.current`
+4. **Fallback Logic**: If no zero balance found in history, uses first transaction timestamp `userHistory[_account][0].timestamp + secondsToUnllockFullUnstaking.current`
 
 ---
 
@@ -164,7 +164,7 @@ Calculates when a user becomes eligible to stake again after their last full uns
 
 1. **History Check**: If no history exists (`length == 0`), returns `0` (user can stake immediately)
 2. **Recent Transaction Analysis**: Examines the most recent transaction in user's history
-3. **Zero Balance Cooldown**: If last transaction resulted in `totalStaked == 0`, returns `timestamp + secondsToUnlockStaking.actual`
+3. **Zero Balance Cooldown**: If last transaction resulted in `totalStaked == 0`, returns `timestamp + secondsToUnlockStaking.current`
 4. **No Cooldown**: If current balance > 0, returns `0` (user can stake immediately)
 
 ---
@@ -286,48 +286,18 @@ Retrieves the address of the proposed new Estimator contract.
 
 ---
 
-### getEvvmAddress
+### getCoreAddress
 
 **Function Type**: `view`  
-**Function Signature**: `getEvvmAddress()`
+**Function Signature**: `getCoreAddress()`
 
-Retrieves the address of the EVVM contract.
+Retrieves the address of the EVVM core contract.
 
 #### Return Value
 
 | Type    | Description                               |
 | ------- | ----------------------------------------- |
 | address | Address of the EVVM contract              |
-
----
-
-### getMateAddress
-
-**Function Type**: `view`  
-**Function Signature**: `getMateAddress()`
-
-Retrieves the address of the staking token contract.
-
-#### Return Value
-
-| Type    | Description                                |
-| ------- | ------------------------------------------ |
-| address | Address of the staking token contract        |
-
----
-
-### getOwner
-
-**Function Type**: `view`  
-**Function Signature**: `getOwner()`
-
-Retrieves the address of the contract owner.
-
-#### Return Value
-
-| Type    | Description                               |
-| ------- | ----------------------------------------- |
-| address | Address of the contract owner             |
 
 ---
 
@@ -434,48 +404,3 @@ Retrieves the unique identifier for the EVVM instance this staking contract is c
 | Type    | Description                                    |
 | ------- | ---------------------------------------------- |
 | uint256 | Unique EVVM identifier used in signature verification |
-
----
-
-### getEvvmAddress
-
-**Function Type**: `view`  
-**Function Signature**: `getEvvmAddress()`
-
-Retrieves the address of the EVVM core contract.
-
-#### Return Value
-
-| Type    | Description                               |
-| ------- | ----------------------------------------- |
-| address | Address of the EVVM contract              |
-
----
-
-### getMateAddress
-
-**Function Type**: `view`  
-**Function Signature**: `getMateAddress()`
-
-Retrieves the address representing the Principal Token (MATE) in the EVVM system.
-
-#### Return Value
-
-| Type    | Description                                    |
-| ------- | ---------------------------------------------- |
-| address | Address representing the Principal Token       |
-
----
-
-### getOwner
-
-**Function Type**: `view`  
-**Function Signature**: `getOwner()`
-
-Retrieves the address of the current contract admin/owner.
-
-#### Return Value
-
-| Type    | Description                               |
-| ------- | ----------------------------------------- |
-| address | Address of the contract admin             |

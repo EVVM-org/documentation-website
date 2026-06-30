@@ -6,7 +6,7 @@ sidebar_position: 3
 # fisherBridgeSend
 
 **Function Type**: `external`  
-**Function Signature**: `fisherBridgeSend(address,address,address,uint256,uint256,bytes)`  
+**Function Signature**: `fisherBridgeSend(address,address,address,uint256,uint256,uint256,bytes)`  
 **Access Control**: `onlyFisherExecutor`  
 **Returns**: `void`
 
@@ -21,6 +21,7 @@ Processes Fisher bridge token transfers from host to external chain. Validates b
 | `tokenAddress` | `address` | Token contract address or `address(0)` for native coin |
 | `priorityFee` | `uint256` | Fee amount paid to the fisher executor |
 | `amount` | `uint256` | Amount to withdraw from user's EVVM balance |
+| `nonce` | `uint256` | Nonce for async signature verification |
 | `signature` | `bytes` | Cryptographic signature ([EIP-191](https://eips.ethereum.org/EIPS/eip-191)) from the `from` address authorizing this withdrawal. |
 
 ## Access Control

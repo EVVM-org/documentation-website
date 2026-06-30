@@ -38,15 +38,16 @@ Note: In this repository's contract implementation the constructor enables `allo
 | `originExecutor`    | address | EOA that will execute the transaction (verified with tx.origin) |
 | `nonce`             | uint256 | Core nonce for this signature (prevents replay attacks) |
 | `signature`         | bytes   | User authorization signature                         |
+| `priorityFeePay`    | uint256 | Optional priority fee for faster processing          |
+| `noncePay`          | uint256 | Core nonce for the payment operation                 |
+| `signaturePay`      | bytes   | User's signature authorizing the payment             |
 
-> **Note:** For presale staking the function enforces a fixed amount of `1` token; therefore the signed message must include `_amountOfStaking = 1`.| `priorityFeePay`  | uint256 | Optional priority fee for faster processing                                   |
-| `noncePay`        | uint256 | Core nonce for the payment operation                         |
-| `signaturePay`    | bytes   | User's signature authorizing the payment                           |
+> **Note:** For presale staking the function enforces a fixed amount of `1` token; therefore the signed message must include `_amountOfStaking = 1`.
 
 :::note
 
 - If you want to know more about the signature structure, refer to the [Standard Staking/Unstaking Signature Structure](../../../../05-SignatureStructures/03-Staking/01-StandardStakingStructure.md).
-- The EVVM payment signature (`signature_EVVM`) follows the [Single Payment Signature Structure](../../../../05-SignatureStructures/01-EVVM/01-SinglePaymentSignatureStructure.md).
+- The EVVM payment signature (`signaturePay`) follows the [Single Payment Signature Structure](../../../../05-SignatureStructures/01-EVVM/01-SinglePaymentSignatureStructure.md).
   :::
 
 ## Workflow

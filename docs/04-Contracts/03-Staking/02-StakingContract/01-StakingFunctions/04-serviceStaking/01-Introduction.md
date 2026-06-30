@@ -62,7 +62,7 @@ Service unstaking is a simplified single-step process:
 ### Time Lock Restrictions
 Service unstaking follows the same time lock rules as user unstaking:
 - **Re-staking Cooldown**: Must wait after complete unstaking before staking again
-- **Full Unstaking Cooldown**: 21-day wait period for withdrawing all staked tokens
+- **Full Unstaking Cooldown**: 5-day wait period for withdrawing all staked tokens
 
 ## Key Differences from User Staking
 
@@ -162,7 +162,7 @@ abstract contract StakingServiceHooks {
     
     constructor(address _stakingAddress) {
         stakingHookAddress = _stakingAddress;
-        evvmHookAddress = Staking(_stakingAddress).getEvvmAddress();
+        evvmHookAddress = Staking(_stakingAddress).getCoreAddress();
     }
 }
 ```
@@ -237,7 +237,7 @@ require(evvmContract.getBalance(address(this), PRINCIPAL_TOKEN_ADDRESS) >= requi
 
 Service contracts must respect the same time lock restrictions as user staking:
 - **Re-staking Cooldown**: Configurable wait period after complete unstaking
-- **Full Unstaking Cooldown**: Default 21-day wait period for withdrawing all tokens
+- **Full Unstaking Cooldown**: Default 5-day wait period for withdrawing all tokens
 - **Balance Monitoring**: Track when cooldown periods will expire
 
 ## Best Practices

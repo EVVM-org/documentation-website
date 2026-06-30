@@ -46,7 +46,7 @@ The contract enforces two types of cooldown periods to maintain system stability
 **Purpose**: Prevents immediate re-staking after complete unstaking
 
 - **Trigger**: Activated when user's `totalStaked` reaches `0` (complete unstaking)
-- **Duration**: Configurable via `secondsToUnlockStaking.actual`
+- **Duration**: Configurable via `secondsToUnlockStaking.current`
 - **Logic**: User must wait before staking again after their balance reached zero
 - **Function**: `getTimeToUserUnlockStakingTime()`
 
@@ -55,7 +55,7 @@ The contract enforces two types of cooldown periods to maintain system stability
 **Purpose**: Prevents frequent complete withdrawals
 
 - **Trigger**: Based on the last time user's `totalStaked` was `0`
-- **Duration**: Configurable via `secondsToUnllockFullUnstaking.actual` (default: 5 days)
+- **Duration**: Configurable via `secondsToUnllockFullUnstaking.current` (default: 5 days)
 - **Logic**: User must wait before performing complete unstaking
 - **Function**: `getTimeToUserUnlockFullUnstakingTime()`
 
@@ -75,7 +75,7 @@ function getTimeToUserUnlockStakingTime(address _account) public view returns (u
     
     if (userHistory[_account][lengthOfHistory - 1].totalStaked == 0) {
         return userHistory[_account][lengthOfHistory - 1].timestamp + 
-               secondsToUnlockStaking.actual;
+               secondsToUnlockStaking.current;
     } else {
         return 0; // Current balance > 0 = no cooldown
     }
@@ -97,19 +97,19 @@ function getTimeToUserUnlockFullUnstakingTime(address _account) public view retu
     for (uint256 i = userHistory[_account].length; i > 0; i--) {
         if (userHistory[_account][i - 1].totalStaked == 0) {
             return userHistory[_account][i - 1].timestamp + 
-                   secondsToUnlockFullUnstaking.actual;
+                   secondsToUnllockFullUnstaking.current;
         }
     }
     
     return userHistory[_account][0].timestamp + 
-           secondsToUnlockFullUnstaking.actual;
+           secondsToUnllockFullUnstaking.current;
 }
 ```
 
 **Logic Flow**:
 1. **Backward History Search**: Iterates from most recent to oldest transaction
 2. **Zero Balance Detection**: Finds last time `totalStaked == 0`
-3. **Cooldown Applied**: `lastZeroTimestamp + secondsToUnlockFullUnstaking.actual`
+3. **Cooldown Applied**: `lastZeroTimestamp + secondsToUnllockFullUnstaking.current`
 4. **Fallback**: If no zero balance found, uses first transaction timestamp
 
 ## Practical Examples
@@ -146,8 +146,8 @@ History: [
     }
 ]
 
-getTimeToUserUnlockStakingTime() → 1625184000 + secondsToUnlockStaking.actual
-getTimeToUserUnlockFullUnstakingTime() → 1625184000 + secondsToUnlockFullUnstaking.actual
+getTimeToUserUnlockStakingTime() → 1625184000 + secondsToUnlockStaking.current
+getTimeToUserUnlockFullUnstakingTime() → 1625184000 + secondsToUnllockFullUnstaking.current
 ```
 
 ### Example 3: Partial Unstaking
@@ -203,6 +203,6 @@ if (getTimeToUserUnlockFullUnstakingTime(stakingAccount) > block.timestamp) {
 
 ## Administrative Configuration
 
-Both time lock periods (`secondsToUnlockStaking.actual` and `secondsToUnlockFullUnstaking.actual`) are configurable by the contract administrator through a secure proposal system.
+Both time lock periods (`secondsToUnlockStaking.current` and `secondsToUnllockFullUnstaking.current`) are configurable by the contract administrator through a secure proposal system.
 
 For detailed information about configuring these time lock periods, including the proposal system, time delays, and all available administrative functions, see [Administrative Functions](./03-AdminFunctions.md).

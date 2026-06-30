@@ -18,7 +18,7 @@ Completes username registration by revealing the username and lock number used i
 **Requirements:**
 - Valid pre-registration with matching hash must exist
 - Pre-registration must belong to the same `user`
-- Pre-registration must not be expired (within 30-minute window)
+- Pre-registration waiting period must have passed (at least 30 minutes)
 - Username must be available and valid format
 - User must pay registration fee (100x EVVM reward or market-based)
 
@@ -33,9 +33,9 @@ Completes username registration by revealing the username and lock number used i
 | `originExecutor`    | `address` | Optional tx.origin restriction (use `address(0)` for unrestricted).                                                                        |
 | `nonce`             | `uint256` | User's centralized Core nonce for this operation.                                                                        |
 | `signature`         | `bytes`   | EIP-191 signature authorizing this operation (verified by Core.sol).                                                           |
-| `priorityFeeEvvm`  | `uint256` | Optional fee paid to executor, added to registration fee payment.         |
-| `nonceEvvm`        | `uint256` | User's Core nonce for the payment operation (registration fee + priority fee).                                                   |
-| `signatureEvvm`    | `bytes`   | User's signature authorizing the payment (registration fee + priority fee).               |
+| `priorityFeePay`  | `uint256` | Optional fee paid to executor, added to registration fee payment.         |
+| `noncePay`        | `uint256` | User's Core nonce for the payment operation (registration fee + priority fee).                                                   |
+| `signaturePay`    | `bytes`   | User's signature authorizing the payment (registration fee + priority fee).               |
 
 :::note[Signature Requirements]
 
@@ -43,8 +43,8 @@ Completes username registration by revealing the username and lock number used i
 - Uses `NameServiceHashUtils.hashDataForRegistrationUsername(username, lockNumber)`
 - Reference: [Registration Signature Structure](../../../05-SignatureStructures/02-NameService/02-registrationUsernameStructure.md)
 
-**Payment Signature** (`signatureEvvm`):
-- Covers **total payment**: `getPriceOfRegistration(username) + priorityFeeEvvm`
+**Payment Signature** (`signaturePay`):
+- Covers **total payment**: `getPriceOfRegistration(username) + priorityFeePay`
 - Uses `CoreHashUtils.hashDataForPay()`
 - Reference: [Payment Signature Structure](../../../05-SignatureStructures/01-EVVM/01-SinglePaymentSignatureStructure.md)
 
@@ -87,9 +87,10 @@ if (!isUsernameAvailable(username)) {
 ```
 
 **Validation Rules:**
-- Alphanumeric characters only (a-z, 0-9, underscore)
-- Length: 3-32 characters
-- No leading/trailing underscores
+- Alphanumeric characters only (a-z, 0-9)
+- Must start with a letter
+- Minimum length: 4 characters
+- No maximum length enforced
 - Not already registered (admin can override)
 
 ### 3. Registration Fee Payment
@@ -100,10 +101,10 @@ uint256 registrationCost = getPriceOfRegistration(username);
 requestPay(
     user,
     registrationCost,
-    priorityFeeEvvm,
+    priorityFeePay,
     originExecutor,
-    nonceEvvm,
-    signatureEvvm
+    noncePay,
+    signaturePay
 );
 ```
 
@@ -114,13 +115,13 @@ core.pay(
     address(this),                         // NameService receives
     "",                                    // No identity
     principalToken,                        // PT
-    registrationCost + priorityFeeEvvm,    // Total
-    priorityFeeEvvm,                       // Priority fee
+    registrationCost + priorityFeePay,    // Total
+    priorityFeePay,                       // Priority fee
     address(this),                         // senderExecutor (service accountability)
     originExecutor,                        // originExecutor (from parameter)
-    nonceEvvm,                             // Payment nonce
+    noncePay,                             // Payment nonce
     true,                                  // Async
-    signatureEvvm                          // Payment sig
+    signaturePay                          // Payment sig
 );
 ```
 
@@ -181,13 +182,13 @@ identityDetails[username] = IdentityBaseMetadata({
 
 ```solidity
 if (core.isAddressStaker(msg.sender)) {
-    makeCaPay(msg.sender, (50 * core.getRewardAmount()) + priorityFeeEvvm);
+    makeCaPay(msg.sender, (50 * core.getRewardAmount()) + priorityFeePay);
 }
 ```
 
 **Reward Breakdown:**
 - Base reward: 50x `core.getRewardAmount()`
-- Priority fee: Full `priorityFeeEvvm` amount
+- Priority fee: Full `priorityFeePay` amount
 - Highest NameService reward (reflects registration importance)
 
 ### 7. Cleanup
@@ -251,8 +252,8 @@ nameService.registrationUsername(
     nonce,                                  // 43
     signature,                              // Operation sig
     1000000000000000000,                    // 1 PT priority fee
-    nonceEvvm,                              // 44
-    signatureEvvm                           // Payment sig (covers 101 PT)
+    noncePay,                              // 44
+    signaturePay                           // Payment sig (covers 101 PT)
 );
 ```
 
@@ -305,12 +306,12 @@ lockNumber = 987654321;  // Keep this secret!
 // Valid usernames
 "alice"          ✅  // lowercase letters
 "alice123"       ✅  // letters + numbers
-"alice_bob"      ✅  // underscores allowed
+"Alice"          ✅  // uppercase allowed (A-Z, a-z both valid)
 
 // Invalid usernames
-"Alice"          ❌  // uppercase not allowed
+"alice_bob"      ❌  // underscores not allowed
 "alice-bob"      ❌  // hyphens not allowed
-"al"             ❌  // too short (< 3 chars)
+"al"             ❌  // too short (< 4 chars)
 "_alice"         ❌  // leading underscore
 "alice_"         ❌  // trailing underscore
 ```
