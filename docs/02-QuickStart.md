@@ -26,10 +26,9 @@ The CLI validates these automatically.
 ## 1. Clone and Install
 
 ```bash
-git clone --recursive https://github.com/EVVM-org/Testnet-Contracts
-cd Testnet-Contracts
+git clone --recursive https://github.com/EVVM-org/evvm-cli
+cd evvm-cli
 bun install
-forge install
 ```
 
 ## 2. Environment Setup
@@ -393,7 +392,7 @@ cast wallet import myWallet --interactive
 cast wallet list
 ```
 
-**Support:** `https://github.com/EVVM-org/Testnet-Contracts/issues`
+**Support:** `https://github.com/EVVM-org/evvm-cli/issues`
 
 ## Next Steps
 
@@ -415,7 +414,7 @@ cast wallet list
 ---
 
 **Support & Issues:**
-- GitHub Issues: https://github.com/EVVM-org/Testnet-Contracts/issues
+- GitHub Issues: https://github.com/EVVM-org/evvm-cli/issues
 - Documentation: https://www.evvm.info/
 - Discord/Community: Check GitHub for community links
 

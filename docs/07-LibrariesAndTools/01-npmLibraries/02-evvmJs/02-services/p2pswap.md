@@ -14,12 +14,13 @@ Creates and signs a `makeOrder` action for a peer-to-peer swap.
 
 - **Parameters:**
   - `nonce` (bigint): Order nonce.
-  - `offeredToken` (HexString): Address of the token being offered.
-  - `requestedToken` (HexString): Address of the token being requested.
-  - `offeredAmount` (bigint): Amount of offeredToken to be swapped.
-  - `requestedAmount` (bigint): Amount of requestedToken expected in return.
-  - `originExecutor` (HexString, optional): Optional executor address included in the signed message (defaults to zero address).
-  - `evvmSignedAction` (`SignedAction<IPayData>`): The underlying EVVM `pay` signed action (used to lock offeredToken).
+  - `tokenA` (HexString): Address of token A (offered by seller).
+  - `tokenB` (HexString): Address of token B (requested by seller).
+  - `amountA` (bigint): Amount of tokenA to be offered.
+  - `amountB` (bigint): Amount of tokenB expected in return.
+  - `senderExecutor` (HexString, optional): Optional sender executor address (defaults to zero address).
+  - `originExecutor` (HexString, optional): Optional origin executor address (defaults to zero address).
+  - `evvmSignedAction` (`SignedAction<IPayData>`): The underlying EVVM `pay` signed action (used to lock tokenA).
 - **Returns:** ``Promise<SignedAction<IMakeOrderData>>``
 
 ## `cancelOrder`
@@ -28,10 +29,11 @@ Creates and signs a `cancelOrder` action.
 
 - **Parameters:**
   - `nonce` (bigint): Order nonce.
-  - `offeredToken` (HexString): Address of the token that was offered.
-  - `requestedToken` (HexString): Address of the token that was requested.
+  - `tokenA` (HexString): Address of token A (offered by seller).
+  - `tokenB` (HexString): Address of token B (requested by seller).
   - `orderId` (bigint): The ID of the order to be cancelled.
-  - `originExecutor` (HexString, optional): Optional executor address included in the signed message (defaults to zero address).
+  - `senderExecutor` (HexString, optional): Optional sender executor address (defaults to zero address).
+  - `originExecutor` (HexString, optional): Optional origin executor address (defaults to zero address).
   - `evvmSignedAction` (`SignedAction<IPayData>`, optional): An optional EVVM `pay` signed action (for priority fee).
 - **Returns:** ``Promise<SignedAction<ICancelOrderData>>``
 
@@ -41,11 +43,12 @@ Creates and signs a `dispatchOrder` action for filling an existing order.
 
 - **Parameters:**
   - `nonce` (bigint): Order nonce.
-  - `offeredToken` (HexString): Address of the token offered by seller (buyer receives).
-  - `requestedToken` (HexString): Address of the token requested by seller (buyer pays).
+  - `tokenA` (HexString): Address of token A (offered by seller, buyer receives).
+  - `tokenB` (HexString): Address of token B (requested by seller, buyer pays).
   - `orderId` (bigint): The ID of the order to be dispatched.
-  - `amountOut` (bigint): Amount of offeredToken the buyer wants to receive.
-  - `amountInMax` (bigint): Maximum amount of requestedToken the buyer is willing to pay (including fee).
-  - `originExecutor` (HexString, optional): Optional executor address included in the signed message (defaults to zero address).
-  - `evvmSignedAction` (`SignedAction<IPayData>`): The underlying EVVM `pay` signed action (to lock requestedToken + fee).
+  - `amountOut` (bigint): Amount of tokenA the buyer wants to receive.
+  - `amountInMax` (bigint): Maximum amount of tokenB the buyer is willing to pay (including fee).
+  - `senderExecutor` (HexString, optional): Optional sender executor address (defaults to zero address).
+  - `originExecutor` (HexString, optional): Optional origin executor address (defaults to zero address).
+  - `evvmSignedAction` (`SignedAction<IPayData>`): The underlying EVVM `pay` signed action (to lock tokenB + fee).
 - **Returns:** ``Promise<SignedAction<IDispatchOrderData>>``

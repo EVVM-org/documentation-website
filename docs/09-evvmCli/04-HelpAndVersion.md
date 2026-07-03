@@ -199,7 +199,7 @@ Check the version when:
 To get the latest version:
 
 ```bash
-cd Testnet-Contracts
+cd evvm-cli
 git pull
 ./evvm install
 ```
@@ -207,8 +207,8 @@ git pull
 Or clone a fresh copy:
 
 ```bash
-git clone --recursive https://github.com/EVVM-org/Testnet-Contracts
-cd Testnet-Contracts
+git clone --recursive https://github.com/EVVM-org/evvm-cli
+cd evvm-cli
 bun install
 ```
 

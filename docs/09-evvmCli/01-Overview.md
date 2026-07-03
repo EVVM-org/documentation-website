@@ -34,18 +34,17 @@ Clone the repository and install dependencies:
 **Option 1: Using CLI install command (recommended)**
 
 ```bash
-git clone --recursive https://github.com/EVVM-org/Testnet-Contracts
-cd Testnet-Contracts
+git clone --recursive https://github.com/EVVM-org/evvm-cli
+cd evvm-cli
 ./evvm install
 ```
 
 **Option 2: Manual installation**
 
 ```bash
-git clone --recursive https://github.com/EVVM-org/Testnet-Contracts
-cd Testnet-Contracts
+git clone --recursive https://github.com/EVVM-org/evvm-cli
+cd evvm-cli
 bun install
-forge install
 ```
 
 ## CLI Structure
