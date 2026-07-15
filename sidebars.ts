@@ -50,8 +50,8 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: "link",
-      label: "EVVM Full Documentation for LLM",
-      href: "https://evvm.info/llms-full.txt",
+      label: "EVVM Full Documentation for AI Agents",
+      href: "https://evvm.info/agent.md",
     },
     "EVVMNoncommercialLicense",
   ],

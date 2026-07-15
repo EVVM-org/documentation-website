@@ -10,7 +10,7 @@
 #   :::                → (removed)
 #     :::              → (removed, indented closing)
 
-for file in build/llms-full.txt build/llms.txt; do
+for file in build/agent.md build/llms.txt; do
   [ -f "$file" ] || continue
 
   sed -i \
