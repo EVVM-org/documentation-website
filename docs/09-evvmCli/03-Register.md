@@ -32,13 +32,13 @@ Faucets: [ethglobal.com/faucet](https://ethglobal.com/faucet/), [alchemy.com/fau
 
 ## Options
 
-### `--evvmAddress <address>`
+### `--coreAddress <address>`
 
-The address of your deployed EVVM contract.
+The address of your deployed Core contract.
 
 - **Type**: `0x${string}` (Ethereum address)
 - **Required**: Yes (or will prompt)
-- **Usage**: `./evvm register --evvmAddress 0x3e562a2e932afd6c1630d5f3b8eb3d88a4b058c2`
+- **Usage**: `./evvm register --coreAddress 0x3e562a2e932afd6c1630d5f3b8eb3d88a4b058c2`
 
 If not provided, the CLI will prompt you to enter it interactively.
 
@@ -48,7 +48,7 @@ Specify which Foundry wallet to use for registration transactions (single-chain 
 
 - **Type**: `string`
 - **Default**: `defaultKey`
-- **Usage**: `./evvm register --evvmAddress 0x... --walletName myWallet`
+- **Usage**: `./evvm register --coreAddress 0x... --walletName myWallet`
 
 The wallet must be previously imported into Foundry's keystore:
 
@@ -82,7 +82,7 @@ Use a custom Ethereum Sepolia RPC endpoint instead of the public default.
 
 - **Type**: `boolean`
 - **Default**: `false`
-- **Usage**: `./evvm register --evvmAddress 0x... --useCustomEthRpc`
+- **Usage**: `./evvm register --coreAddress 0x... --useCustomEthRpc`
 
 When enabled:
 1. CLI reads `EVVM_REGISTRATION_RPC_URL` from `.env`
@@ -97,7 +97,7 @@ Register a cross-chain EVVM instance.
 
 - **Type**: `boolean`
 - **Default**: `false`
-- **Usage**: `./evvm register --crossChain --evvmAddress 0x...`
+- **Usage**: `./evvm register --crossChain --coreAddress 0x...`
 
 When enabled:
 - Prompts for Treasury External Station address
@@ -115,7 +115,7 @@ The address of the Treasury External Station contract (required for cross-chain 
 
 - **Type**: `0x${string}` (Ethereum address)
 - **Required**: Yes for cross-chain (or will prompt)
-- **Usage**: `./evvm register --crossChain --evvmAddress 0x... --treasuryExternalStationAddress 0x...`
+- **Usage**: `./evvm register --crossChain --coreAddress 0x... --treasuryExternalStationAddress 0x...`
 
 ## Required Environment Variables
 
@@ -151,7 +151,7 @@ If RPC URLs are not found in `.env`, the CLI will prompt you to enter them.
 Register a standard EVVM instance deployed on a single blockchain.
 
 ```bash
-./evvm register --evvmAddress 0x3e562a2e932afd6c1630d5f3b8eb3d88a4b058c2
+./evvm register --coreAddress 0x3e562a2e932afd6c1630d5f3b8eb3d88a4b058c2
 ```
 
 ### Cross-Chain Registration
@@ -160,7 +160,7 @@ Register an EVVM instance with cross-chain treasury support.
 
 ```bash
 ./evvm register --crossChain \
-  --evvmAddress 0x3e562a2e932afd6c1630d5f3b8eb3d88a4b058c2 \
+  --coreAddress 0x3e562a2e932afd6c1630d5f3b8eb3d88a4b058c2 \
   --treasuryExternalStationAddress 0x1234... \
   --walletName myWallet
 ```
@@ -183,17 +183,17 @@ The CLI validates that all required tools are installed and configured:
 - ✅ Wallet availability verification
 - ✅ Wallet balance check (ETH Sepolia)
 
-### 2. EVVM Address Validation
+### 2. Core Address Validation
 
-The CLI prompts for or validates the provided EVVM address:
+The CLI prompts for or validates the provided Core address:
 
 ```
-Enter the EVVM Address: 0x...
+Enter the Core Address: 0x...
 ```
 
 The address must:
 - Be a valid Ethereum address format
-- Point to a deployed EVVM contract
+- Point to a deployed Core contract
 - Not be already registered (unless within 24-hour edit window)
 
 ### 3. Chain Support Verification
@@ -246,7 +246,7 @@ The CLI interacts with the EVVM Registry contract:
 
 **Contract Address**: `0x389dC8fb09211bbDA841D59f4a51160dA2377832`  
 **Network**: Ethereum Sepolia  
-**Function**: `registerEvvm(uint256 hostChainId, address evvmAddress)`
+**Function**: `registerEvvm(uint256 hostChainId, address coreAddress)`
 
 ```
 Setting EVVM ID directly on contract...
@@ -345,7 +345,7 @@ The CLI will prompt for:
 Provide EVVM address directly:
 
 ```bash
-./evvm register --evvmAddress 0x3e562a2e932afd6c1630d5f3b8eb3d88a4b058c2
+./evvm register --coreAddress 0x3e562a2e932afd6c1630d5f3b8eb3d88a4b058c2
 ```
 
 ### Register with Custom Wallet
@@ -354,7 +354,7 @@ Use a specific wallet:
 
 ```bash
 ./evvm register \
-  --evvmAddress 0x3e562a2e932afd6c1630d5f3b8eb3d88a4b058c2 \
+  --coreAddress 0x3e562a2e932afd6c1630d5f3b8eb3d88a4b058c2 \
   --walletName myWallet
 ```
 
@@ -364,11 +364,11 @@ Use a custom Ethereum Sepolia endpoint:
 
 ```bash
 ./evvm register \
-  --evvmAddress 0x3e562a2e932afd6c1630d5f3b8eb3d88a4b058c2 \
+  --coreAddress 0x3e562a2e932afd6c1630d5f3b8eb3d88a4b058c2 \
   --useCustomEthRpc
 ```
 
-The CLI will use `ETH_SEPOLIA_RPC` from `.env` or prompt for it.
+The CLI will use `EVVM_REGISTRATION_RPC_URL` from `.env` or prompt for it.
 
 ### Complete Example
 
@@ -376,7 +376,7 @@ Full command with all options:
 
 ```bash
 ./evvm register \
-  --evvmAddress 0x3e562a2e932afd6c1630d5f3b8eb3d88a4b058c2 \
+  --coreAddress 0x3e562a2e932afd6c1630d5f3b8eb3d88a4b058c2 \
   --walletName myWallet \
   --useCustomEthRpc
 ```
@@ -445,7 +445,7 @@ Error: Failed to connect to Ethereum Sepolia RPC
 
 ### Key Functions
 
-**registerEvvm(uint256 hostChainId, address evvmAddress)**
+**registerEvvm(uint256 hostChainId, address coreAddress)**
 - Registers a new EVVM instance
 - Returns: EVVM ID
 

@@ -5,7 +5,7 @@ sidebar_position: 1
 
 # Overview
 
-The EVVM CLI is a powerful command-line interface tool designed to simplify the deployment, registration, and management of EVVM (Ethereum Virtual Virtual Machine) instances.
+The EVVM CLI is a powerful command-line interface tool designed to simplify the deployment, registration, and management of EVVM instances.
 
 ## What is the EVVM CLI?
 
@@ -57,6 +57,7 @@ The EVVM CLI is organized into several commands:
 | [`register`](./03-Register.md) | Register an existing EVVM instance in the registry |
 | [`setUpCrossChainTreasuries`](./05-SetUpCrossChainTreasuries.md) | Configure cross-chain treasury stations |
 | [`developer`](./06-Developer.md) | Developer utilities and helpers |
+| [`install`](./07-Install.md) | Install all dependencies (contracts, bun, forge) |
 | [`help`](./04-HelpAndVersion.md) | Display CLI help information |
 | [`version`](./04-HelpAndVersion.md) | Show the current CLI version |
 
@@ -76,10 +77,10 @@ The EVVM CLI is organized into several commands:
 ./evvm deploy --crossChain
 
 # Register an existing EVVM
-./evvm register --evvmAddress 0x...
+./evvm register --coreAddress 0x...
 
 # Register a cross-chain EVVM
-./evvm register --crossChain --evvmAddress 0x...
+./evvm register --crossChain --coreAddress 0x...
 
 # Configure cross-chain treasuries
 ./evvm setUpCrossChainTreasuries

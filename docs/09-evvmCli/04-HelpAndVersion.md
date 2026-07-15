@@ -32,7 +32,7 @@ The help command shows:
 
 ```
 ╔═══════════════════════════════════════════════════════════╗
-║                     EVVM CLI Tool v2.2.0                  ║
+║                     EVVM CLI Tool v1.0.0                  ║
 ╚═══════════════════════════════════════════════════════════╝
 
 USAGE:
@@ -52,6 +52,8 @@ COMMANDS:
 
   developer           Developer helpers and utilities
 
+  install             Install all dependencies (contracts, bun, forge)
+
   help                Display this help message
 
   version             Show CLI version
@@ -70,8 +72,8 @@ DEPLOY OPTIONS:
         Never store private keys in .env
 
 REGISTER OPTIONS:
-  --evvmAddress <address>
-                      EVVM contract address to register
+  --coreAddress <address>
+                       Core contract address to register
 
   --walletName <name>
                       Wallet name for registry transactions
@@ -105,7 +107,7 @@ EXAMPLES:
   evvm deploy --crossChain
 
   # Register EVVM
-  evvm register --evvmAddress 0x...
+  evvm register --coreAddress 0x...
 
   # Set up cross-chain treasuries
   evvm setUpCrossChainTreasuries
@@ -150,7 +152,7 @@ Displays the current version of the EVVM CLI tool.
 ### Output
 
 ```
-EVVM CLI v2.2.0
+EVVM CLI v1.0.0
 ```
 
 The version number follows semantic versioning (MAJOR.MINOR.PATCH):
@@ -173,44 +175,7 @@ Use the version command when:
 - [`register`](./03-Register.md) - Register EVVM instances
 - [`setUpCrossChainTreasuries`](./05-SetUpCrossChainTreasuries.md) - Configure cross-chain treasuries
 - [`developer`](./06-Developer.md) - Developer utilities
-v2.2.0
-```
-
-The version number follows [Semantic Versioning](https://semver.org/):
-- **Major version** - Breaking changes
-- **Minor version** - New features (backward compatible)
-- **Patch version** - Bug fixes
-
-### Version History
-
-The CLI version is synchronized with the package version in `package.json`.
-
-### When to Use
-
-Check the version when:
-
-- Reporting bugs or issues
-- Verifying you have the latest version
-- Checking compatibility with documentation
-- Troubleshooting CLI behavior
-
-### Updating the CLI
-
-To get the latest version:
-
-```bash
-cd evvm-cli
-git pull
-./evvm install
-```
-
-Or clone a fresh copy:
-
-```bash
-git clone --recursive https://github.com/EVVM-org/evvm-cli
-cd evvm-cli
-bun install
-```
+- [`install`](./07-Install.md) - Install dependencies
 
 ---
 
@@ -233,13 +198,4 @@ Both `--help` and `--version` flags work with any command:
 ```
 
 All display the CLI version.
-
----
-
-## Related Commands
-
-- [`deploy`](./02-Deploy.md) - Deploy EVVM instances
-- [`register`](./03-Register.md) - Register EVVM instances
-- [`setUpCrossChainTreasuries`](./05-SetUpCrossChainTreasuries.md) - Configure cross-chain treasuries
-- [`developer`](./06-Developer.md) - Developer utilities
 

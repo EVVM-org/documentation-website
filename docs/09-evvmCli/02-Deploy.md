@@ -132,7 +132,7 @@ Standard EVVM deployment on a single blockchain.
 ```
 
 **Deployed Contracts:**
-- Evvm (Core virtual machine)
+- Core (Core virtual machine)
 - NameService (Domain system)
 - Staking (Staking and rewards)
 - Estimator (Reward calculation)
@@ -150,7 +150,7 @@ EVVM deployment with cross-chain treasury support.
 **Deployed Contracts:**
 
 **Host Chain:**
-- Evvm (Core virtual machine)
+- Core (Core virtual machine)
 - NameService (Domain system)
 - Staking (Staking and rewards)
 - Estimator (Reward calculation)
@@ -325,7 +325,7 @@ Starting deployment...
 Six contracts are deployed in sequence:
 
 1. **Staking** - Staking and reward management
-2. **Evvm** - Core virtual machine logic
+2. **Core** - Core virtual machine logic
 3. **Estimator** - Reward calculation engine
 4. **NameService** - Domain name system
 5. **Treasury** - Asset management
@@ -349,7 +349,7 @@ After successful deployment, you'll see:
 
   ✓ Staking
     → 0x...
-  ✓ Evvm
+  ✓ Core
     → 0x...
   ✓ Estimator
     → 0x...
@@ -376,7 +376,7 @@ Your EVVM instance is ready to be registered.
 Important:
    To register now, your Admin address must match the defaultKey wallet.
    Otherwise, you can register later using:
-   evvm register --evvmAddress 0x...
+   evvm register --coreAddress 0x...
 
    📖 For more details, visit:
    https://www.evvm.info/docs/QuickStart#7-register-in-registry-evvm
@@ -424,21 +424,21 @@ Use a specific wallet for deployment:
 Skip configuration and use custom wallet:
 
 ```bash
-./evvm deploy -s -w myWallet
+./evvm deploy -s -n myWallet
 ```
 
 ## Output Files
 
 ### Configuration File
 
-Generated at `./input/Inputs.sol`:
+Generated at `./lib/evvm/testnet/input/BaseInputs.sol`:
 
 ```solidity
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 import {CoreStructs} from "@evvm/testnet-contracts/library/structs/CoreStructs.sol";
 
-abstract contract Inputs {
+abstract contract BaseInputs {
     address admin = 0x...;
     address goldenFisher = 0x...;
     address activator = 0x...;

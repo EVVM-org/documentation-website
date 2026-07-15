@@ -32,24 +32,33 @@ Generate Solidity interfaces for EVVM contracts.
 - **Usage**: `./evvm developer --makeInterface`
 
 This option:
-1. Analyzes compiled EVVM contracts
-2. Extracts public/external functions
-3. Generates `.sol` interface files
-4. Useful for integration and testing
+1. Prompts to select a contract (Core, NameService, P2PSwap, Staking, Estimator, Treasury, TreasuryExternalChainStation, TreasuryHostChainStation, or All)
+2. Uses `cast interface` to generate Solidity interface files
+3. Replaces SPDX license headers with `EVVM-NONCOMMERCIAL-1.0`
+4. Renames interfaces with `I` prefix (e.g., `ICore.sol`)
+5. Saves to `./lib/evvm/testnet/src/interfaces/`
 
 ### `--runTest`, `-t`
 
-Run the complete test suite for EVVM contracts.
+Run the test suite for EVVM contracts with configurable filters.
 
 - **Type**: `boolean`
 - **Default**: `false`
 - **Usage**: `./evvm developer --runTest`
 
 This option:
-1. Compiles all contracts
-2. Runs unit tests
-3. Runs fuzz tests
-4. Generates test reports
+1. Prompts to select a contract to test
+2. Prompts for test type:
+   - **Unit correct** - Tests for expected successful operations
+   - **Unit revert** - Tests for expected revert conditions
+   - **Fuzzing** - Property-based fuzz tests
+   - **Full test suite** - All test types combined
+3. Prompts for output format:
+   - **Markdown** - Saves results as `.md` file
+   - **JSON** - Saves results as `.json` file
+   - **None** - Terminal output only
+4. Runs `forge test` with `--summary --detailed --gas-report -vvv` and appropriate `--match-contract` filters
+5. Saves results to `./lib/evvm/testnet/output/testResults/` with timestamp
 
 ## Usage Examples
 
