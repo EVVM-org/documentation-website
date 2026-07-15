@@ -40,11 +40,11 @@ function CustomHeader() {
           </a>
           <a
             className={styles.headerButton}
-            href="https://evvm.info/llms-full.txt"
+            href="https://evvm.info/agent.md"
             target="_blank"
             rel="noopener noreferrer"
           >
-            llms-full.txt
+            agent.md
             
           </a>
           <a
@@ -119,11 +119,11 @@ function HeroSection() {
           </a>
           <a 
             className={styles.heroButton} 
-            href="https://evvm.info/llms-full.txt" 
+            href="https://evvm.info/agent.md" 
             target="_blank" 
             rel="noopener noreferrer"
           >
-            llms-full.txt
+            agent.md
           </a>
         </div>
 

@@ -63,7 +63,7 @@ npm run build
 
 Static files are generated in the `build/` directory. The build process includes:
 - Optimized production bundles
-- LLM-friendly documentation generation (`llms.txt` and `llms-full.txt`)
+- LLM-friendly documentation generation (`llms.txt` and `agent.md`)
 - Post-build cleanup of Docusaurus admonition syntax from LLM files (`scripts/clean-llms.sh`)
 - Search index creation
 - Math equation rendering (KaTeX)
@@ -143,7 +143,7 @@ The site supports KaTeX for mathematical notation:
 This repository automatically generates AI-optimized documentation for feeding AI agents and LLMs:
 
 - **`/llms.txt`**: Index with links to all 147 documentation sections
-- **`/llms-full.txt`**: Complete documentation in a single file (~29,700+ lines)
+- **`/agent.md`**: Complete documentation in a single file (~29,700+ lines)
 
 ### Features
 
@@ -156,7 +156,7 @@ The generated files include:
 
 These files follow the [llmstxt.org](https://llmstxt.org) standard and are accessible at:
 - https://www.evvm.info/llms.txt
-- https://www.evvm.info/llms-full.txt
+- https://www.evvm.info/agent.md
 
 Files are automatically generated during `npm run build` via the `docusaurus-plugin-llms` plugin with custom `rootContent` and `fullRootContent` for AI agent context. A post-build script (`scripts/clean-llms.sh`) strips Docusaurus admonition syntax (`:::info`, `:::warning`, etc.) and converts them to standard markdown for clean LLM consumption.
 

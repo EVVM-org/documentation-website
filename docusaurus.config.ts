@@ -87,6 +87,7 @@ const config: Config = {
       {
         generateLLMsTxt: true,
         generateLLMsFullTxt: true,
+        llmsFullTxtFilename: 'agent.md',
         docsDir: 'docs',
         excludeImports: true,
         removeDuplicateHeadings: true,
@@ -102,7 +103,7 @@ Key concepts:
 - EIP-191 Signatures: All operations use cryptographic signatures for authorization
 
 Production URL: https://www.evvm.info
-Full documentation for AI agents: https://www.evvm.info/llms-full.txt`,
+Full documentation for AI agents: https://www.evvm.info/agent.md`,
         fullRootContent: `This document contains the complete EVVM technical documentation optimized for AI agents and LLMs.
 
 EVVM (Ethereum Virtual Virtual Machine) enables virtual blockchains on top of host blockchains without physical infrastructure management.
@@ -176,8 +177,8 @@ Production URL: https://www.evvm.info`,
           position: "right",
         },
         {
-          label: "llms-full.txt",
-          to: "https://evvm.info/llms-full.txt",
+          label: "agent.md",
+          to: "https://evvm.info/agent.md",
           position: "right",
         }
       ],
